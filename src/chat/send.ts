@@ -16,7 +16,8 @@ export async function sendMessage(raw: string, mentions: Mention[]): Promise<voi
   chat.addUser(text);
   const controller = new AbortController();
   const assistantId = chat.startAssistant(controller);
-  const ctx = storeToolContext(flowStore, (boardId) => tidyBoard(flowStore, boardId));
+  // Claude reads the summary of the board active now, so its edits stay on that board even if the user switches tabs.
+  const ctx = storeToolContext(flowStore, (boardId) => tidyBoard(flowStore, boardId), flow.activeBoardId);
   const projectId = flow.project.id;
 
   flowStore.getState().begin();

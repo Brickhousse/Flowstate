@@ -229,3 +229,73 @@ describe('executeTool', () => {
     expect(links()).toEqual(['Check>End', 'Start>Check']);
   });
 });
+
+
+describe('board pinning', () => {
+  function twoBoards() {
+    const store = createFlowStore();
+    const first = store.getState().activeBoardId;
+    const second = store.getState().addBoard('Second', false);
+    const boardOf = (id: string) => store.getState().project.boards.find((b) => b.id === id)!;
+    const titles = (id: string) => boardOf(id).nodes.map((n) => n.title);
+    return { store, first, second, boardOf, titles };
+  }
+
+  it('edits the pinned board after the user switches tabs mid-turn', async () => {
+    const { store, first, second, boardOf, titles } = twoBoards();
+    const ctx = storeToolContext(store, async () => {}, first);
+    store.getState().setActiveBoard(second);
+    const out = await executeTool(ctx, 'add_steps', { steps: [{ title: 'A' }] });
+    expect(out.ok).toBe(true);
+    expect(titles(first)).toEqual(['A']);
+    expect(titles(second)).toEqual([]);
+    const update = await executeTool(ctx, 'update_steps', { updates: [{ id: 's1', owner: 'Ops' }] });
+    expect(update.ok).toBe(true);
+    expect(boardOf(first).nodes[0].owner).toBe('Ops');
+  });
+
+  it('follows the active board when nothing is pinned', async () => {
+    const { store, second, titles } = twoBoards();
+    const ctx = storeToolContext(store, async () => {});
+    store.getState().setActiveBoard(second);
+    await executeTool(ctx, 'add_steps', { steps: [{ title: 'A' }] });
+    expect(titles(second)).toEqual(['A']);
+  });
+
+  it('keeps the pin on create_board without switch_to and moves it with switch_to', async () => {
+    const { store, first, titles } = twoBoards();
+    const ctx = storeToolContext(store, async () => {}, first);
+    const kept = await executeTool(ctx, 'create_board', { name: 'Aside', switch_to: false });
+    await executeTool(ctx, 'add_steps', { steps: [{ title: 'Still first' }] });
+    expect(titles(first)).toEqual(['Still first']);
+    expect(titles(JSON.parse(kept.content).board_id)).toEqual([]);
+    const moved = await executeTool(ctx, 'create_board', { name: 'Draft' });
+    store.getState().setActiveBoard(first);
+    await executeTool(ctx, 'add_steps', { steps: [{ title: 'On draft' }] });
+    expect(titles(JSON.parse(moved.content).board_id)).toEqual(['On draft']);
+    expect(titles(first)).toEqual(['Still first']);
+  });
+
+  it('lets an explicit board reference override the pin', async () => {
+    const { store, first, second, titles } = twoBoards();
+    const ctx = storeToolContext(store, async () => {}, first);
+    const out = await executeTool(ctx, 'add_steps', { board: 'Second', steps: [{ title: 'B' }] });
+    expect(out.ok).toBe(true);
+    expect(titles(second)).toEqual(['B']);
+    expect(titles(first)).toEqual([]);
+  });
+
+  it('fails readably when the pinned board was deleted mid-turn, instead of editing another board', async () => {
+    const { store, first, second, titles } = twoBoards();
+    const ctx = storeToolContext(store, async () => {}, second);
+    store.getState().deleteBoard(second);
+    const out = await executeTool(ctx, 'add_steps', { steps: [{ title: 'Lost' }] });
+    expect(out.ok).toBe(false);
+    expect(out.content).toContain('has been deleted');
+    expect(out.content).toContain('"Board 1"');
+    expect(titles(first)).toEqual([]);
+    const explicit = await executeTool(ctx, 'add_steps', { board: 'Board 1', steps: [{ title: 'Found' }] });
+    expect(explicit.ok).toBe(true);
+    expect(titles(first)).toEqual(['Found']);
+  });
+});

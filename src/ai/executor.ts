@@ -39,10 +39,15 @@ type Input<N extends ToolName> = z.infer<(typeof TOOL_SCHEMAS)[N]>;
 type Handler<N extends ToolName> = (ctx: ToolContext, input: Input<N>, boardId: string) => HandlerResult | Promise<HandlerResult>;
 
 function resolveBoard(project: Project, ref: string | undefined, fallback: string): Board {
-  if (!ref) return project.boards.find((b) => b.id === fallback) ?? project.boards[0];
+  const names = project.boards.map((b) => `"${b.name}"`).join(', ');
+  if (!ref) {
+    const board = project.boards.find((b) => b.id === fallback);
+    if (!board) throw new OpError(`The board this turn was working on has been deleted. Pass "board" to pick one of: ${names}.`);
+    return board;
+  }
   const wanted = ref.trim().toLowerCase();
   const found = project.boards.find((b) => b.id === ref) ?? project.boards.find((b) => b.name.toLowerCase() === wanted);
-  if (!found) throw new OpError(`Unknown board "${ref}". Boards: ${project.boards.map((b) => `"${b.name}"`).join(', ')}.`);
+  if (!found) throw new OpError(`Unknown board "${ref}". Boards: ${names}.`);
   return found;
 }
 
