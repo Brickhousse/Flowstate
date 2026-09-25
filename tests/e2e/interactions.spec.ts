@@ -170,6 +170,41 @@ test('deleting a step mid-drag still closes the drag undo entry', async ({ page,
   ]);
 });
 
+test('deleting every node of a selection drag mid-drag closes the drag undo entry', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 300, y: 0 });
+  });
+  await open(page, p);
+  const a = (await node(page, 's1').boundingBox())!;
+  const b = (await node(page, 's2').boundingBox())!;
+  await page.mouse.move(a.x - 40, a.y - 40);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width + 40, b.y + b.height + 40, { steps: 12 });
+  await page.mouse.up();
+  const rect = (await page.locator('.react-flow__nodesselection-rect').boundingBox())!;
+  const cx = rect.x + rect.width / 2;
+  const cy = rect.y + rect.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx + 80, cy + 60, { steps: 8 });
+  await page.evaluate(() =>
+    window.__flowstate!.getState().change((draft) => {
+      draft.boards[0].nodes = [];
+    }),
+  );
+  await expect(page.locator('.react-flow__node')).toHaveCount(0);
+  await page.mouse.move(cx + 160, cy + 120, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => window.__flowstate!.getState().tx)).toBeNull();
+  expect(await pastLength(page)).toBe(1);
+  await page.evaluate(() => window.__flowstate!.getState().undo());
+  expect((await board(page)).nodes).toMatchObject([
+    { id: 's1', x: 0, y: 0 },
+    { id: 's2', x: 300, y: 0 },
+  ]);
+});
+
 test('dragging a shift-selected pair is one undo entry', async ({ page, request }) => {
   const p = await seed(request, (b) => {
     addStep(b, { title: 'A', x: 0, y: 0 });
