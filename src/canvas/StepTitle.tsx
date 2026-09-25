@@ -56,12 +56,13 @@ function TitleEditor({ node, className }: { node: BoardNode; className: string }
       aria-label="Title"
       onKeyDown={(e) => {
         e.stopPropagation();
+        if (e.nativeEvent.isComposing) return;
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
           finish(true);
         } else if (e.key === 'Tab') {
           e.preventDefault();
-          finish(true, 'next');
+          finish(true, e.shiftKey ? undefined : 'next');
         } else if (e.key === 'Escape') {
           e.preventDefault();
           finish(false);

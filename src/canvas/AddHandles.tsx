@@ -20,6 +20,7 @@ export function AddHandles({ nodeId }: { nodeId: string }) {
           key={side}
           type="button"
           className={`fs-add fs-add-${side} nodrag nopan`}
+          tabIndex={-1}
           title="Add a connected step"
           aria-label={`Add step ${side}`}
           onClick={(e) => {

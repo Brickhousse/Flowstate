@@ -1,12 +1,9 @@
 import { Check, X } from 'lucide-react';
-import type { Board, Flag } from '../model/types';
+import type { Flag } from '../model/types';
 import { removeFlag, setFlagResolved, updateFlagText } from '../ops/flags';
-import { flowStore } from '../store/store';
 import { FieldInput, ToolButton } from '../ui/controls';
+import { editBoard } from './boardChange';
 import { FLAG_LABEL } from './labels';
-import { runSafely } from './safe';
-
-const change = (fn: (b: Board) => void) => runSafely(() => flowStore.getState().changeBoard(fn));
 
 export function FlagList({ flags }: { flags: Flag[] }) {
   return (
@@ -20,12 +17,12 @@ export function FlagList({ flags }: { flags: Flag[] }) {
             placeholder={`Describe the ${FLAG_LABEL[f.kind].toLowerCase()}`}
             value={f.text}
             focusKey={`flag:${f.id}`}
-            onCommit={(text) => change((b) => updateFlagText(b, f.id, text))}
+            onCommit={(text) => editBoard((b) => updateFlagText(b, f.id, text))}
           />
-          <ToolButton title={f.resolved ? 'Reopen' : 'Resolve'} active={f.resolved} onClick={() => change((b) => setFlagResolved(b, f.id, !f.resolved))}>
+          <ToolButton title={f.resolved ? 'Reopen' : 'Resolve'} active={f.resolved} onClick={() => editBoard((b) => setFlagResolved(b, f.id, !f.resolved))}>
             <Check size={13} />
           </ToolButton>
-          <ToolButton title="Remove flag" onClick={() => change((b) => removeFlag(b, f.id))}>
+          <ToolButton title="Remove flag" onClick={() => editBoard((b) => removeFlag(b, f.id))}>
             <X size={13} />
           </ToolButton>
         </div>

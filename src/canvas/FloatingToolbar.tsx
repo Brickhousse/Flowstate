@@ -2,31 +2,23 @@ import { NodeToolbar, Position } from '@xyflow/react';
 import { Ellipsis } from 'lucide-react';
 import { useState } from 'react';
 import { DurationError, formatDuration, parseDuration } from '../model/duration';
-import { ACTORS, FLAG_KINDS, SHAPES, STATUSES, type Board, type BoardNode, type FlagKind } from '../model/types';
-import { addFlag } from '../ops/flags';
+import { ACTORS, FLAG_KINDS, SHAPES, STATUSES, type BoardNode } from '../model/types';
 import { updateSteps, type StepFields } from '../ops/steps';
-import { flowStore, useFlow } from '../store/store';
+import { useFlow } from '../store/store';
 import { Divider, FieldInput, ToolButton } from '../ui/controls';
 import { notify } from '../ui/toast';
+import { addFlagAndFocus, editBoard } from './boardChange';
 import { FlagList } from './FlagList';
-import { requestFocus } from './focusKey';
 import { ACTOR_LABEL, ActorIcon, FLAG_KEY, FLAG_LABEL, FlagIcon, SHAPE_LABEL, TINTS } from './labels';
-import { runSafely } from './safe';
 import { ShapeIcon } from './ShapeSvg';
 
 type Panel = 'shape' | 'color' | 'more' | null;
-
-export function addFlagAndFocus(boardFn: (fn: (b: Board) => string) => string | undefined, hostId: string, kind: FlagKind): void {
-  const id = boardFn((b) => addFlag(b, hostId, kind, ''));
-  if (id) requestFocus(`flag:${id}`);
-}
 
 export function FloatingToolbar({ node }: { node: BoardNode }) {
   const visible = useFlow((s) => s.selection.length === 1 && s.selection[0] === node.id && s.editingId !== node.id && s.edgeSelection.length === 0);
   const [panel, setPanel] = useState<Panel>(null);
   const toggle = (p: Panel) => setPanel(panel === p ? null : p);
-  const change = <R,>(fn: (b: Board) => R) => runSafely(() => flowStore.getState().changeBoard(fn));
-  const update = (patch: StepFields) => change((b) => updateSteps(b, [{ id: node.id, ...patch }]));
+  const update = (patch: StepFields) => editBoard((b) => updateSteps(b, [{ id: node.id, ...patch }]));
   const setDuration = (text: string) => {
     try {
       update({ durationMin: parseDuration(text) });
@@ -53,7 +45,7 @@ export function FloatingToolbar({ node }: { node: BoardNode }) {
         <FieldInput label="Owner" width={124} placeholder="Owner" value={node.owner} onCommit={(owner) => update({ owner })} />
         <Divider />
         {FLAG_KINDS.map((k) => (
-          <ToolButton key={k} title={`Add ${FLAG_LABEL[k].toLowerCase()} (${FLAG_KEY[k]})`} className={`flag-tool flag-tool-${k}`} onClick={() => addFlagAndFocus(change, node.id, k)}>
+          <ToolButton key={k} title={`Add ${FLAG_LABEL[k].toLowerCase()} (${FLAG_KEY[k]})`} className={`flag-tool flag-tool-${k}`} onClick={() => addFlagAndFocus(node.id, k)}>
             <FlagIcon kind={k} size={14} />
           </ToolButton>
         ))}

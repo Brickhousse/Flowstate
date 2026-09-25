@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { consumeFocus } from '../canvas/focusKey';
+import { consumeFocus, registerFocus } from '../canvas/focusKey';
 
 export function ToolButton({ title, active, className, onClick, children }: { title: string; active?: boolean; className?: string; onClick: () => void; children: ReactNode }) {
   return (
@@ -33,7 +33,10 @@ export function FieldInput({
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => setDraft(value), [value]);
   useEffect(() => {
-    if (focusKey && consumeFocus(focusKey)) ref.current?.focus();
+    if (!focusKey) return;
+    const focus = () => ref.current?.focus();
+    if (consumeFocus(focusKey)) focus();
+    return registerFocus(focusKey, focus);
   }, [focusKey]);
   const commit = () => {
     if (skip.current) {
@@ -41,6 +44,7 @@ export function FieldInput({
       return;
     }
     if (draft.trim() !== value) onCommit(draft.trim());
+    setDraft(value);
   };
   return (
     <input
@@ -55,6 +59,7 @@ export function FieldInput({
       onBlur={commit}
       onKeyDown={(e) => {
         e.stopPropagation();
+        if (e.nativeEvent.isComposing) return;
         if (e.key === 'Enter') e.currentTarget.blur();
         if (e.key === 'Escape') {
           skip.current = true;
