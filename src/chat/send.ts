@@ -20,6 +20,7 @@ export async function sendMessage(raw: string, mentions: Mention[]): Promise<voi
   const projectId = flow.project.id;
 
   flowStore.getState().begin();
+  const ownTx = flowStore.getState().tx;
   let result: TurnResult;
   try {
     result = await runTurn(
@@ -45,6 +46,6 @@ export async function sendMessage(raw: string, mentions: Mention[]): Promise<voi
   } catch (err) {
     result = { messages: chat.api, stats: {}, touched: [], error: `Something went wrong: ${err instanceof Error ? err.message : String(err)}` };
   }
-  const entryId = flowStore.getState().commit();
+  const entryId = flowStore.getState().tx?.base === ownTx?.base ? flowStore.getState().commit() : null;
   useChat.getState().finish(assistantId, { stats: result.stats, entryId, error: result.error }, result.messages);
 }
