@@ -70,3 +70,27 @@ export function FieldInput({
     />
   );
 }
+
+export function InlineRename({ value, label, onDone }: { value: string; label: string; onDone: (name: string | null) => void }) {
+  const done = useRef(false);
+  const finish = (name: string | null) => {
+    if (done.current) return;
+    done.current = true;
+    onDone(name);
+  };
+  return (
+    <input
+      className="fs-field inline-rename nodrag nopan"
+      aria-label={label}
+      defaultValue={value}
+      autoFocus
+      onFocus={(e) => e.currentTarget.select()}
+      onBlur={(e) => finish(e.currentTarget.value.trim() || null)}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') finish(e.currentTarget.value.trim() || null);
+        if (e.key === 'Escape') finish(null);
+      }}
+    />
+  );
+}
