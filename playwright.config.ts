@@ -12,6 +12,10 @@ export default defineConfig({
     command: 'npx concurrently -k "vite --port 5174 --strictPort" "tsx server/main.ts"',
     url: 'http://localhost:5174',
     reuseExistingServer: false,
-    env: { FLOWSTATE_API_PORT: '8788', FLOWSTATE_WORKSPACE: '.e2e-workspace' },
+    env: {
+      FLOWSTATE_API_PORT: '8788',
+      FLOWSTATE_WORKSPACE: '.e2e-workspace',
+      ...(process.env.LIVE_API ? {} : { ANTHROPIC_API_KEY: '' }),
+    },
   },
 });

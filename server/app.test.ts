@@ -8,7 +8,7 @@ import { createFileStorage } from './storage';
 
 async function setup() {
   const dir = await mkdtemp(join(tmpdir(), 'flowstate-app-'));
-  return { dir, app: createApp({ storage: createFileStorage(dir) }) };
+  return { dir, app: createApp({ storage: createFileStorage(dir), anthropic: null }) };
 }
 
 const put = (body: unknown) => ({ method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
@@ -51,7 +51,7 @@ describe('projects API', () => {
 
   it('rejects an oversized body with 413 instead of crashing', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'flowstate-app-'));
-    const app = createApp({ storage: createFileStorage(dir) }, { maxBodySize: 10 });
+    const app = createApp({ storage: createFileStorage(dir), anthropic: null }, { maxBodySize: 10 });
     const p = createProject();
     const res = await app.request(`/api/projects/${p.id}`, put(p));
     expect(res.status).toBe(413);

@@ -1,10 +1,13 @@
+import type Anthropic from '@anthropic-ai/sdk';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { HTTPException } from 'hono/http-exception';
+import { registerChat } from './chat';
 import { StorageError, type Storage } from './storage';
 
 export interface AppDeps {
   storage: Storage;
+  anthropic: Anthropic | null;
 }
 
 export interface AppOptions {
@@ -46,6 +49,8 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): Hono {
     await deps.storage.remove(c.req.param('id'));
     return c.json({ ok: true });
   });
+
+  registerChat(app, deps.anthropic);
 
   return app;
 }
