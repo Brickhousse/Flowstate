@@ -77,6 +77,9 @@ function repaired(state: FlowState, project: Project): Partial<FlowState> {
   const activeBoardId = boards.has(state.activeBoardId) ? state.activeBoardId : project.boards[0].id;
   const splitBoardId = state.splitBoardId && boards.has(state.splitBoardId) && state.splitBoardId !== activeBoardId ? state.splitBoardId : null;
   const board = project.boards.find((b) => b.id === activeBoardId)!;
+  if (activeBoardId !== state.activeBoardId) {
+    return { project, activeBoardId, splitBoardId, selection: [], edgeSelection: [], editingId: null };
+  }
   const nodeIds = new Set(board.nodes.map((n) => n.id));
   const edgeIds = new Set(board.edges.map((e) => e.id));
   const selection = state.selection.filter((id) => nodeIds.has(id));
@@ -87,6 +90,7 @@ function repaired(state: FlowState, project: Project): Partial<FlowState> {
     splitBoardId,
     selection: selection.length === state.selection.length ? state.selection : selection,
     edgeSelection: edgeSelection.length === state.edgeSelection.length ? state.edgeSelection : edgeSelection,
+    editingId: state.editingId && nodeIds.has(state.editingId) ? state.editingId : null,
   };
 }
 
@@ -134,7 +138,8 @@ export function createFlowStore(initial: Project = createProject()): StoreApi<Fl
       if (next !== state.project) {
         set({
           ...repaired(state, next),
-          ...(state.tx ? {} : { past: pushCapped(state.past, { id: ++entrySeq, project: state.project }), future: [] }),
+          future: [],
+          ...(state.tx ? {} : { past: pushCapped(state.past, { id: ++entrySeq, project: state.project }) }),
         });
       }
       return result;
@@ -171,8 +176,8 @@ export function createFlowStore(initial: Project = createProject()): StoreApi<Fl
     },
 
     undo() {
-      while (get().tx) get().commit();
       const state = get();
+      if (state.tx) return;
       const entry = state.past[state.past.length - 1];
       if (!entry) return;
       set({
@@ -180,11 +185,13 @@ export function createFlowStore(initial: Project = createProject()): StoreApi<Fl
         past: state.past.slice(0, -1),
         future: [...state.future, { id: entry.id, project: state.project }],
         editingId: null,
+        editSeed: null,
       });
     },
 
     redo() {
       const state = get();
+      if (state.tx) return;
       const entry = state.future[state.future.length - 1];
       if (!entry) return;
       set({
@@ -192,6 +199,7 @@ export function createFlowStore(initial: Project = createProject()): StoreApi<Fl
         future: state.future.slice(0, -1),
         past: pushCapped(state.past, { id: entry.id, project: state.project }),
         editingId: null,
+        editSeed: null,
       });
     },
 
@@ -213,7 +221,9 @@ export function createFlowStore(initial: Project = createProject()): StoreApi<Fl
     },
 
     setSplitBoard(id) {
-      set({ splitBoardId: id === get().activeBoardId ? null : id });
+      const state = get();
+      if (id !== null && !state.project.boards.some((b) => b.id === id)) return;
+      set({ splitBoardId: id === state.activeBoardId ? null : id });
     },
 
     addBoard(name, activate = true) {
@@ -228,6 +238,7 @@ export function createFlowStore(initial: Project = createProject()): StoreApi<Fl
     deleteBoard(id) {
       if (get().project.boards.length <= 1) throw new OpError('A project needs at least one board.');
       get().change((p) => {
+        if (!p.boards.some((b) => b.id === id)) throw new OpError(`Unknown board "${id}".`);
         p.boards = p.boards.filter((b) => b.id !== id);
       });
     },

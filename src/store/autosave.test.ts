@@ -66,4 +66,96 @@ describe('startAutosave', () => {
     await vi.advanceTimersByTimeAsync(5000);
     expect(save).not.toHaveBeenCalled();
   });
+
+  it('saves a change made while a save is already in flight', async () => {
+    const store = createFlowStore();
+    const save = vi.fn(async (_p: Project) => {
+      await new Promise((r) => setTimeout(r, 200));
+    });
+    startAutosave(store, save);
+    store.getState().changeBoard((b) => addStep(b, { title: 'A' }));
+    await vi.advanceTimersByTimeAsync(500);
+    expect(save).toHaveBeenCalledTimes(1);
+    store.getState().changeBoard((b) => addStep(b, { title: 'B' }));
+    await vi.advanceTimersByTimeAsync(200); // resolves the in-flight save(A) and reschedules for the pending B edit
+    await vi.advanceTimersByTimeAsync(500); // fires the rescheduled save, starting save(A+B)
+    await vi.advanceTimersByTimeAsync(200); // resolves save(A+B)'s own internal 200ms wait
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save.mock.calls[1][0].boards[0].nodes).toHaveLength(2);
+    expect(store.getState().saveStatus).toBe('saved');
+  });
+
+  it('flush waits for an in-flight save, then saves pending changes', async () => {
+    const store = createFlowStore();
+    const save = vi.fn(async (_p: Project) => {
+      await new Promise((r) => setTimeout(r, 200));
+    });
+    const handle = startAutosave(store, save);
+    store.getState().changeBoard((b) => addStep(b, { title: 'A' }));
+    await vi.advanceTimersByTimeAsync(500);
+    expect(save).toHaveBeenCalledTimes(1);
+    store.getState().changeBoard((b) => addStep(b, { title: 'B' }));
+    const flushPromise = handle.flush();
+    await vi.advanceTimersByTimeAsync(200);
+    await vi.advanceTimersByTimeAsync(200);
+    await flushPromise;
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save.mock.calls[1][0].boards[0].nodes).toHaveLength(2);
+    expect(store.getState().saveStatus).toBe('saved');
+  });
+
+  it('flush rejects when the save fails', async () => {
+    const store = createFlowStore();
+    const save = vi.fn().mockRejectedValue(new Error('down'));
+    const handle = startAutosave(store, save);
+    store.getState().changeBoard((b) => addStep(b, { title: 'A' }));
+    await expect(handle.flush()).rejects.toThrow('Could not save the current project.');
+    expect(store.getState().saveStatus).toBe('error');
+  });
+
+  it('ignores an in-flight save result after switching projects', async () => {
+    const store = createFlowStore();
+    const save = vi.fn(async (_p: Project) => {
+      await new Promise((r) => setTimeout(r, 200));
+    });
+    startAutosave(store, save);
+    store.getState().changeBoard((b) => addStep(b, { title: 'A' }));
+    await vi.advanceTimersByTimeAsync(500);
+    expect(save).toHaveBeenCalledTimes(1);
+    store.getState().loadProject(createProject('Other'));
+    await vi.advanceTimersByTimeAsync(200);
+    expect(store.getState().saveStatus).toBe('saved');
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry after being stopped', async () => {
+    const store = createFlowStore();
+    const save = vi.fn().mockRejectedValue(new Error('down'));
+    const handle = startAutosave(store, save);
+    store.getState().changeBoard((b) => addStep(b, { title: 'A' }));
+    await vi.advanceTimersByTimeAsync(500);
+    expect(store.getState().saveStatus).toBe('error');
+    handle.stop();
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps status error while a retry attempt is in flight, until it succeeds', async () => {
+    const store = createFlowStore();
+    let calls = 0;
+    const save = vi.fn(async () => {
+      calls++;
+      if (calls === 1) throw new Error('down');
+      await new Promise((r) => setTimeout(r, 100));
+    });
+    startAutosave(store, save);
+    store.getState().changeBoard((b) => addStep(b, { title: 'A' }));
+    await vi.advanceTimersByTimeAsync(500);
+    expect(store.getState().saveStatus).toBe('error');
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(store.getState().saveStatus).toBe('error');
+    await vi.advanceTimersByTimeAsync(100);
+    expect(store.getState().saveStatus).toBe('saved');
+  });
 });

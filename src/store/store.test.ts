@@ -97,4 +97,69 @@ describe('flow store boards', () => {
     expect(s().project.boards).toHaveLength(1);
     expect(s().activeBoardId).toBe(s().project.boards[0].id);
   });
+
+  it('throws for deleteBoard with an unknown id and records no history', () => {
+    const { s } = setup();
+    s().addBoard('Temp');
+    const before = s().past.length;
+    expect(() => s().deleteBoard('nope')).toThrow(/Unknown board/);
+    expect(s().past).toHaveLength(before);
+  });
+});
+
+describe('flow store transactions and undo/redo', () => {
+  it('ignores undo and redo while a transaction is open, and the transaction still commits as one entry', () => {
+    const { s } = setup();
+    s().begin();
+    s().changeBoard((b) => addStep(b, { title: 'A' }));
+    s().undo();
+    expect(s().project.boards[0].nodes).toHaveLength(1);
+    s().redo();
+    expect(s().project.boards[0].nodes).toHaveLength(1);
+    const entry = s().commit();
+    expect(entry).toBeTypeOf('number');
+    expect(s().past).toHaveLength(1);
+  });
+
+  it('clears the redo stack for a change made inside a transaction', () => {
+    const { s } = setup();
+    s().changeBoard((b) => addStep(b, { title: 'A' }));
+    s().undo();
+    expect(s().future).toHaveLength(1);
+    s().begin();
+    s().changeBoard((b) => addStep(b, { title: 'B' }));
+    expect(s().future).toHaveLength(0);
+    s().commit();
+  });
+
+  it('clears selection and editingId when undo falls back to a different board, even if the node id collides', () => {
+    const { s } = setup();
+    const originalBoardId = s().activeBoardId;
+    const b0Step = s().changeBoard((b) => addStep(b, { title: 'Orig' }));
+    s().begin();
+    s().addBoard('Temp');
+    const b1Step = s().changeBoard((b) => addStep(b, { title: 'New' }));
+    s().commit();
+    expect(b1Step).toBe(b0Step);
+    s().select([b1Step]);
+    s().setEditing(b1Step);
+    s().undo();
+    expect(s().activeBoardId).toBe(originalBoardId);
+    expect(s().selection).toEqual([]);
+    expect(s().editingId).toBeNull();
+  });
+
+  it('nulls editingId when its node is deleted', () => {
+    const { s } = setup();
+    const id = s().changeBoard((b) => addStep(b, { title: 'A' }));
+    s().setEditing(id);
+    s().changeBoard((b) => deleteSteps(b, [id]));
+    expect(s().editingId).toBeNull();
+  });
+
+  it('ignores setSplitBoard for an id not in the project', () => {
+    const { s } = setup();
+    s().setSplitBoard('nope');
+    expect(s().splitBoardId).toBeNull();
+  });
 });
