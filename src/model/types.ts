@@ -78,3 +78,9 @@ export interface Project {
   schemaVersion: number;
   boards: Board[];
 }
+
+export interface ProjectMeta {
+  id: string;
+  name: string;
+  updatedAt: number;
+}
