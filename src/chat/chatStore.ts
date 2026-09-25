@@ -2,6 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { create } from 'zustand';
 import { mergeStats, type Stats } from '../ai/stats';
 import { flowStore } from '../store/store';
+import type { Mention } from './context';
 
 export const MODEL_OPTIONS = [
   { id: 'claude-sonnet-5', label: 'Sonnet 5' },
@@ -19,6 +20,7 @@ interface ChatState {
   model: ModelId;
   controller: AbortController | null;
   draft: string;
+  mentions: Mention[];
   addUser(text: string): void;
   startAssistant(controller: AbortController): number;
   appendText(id: number, delta: string): void;
@@ -26,6 +28,8 @@ interface ChatState {
   finish(id: number, patch: { stats: Stats; entryId: number | null; error: string | null }, api: Anthropic.MessageParam[]): void;
   setModel(model: ModelId): void;
   setDraft(draft: string): void;
+  setMentions(mentions: Mention[]): void;
+  clearDraft(): void;
   stop(): void;
   reset(): void;
 }
@@ -41,6 +45,7 @@ export const useChat = create<ChatState>()((set, get) => ({
   model: 'claude-sonnet-5',
   controller: null,
   draft: '',
+  mentions: [],
   addUser(text) {
     set({ items: [...get().items, { id: ++seq, role: 'user', text }] });
   },
@@ -65,12 +70,18 @@ export const useChat = create<ChatState>()((set, get) => ({
   setDraft(draft) {
     set({ draft });
   },
+  setMentions(mentions) {
+    set({ mentions });
+  },
+  clearDraft() {
+    set({ draft: '', mentions: [] });
+  },
   stop() {
     get().controller?.abort();
   },
   reset() {
     get().controller?.abort();
-    set({ items: [], api: [], controller: null });
+    set({ items: [], api: [], controller: null, draft: '', mentions: [] });
   },
 }));
 

@@ -78,3 +78,39 @@ test('Ctrl+/ hides and shows the chat, Ctrl+K focuses it', async ({ page, reques
   await page.keyboard.press('Control+k');
   await expect(page.getByLabel('Message')).toBeFocused();
 });
+
+test('Enter picks a valid mention after the list shrinks', async ({ page, request }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await open(page, await seedTwo(request));
+  const input = page.getByLabel('Message');
+  const options = page.getByRole('listbox', { name: 'Mention a step' }).getByRole('option');
+  await input.fill('@');
+  await expect(options).toHaveCount(2);
+  await input.press('ArrowDown');
+  await page.evaluate(() =>
+    window.__flowstate!.getState().change((draft) => {
+      draft.boards[0].nodes = draft.boards[0].nodes.filter((n) => n.id !== 's2');
+    }),
+  );
+  await expect(options).toHaveCount(1);
+  await input.press('Enter');
+  await expect(input).toHaveValue('@Intake ');
+  expect(errors).toEqual([]);
+});
+
+test('mentions survive hiding and showing the panel', async ({ page, request }) => {
+  const bodies = await mockChat(page, [sse([['done', { content: [{ type: 'text', text: 'Ok.' }], stop_reason: 'end_turn' }]])]);
+  await open(page, await seedTwo(request));
+  const input = page.getByLabel('Message');
+  await input.fill('Flag @Int');
+  await page.getByRole('option', { name: /Intake/ }).waitFor();
+  await input.press('Enter');
+  await page.keyboard.press('Control+/');
+  await expect(page.locator('.chat')).toHaveCount(0);
+  await page.keyboard.press('Control+/');
+  await expect(input).toHaveValue('Flag @Intake ');
+  await input.press('Enter');
+  await expect.poll(() => bodies.length).toBe(1);
+  expect(JSON.stringify(bodies[0])).toContain('Flag \\"Intake\\" (s1)');
+});

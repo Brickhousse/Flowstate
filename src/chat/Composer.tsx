@@ -3,7 +3,6 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { BoardNode } from '../model/types';
 import { selectActiveBoard, useFlow } from '../store/store';
 import { useChat } from './chatStore';
-import type { Mention } from './context';
 import { sendMessage } from './send';
 
 export function focusComposer(): void {
@@ -14,7 +13,7 @@ export function Composer() {
   const text = useChat((s) => s.draft);
   const running = useChat((s) => s.controller !== null);
   const board = useFlow(selectActiveBoard);
-  const [mentions, setMentions] = useState<Mention[]>([]);
+  const mentions = useChat((s) => s.mentions);
   const [query, setQuery] = useState<{ start: number; term: string } | null>(null);
   const [active, setActive] = useState(0);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -32,6 +31,7 @@ export function Composer() {
     const term = query.term.toLowerCase();
     return board.nodes.filter((n) => n.kind === 'step' && n.title && n.title.toLowerCase().includes(term)).slice(0, 6);
   }, [query, board]);
+  const current = Math.min(active, options.length - 1);
 
   const track = (value: string, caret: number) => {
     const match = /@([^@\n]{0,40})$/.exec(value.slice(0, caret));
@@ -45,7 +45,7 @@ export function Composer() {
     const insert = `@${node.title} `;
     pendingCaret.current = query.start + insert.length;
     setText(text.slice(0, query.start) + insert + text.slice(el.selectionStart));
-    setMentions((ms) => [...ms.filter((m) => m.label !== node.title), { label: node.title, id: node.id }]);
+    useChat.getState().setMentions([...mentions.filter((m) => m.label !== node.title), { label: node.title, id: node.id }]);
     setQuery(null);
     el.focus();
   };
@@ -53,8 +53,7 @@ export function Composer() {
   const submit = () => {
     if (!text.trim() || running) return;
     void sendMessage(text, mentions.filter((m) => text.includes(`@${m.label}`)));
-    setText('');
-    setMentions([]);
+    useChat.getState().clearDraft();
   };
 
   return (
@@ -66,7 +65,7 @@ export function Composer() {
               key={n.id}
               type="button"
               role="option"
-              aria-selected={i === active}
+              aria-selected={i === current}
               className="mention-option"
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -94,12 +93,12 @@ export function Composer() {
           if (options.length) {
             if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
               e.preventDefault();
-              setActive((active + (e.key === 'ArrowDown' ? 1 : options.length - 1)) % options.length);
+              setActive((current + (e.key === 'ArrowDown' ? 1 : options.length - 1)) % options.length);
               return;
             }
             if (e.key === 'Enter' || e.key === 'Tab') {
               e.preventDefault();
-              pick(options[active]);
+              pick(options[current]);
               return;
             }
             if (e.key === 'Escape') {
