@@ -132,6 +132,29 @@ test('projects: create, persist across reload, and switch back', async ({ page, 
   await expect(page.getByText('First project step')).toBeVisible();
 });
 
+test('a render crash shows the error screen and can open another project', async ({ page, request }) => {
+  const safe = await seed(request, (b) => {
+    addStep(b, { title: 'Safe step' });
+  }, 'Safe');
+  const crashing = await seed(request, (b) => {
+    addStep(b, { title: 'Crashing step' });
+  }, 'Crashing');
+  await open(page, crashing);
+  page.on('dialog', (d) => d.accept());
+  await page.evaluate(() => {
+    const s = window.__flowstate!.getState();
+    const broken = JSON.parse(JSON.stringify(s.project));
+    broken.boards[0].nodes[0].flags = null;
+    s.loadProject(broken);
+  });
+  const screen = page.getByRole('alert');
+  await expect(screen).toContainText('could not display this project');
+  await expect(screen.locator('pre')).not.toBeEmpty();
+  await screen.getByRole('button', { name: 'Open another project' }).click();
+  await expect(page).toHaveURL(new RegExp(safe.id));
+  await expect(page.getByText('Safe step')).toBeVisible();
+});
+
 test('zoom bar, direction toggle and theme toggle', async ({ page, request }) => {
   const p = await seed(request, (b) => {
     const a = addStep(b, { title: 'A' });

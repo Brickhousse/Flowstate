@@ -6,6 +6,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { boot } from './boot';
+import { ErrorBoundary } from './ui/ErrorBoundary';
 import { applyStoredTheme } from './ui/theme';
 
 applyStoredTheme();
@@ -15,7 +16,9 @@ boot().then(
   () =>
     root.render(
       <StrictMode>
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </StrictMode>,
     ),
   (err: unknown) =>

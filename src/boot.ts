@@ -14,22 +14,29 @@ declare global {
 
 let autosave: AutosaveHandle | null = null;
 
-async function newestOrNew(): Promise<Project> {
-  const readable = (await listProjects()).find((m) => !m.name.endsWith('(unreadable)'));
-  if (readable) return fetchProject(readable.id);
+const messageOf = (err: unknown) => (err instanceof Error ? err.message : String(err));
+
+async function newestOrNew(exclude: string | null): Promise<Project> {
+  for (const meta of await listProjects()) {
+    if (meta.id === exclude || meta.name.endsWith('(unreadable)')) continue;
+    try {
+      return await fetchProject(meta.id);
+    } catch (err) {
+      notify(`Skipped "${meta.name}": ${messageOf(err)}`);
+    }
+  }
   const fresh = createProject();
   await saveProject(fresh);
   return fresh;
 }
 
 async function wantedOrNewest(wanted: string | null): Promise<Project> {
-  if (!wanted) return newestOrNew();
+  if (!wanted) return newestOrNew(null);
   try {
     return await fetchProject(wanted);
   } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    const fallback = await newestOrNew();
-    notify(`${reason} Opened another project instead.`);
+    const fallback = await newestOrNew(wanted);
+    notify(`${messageOf(err)} Opened another project instead.`);
     return fallback;
   }
 }
@@ -58,4 +65,11 @@ export async function openProject(project: Project | string): Promise<void> {
   const next = typeof project === 'string' ? await fetchProject(project) : project;
   flowStore.getState().loadProject(next);
   remember(next);
+}
+
+// Recovery after a render crash: a full reload discards whatever in-memory state caused it.
+export async function openAnotherProject(): Promise<void> {
+  await autosave?.flush().catch(() => {});
+  const next = await newestOrNew(flowStore.getState().project.id);
+  location.assign(`?project=${encodeURIComponent(next.id)}`);
 }

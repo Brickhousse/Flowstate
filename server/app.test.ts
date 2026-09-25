@@ -42,6 +42,18 @@ describe('projects API', () => {
     expect((await app.request('/api/projects/a.b')).status).toBe(400);
   });
 
+  it('refuses to save a structurally invalid project', async () => {
+    const { app } = await setup();
+    const p = createProject('Broken');
+    p.boards[0].nodes.push({ id: 's1', kind: 'step', title: 'No flags' } as unknown as (typeof p.boards)[0]['nodes'][0]);
+    const res = await app.request(`/api/projects/${p.id}`, put(p));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/boards\[0\]\.nodes\[0\]/);
+    expect((await app.request(`/api/projects/${p.id}`)).status).toBe(404);
+    const noNodes = { ...createProject('Broken too'), boards: [{ id: 'b1', name: 'Main', direction: 'LR', edges: [], lanes: [], nextId: 1 }] };
+    expect((await app.request(`/api/projects/${noNodes.id}`, put(noNodes))).status).toBe(400);
+  });
+
   it('returns 422 for a corrupt file', async () => {
     const { app, dir } = await setup();
     await writeFile(join(dir, 'bad.json'), 'nope', 'utf8');
