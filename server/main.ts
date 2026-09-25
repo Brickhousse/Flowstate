@@ -6,7 +6,7 @@ import { createFileStorage } from './storage';
 
 if (existsSync('.env')) process.loadEnvFile('.env');
 
-const port = Number(process.env.FLOWSTATE_API_PORT ?? 8787);
+const port = Number(process.env.FLOWSTATE_API_PORT ?? 8797);
 const workspace = resolve(process.env.FLOWSTATE_WORKSPACE ?? 'workspace');
 const app = createApp({ storage: createFileStorage(workspace) });
 
