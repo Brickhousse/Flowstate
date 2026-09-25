@@ -68,4 +68,25 @@ describe('file storage', () => {
   it('exposes StorageError', () => {
     expect(new StorageError('x', 404).status).toBe(404);
   });
+
+  it('overwrites an existing project on second save', async () => {
+    const dir = await tempDir();
+    const storage = createFileStorage(dir);
+    const p = createProject('Original');
+    await storage.save(p);
+    const updated = { ...p, name: 'Updated' };
+    await storage.save(updated);
+    expect(await storage.load(p.id)).toEqual(updated);
+    expect((await readdir(dir)).filter((f) => f.endsWith('.json'))).toEqual([`${p.id}.json`]);
+  });
+
+  it('cleans up the temp file if writing it fails', async () => {
+    const dir = await tempDir();
+    const failing = vi.fn(async () => {
+      throw new Error('disk full');
+    });
+    const storage = createFileStorage(dir, { rename, writeFile: failing });
+    await expect(storage.save(createProject())).rejects.toThrow('disk full');
+    expect(await readdir(dir)).toEqual([]);
+  });
 });

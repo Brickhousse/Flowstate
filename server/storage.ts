@@ -22,8 +22,13 @@ const ID = /^[A-Za-z0-9_-]{1,64}$/;
 const LOCK_CODES = new Set(['EPERM', 'EBUSY', 'EACCES']);
 
 type RenameFn = (from: string, to: string) => Promise<void>;
+type WriteFileFn = (path: string, data: string) => Promise<void>;
 
-export function createFileStorage(dir: string, fs: { rename: RenameFn } = { rename }): Storage {
+export function createFileStorage(
+  dir: string,
+  fs: { rename: RenameFn; writeFile?: WriteFileFn } = { rename },
+): Storage {
+  const writeFileFn: WriteFileFn = fs.writeFile ?? ((path, data) => writeFile(path, data, 'utf8'));
   const pathFor = (id: string) => {
     if (!ID.test(id)) throw new StorageError('Invalid project id.', 400);
     return join(dir, `${id}.json`);
@@ -94,7 +99,12 @@ export function createFileStorage(dir: string, fs: { rename: RenameFn } = { rena
       const target = pathFor(project.id);
       await mkdir(dir, { recursive: true });
       const tmp = `${target}.${process.pid}.${Date.now()}.tmp`;
-      await writeFile(tmp, JSON.stringify(project), 'utf8');
+      try {
+        await writeFileFn(tmp, JSON.stringify(project));
+      } catch (err) {
+        await rm(tmp, { force: true });
+        throw err;
+      }
       await replace(tmp, target);
     },
 

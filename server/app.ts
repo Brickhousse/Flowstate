@@ -1,16 +1,25 @@
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
+import { HTTPException } from 'hono/http-exception';
 import { StorageError, type Storage } from './storage';
 
 export interface AppDeps {
   storage: Storage;
 }
 
-export function createApp(deps: AppDeps): Hono {
+export interface AppOptions {
+  maxBodySize?: number;
+}
+
+const DEFAULT_MAX_BODY_SIZE = 50 * 1024 * 1024;
+
+export function createApp(deps: AppDeps, options: AppOptions = {}): Hono {
+  const maxBodySize = options.maxBodySize ?? DEFAULT_MAX_BODY_SIZE;
   const app = new Hono();
 
   app.onError((err, c) => {
     if (err instanceof StorageError) return c.json({ error: err.message }, err.status);
+    if (err instanceof HTTPException) return err.getResponse();
     console.error(err);
     return c.json({ error: 'Internal server error.' }, 500);
   });
@@ -19,7 +28,7 @@ export function createApp(deps: AppDeps): Hono {
   app.get('/api/projects', async (c) => c.json(await deps.storage.list()));
   app.get('/api/projects/:id', async (c) => c.json(await deps.storage.load(c.req.param('id'))));
 
-  app.put('/api/projects/:id', bodyLimit({ maxSize: 50 * 1024 * 1024 }), async (c) => {
+  app.put('/api/projects/:id', bodyLimit({ maxSize: maxBodySize }), async (c) => {
     let body: unknown;
     try {
       body = await c.req.json();

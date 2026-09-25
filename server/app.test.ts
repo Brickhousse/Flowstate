@@ -48,4 +48,12 @@ describe('projects API', () => {
     expect(res.status).toBe(422);
     expect((await res.json()).error).toMatch(/unreadable/);
   });
+
+  it('rejects an oversized body with 413 instead of crashing', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'flowstate-app-'));
+    const app = createApp({ storage: createFileStorage(dir) }, { maxBodySize: 10 });
+    const p = createProject();
+    const res = await app.request(`/api/projects/${p.id}`, put(p));
+    expect(res.status).toBe(413);
+  });
 });
