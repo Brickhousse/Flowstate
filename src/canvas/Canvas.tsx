@@ -30,6 +30,7 @@ import { runSafely } from './safe';
 import { StepNode } from './StepNode';
 import { TextNode } from './TextNode';
 import { toFlowEdges, toFlowNodes, type FlowEdgeType, type FlowNode, type FlowView, type RenderCache } from './toFlow';
+import { useKeyboard } from './useKeyboard';
 import { useThemeColors, type ThemeColors } from './useThemeColors';
 import './canvas.css';
 
@@ -94,6 +95,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const exporting = useFlow((s) => s.exporting);
   const colors = useThemeColors();
   const rf = useReactFlow<FlowNode, FlowEdgeType>();
+  useKeyboard(boardId, editable);
   const nodeCache = useRef<RenderCache<FlowNode>>(new Map());
   const edgeCache = useRef<RenderCache<FlowEdgeType>>(new Map());
   const measured = useRef(new Map<string, { width: number; height: number }>());
