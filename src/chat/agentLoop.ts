@@ -5,6 +5,15 @@ import { readSSE } from './sse';
 
 export const MAX_ROUNDS = 12;
 const LENGTH_LIMIT = 'The response hit the length limit.';
+const EXPECTED_STOPS = new Set<Anthropic.StopReason>(['end_turn', 'tool_use', 'max_tokens', 'refusal']);
+
+function stopError(reason: Anthropic.StopReason | null, failure: string | null): string | null {
+  if (reason === 'max_tokens') return LENGTH_LIMIT;
+  if (reason !== null && EXPECTED_STOPS.has(reason)) return failure;
+  return reason === null ? 'The response ended unexpectedly (no stop reason).' : `The response ended unexpectedly (stop reason: ${reason}).`;
+}
+
+const isBlankText = (block: Anthropic.ContentBlock): boolean => block.type === 'text' && block.text.trim() === '';
 
 export interface TurnDeps {
   post(body: { model: string; messages: Anthropic.MessageParam[] }, signal: AbortSignal): Promise<Response>;
@@ -98,10 +107,11 @@ export async function runTurn(
     if (!done) return finish(failure ?? 'The response ended unexpectedly.', fallback);
     if (done.stop_reason === 'refusal') return finish('Claude declined this request.', history);
 
-    // The API rejects an empty assistant message anywhere but last, so an empty reply is left out.
-    if (done.content.length) messages = [...messages, { role: 'assistant', content: done.content }];
-    const toolUses = done.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
-    if (toolUses.length === 0) return finish(done.stop_reason === 'max_tokens' ? LENGTH_LIMIT : failure);
+    // The API rejects blank text blocks, and an empty assistant message anywhere but last, so both are left out.
+    const content = done.content.filter((b) => !isBlankText(b));
+    if (content.length) messages = [...messages, { role: 'assistant', content }];
+    const toolUses = content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
+    if (toolUses.length === 0) return finish(stopError(done.stop_reason, failure));
 
     const results: Anthropic.ToolResultBlockParam[] = [];
     for (const use of toolUses) {
@@ -114,7 +124,7 @@ export async function runTurn(
       results.push({ type: 'tool_result', tool_use_id: use.id, content: outcome.content, ...(outcome.ok ? {} : { is_error: true }) });
     }
     messages = appendUser(messages, results);
-    if (done.stop_reason !== 'tool_use') return finish(done.stop_reason === 'max_tokens' ? LENGTH_LIMIT : failure);
+    if (done.stop_reason !== 'tool_use') return finish(stopError(done.stop_reason, failure));
   }
   return finish(`Stopped after ${MAX_ROUNDS} rounds of edits.`);
 }

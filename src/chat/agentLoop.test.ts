@@ -28,7 +28,7 @@ function response(chunks: Chunk[], status = 200): Response {
   );
 }
 
-const done = (content: unknown[], stop_reason: string) => ['done', { content, stop_reason }] as [string, unknown];
+const done = (content: unknown[], stop_reason: string | null) => ['done', { content, stop_reason }] as [string, unknown];
 const noop = { onText: () => {}, onTool: () => {} };
 const signal = () => new AbortController().signal;
 
@@ -172,5 +172,44 @@ describe('runTurn', () => {
     expect(s().past).toHaveLength(2);
     expect(s().undoEntry(entry)).toBe(true);
     expect(s().project.boards[0].nodes.map((n) => n.title)).toEqual(['A']);
+  });
+
+  it('drops empty text blocks before echoing the reply back', async () => {
+    const tool = { type: 'tool_use', id: 't1', name: 'x', input: {} };
+    const execute = vi.fn(async () => ({ ok: true, content: 'ok', touched: [], stats: {} }));
+    const post = scripted(
+      () => response([sse([['tool', tool], done([{ type: 'text', text: '' }, tool, { type: 'text', text: '  \n' }], 'tool_use')])]),
+      () => response([sse([done([{ type: 'text', text: 'Done.' }], 'end_turn')])]),
+    );
+    const r = await runTurn({ post, execute }, noop, [], 'go', 'claude-sonnet-5', signal());
+    expect(r.error).toBeNull();
+    expect((post as ReturnType<typeof vi.fn>).mock.calls[1][0].messages[1]).toEqual({ role: 'assistant', content: [tool] });
+    const blank = await runTurn({ post: scripted(() => response([sse([done([{ type: 'text', text: ' ' }], 'end_turn')])])), execute }, noop, [], 'hi', 'claude-sonnet-5', signal());
+    expect(blank.error).toBeNull();
+    expect(blank.messages.map((m) => m.role)).toEqual(['user']);
+  });
+
+  it('names an unexpected stop reason instead of ending silently', async () => {
+    const post = scripted(() => response([sse([done([{ type: 'text', text: 'Half' }], 'model_context_window_exceeded')])]));
+    const r = await runTurn({ post, execute: vi.fn() }, noop, [], 'explain', 'claude-sonnet-5', signal());
+    expect(r.error).toBe('The response ended unexpectedly (stop reason: model_context_window_exceeded).');
+    expect(r.messages.map((m) => m.role)).toEqual(['user', 'assistant']);
+  });
+
+  it('does not run an unflushed tool call after an unexpected stop reason', async () => {
+    const tool = { type: 'tool_use', id: 't1', name: 'x', input: {} };
+    const execute = vi.fn();
+    const post = scripted(() => response([sse([done([tool], 'pause_turn')])]));
+    const r = await runTurn({ post, execute }, noop, [], 'go', 'claude-sonnet-5', signal());
+    expect(execute).not.toHaveBeenCalled();
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(r.error).toBe('The response ended unexpectedly (stop reason: pause_turn).');
+    expect(r.messages[2].content).toMatchObject([{ type: 'tool_result', tool_use_id: 't1', is_error: true }]);
+  });
+
+  it('reports a missing stop reason', async () => {
+    const post = scripted(() => response([sse([done([{ type: 'text', text: 'Hm' }], null)])]));
+    const r = await runTurn({ post, execute: vi.fn() }, noop, [], 'x', 'claude-sonnet-5', signal());
+    expect(r.error).toBe('The response ended unexpectedly (no stop reason).');
   });
 });

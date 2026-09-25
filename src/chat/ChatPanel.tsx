@@ -40,6 +40,8 @@ function ChatMessage({ item }: { item: ChatItem }) {
   const inTx = useFlow((s) => s.tx !== null);
   if (item.role === 'user') return <div className="chat-msg is-user">{item.text}</div>;
   const summary = describeStats(item.stats);
+  const empty = !item.running && !item.text.trim() && !summary && item.entryId === null && !item.error;
+  if (empty) return null;
   const canUndo = item.entryId !== null && item.entryId === latestEntry && !inTx;
   return (
     <div className="chat-msg is-assistant">

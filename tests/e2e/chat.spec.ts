@@ -61,6 +61,17 @@ test('mentions insert a step reference', async ({ page, request }) => {
   expect(JSON.stringify(bodies[0])).toContain('Flag \\"Intake\\" (s1) as risky');
 });
 
+test('an empty reply leaves no blank bubble', async ({ page, request }) => {
+  await mockChat(page, [sse([['done', { content: [], stop_reason: 'end_turn' }]])]);
+  await open(page, await seedTwo(request));
+  await page.getByLabel('Message').fill('Say nothing');
+  await page.getByLabel('Message').press('Enter');
+  await expect(page.locator('.chat-msg.is-user')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Stop' })).toHaveCount(0);
+  await expect(page.locator('.chat-msg.is-assistant')).toHaveCount(0);
+  await expect(page.locator('.chat-error')).toHaveCount(0);
+});
+
 test('Stop cancels a running turn', async ({ page, request }) => {
   await page.route('**/api/chat', () => new Promise(() => {}));
   await open(page, await seedTwo(request));
