@@ -78,6 +78,12 @@ function revealIds(rf: ReactFlowInstance<FlowNode, FlowEdgeType>, ids: string[])
   rf.setCenter(first.position.x + (first.width ?? 0) / 2, first.position.y + (first.height ?? 0) / 2, { zoom, duration: 400 });
 }
 
+function endDrag(dragging: { current: boolean }): void {
+  if (!dragging.current) return;
+  dragging.current = false;
+  flowStore.getState().commit();
+}
+
 export function Canvas({ boardId, editable }: { boardId: string; editable: boolean }) {
   const board = useFlow((s) => s.project.boards.find((b) => b.id === boardId));
   const selection = useFlow((s) => (editable ? s.selection : EMPTY));
@@ -91,6 +97,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const edgeCache = useRef<RenderCache<FlowEdgeType>>(new Map());
   const measured = useRef(new Map<string, { width: number; height: number }>());
   const [measureTick, setMeasureTick] = useState(0);
+  const dragging = useRef(false);
 
   const cp = useMemo(() => (showCritical && board ? criticalPath(board) : null), [showCritical, board]);
   const view = useMemo<FlowView>(
@@ -112,6 +119,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const edges = useMemo(() => (board ? toFlowEdges(board, view, edgeCache.current) : []), [board, view]);
 
   useEffect(() => (editable ? setRevealer((ids) => revealIds(rf, ids)) : undefined), [rf, editable]);
+  useEffect(() => () => endDrag(dragging), []);
 
   const startEditing = useCallback((id: string) => {
     const st = flowStore.getState();
@@ -247,8 +255,11 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       onConnectEnd={onConnectEnd}
-      onNodeDragStart={() => flowStore.getState().begin()}
-      onNodeDragStop={() => flowStore.getState().commit()}
+      onNodeDragStart={() => {
+        dragging.current = true;
+        flowStore.getState().begin();
+      }}
+      onNodeDragStop={() => endDrag(dragging)}
       onNodeDoubleClick={(_, node) => editable && node.type !== 'lane' && startEditing(node.id)}
       onPaneClick={onPaneClick}
       onPaneContextMenu={(e) => e.preventDefault()}

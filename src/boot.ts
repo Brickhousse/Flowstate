@@ -4,6 +4,7 @@ import { createProject } from './model/factory';
 import type { Project } from './model/types';
 import { startAutosave, type AutosaveHandle } from './store/autosave';
 import { flowStore, type FlowStore } from './store/store';
+import { notify } from './ui/toast';
 
 declare global {
   interface Window {
@@ -21,19 +22,32 @@ async function newestOrNew(): Promise<Project> {
   return fresh;
 }
 
+async function wantedOrNewest(wanted: string | null): Promise<Project> {
+  if (!wanted) return newestOrNew();
+  try {
+    return await fetchProject(wanted);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    const fallback = await newestOrNew();
+    notify(`${reason} Opened another project instead.`);
+    return fallback;
+  }
+}
+
 function remember(project: Project): void {
   history.replaceState(null, '', `?project=${encodeURIComponent(project.id)}`);
 }
 
 export async function boot(): Promise<void> {
   const wanted = new URLSearchParams(location.search).get('project');
-  const project = wanted ? await fetchProject(wanted) : await newestOrNew();
+  const project = await wantedOrNewest(wanted);
   flowStore.getState().loadProject(project);
   remember(project);
   autosave = startAutosave(flowStore, saveProject);
   window.addEventListener('beforeunload', (e) => {
-    if (flowStore.getState().saveStatus !== 'saving') return;
-    void autosave?.flush();
+    const status = flowStore.getState().saveStatus;
+    if (status !== 'saving' && status !== 'error') return;
+    autosave?.flush().catch(() => {});
     e.preventDefault();
   });
   if (import.meta.env.DEV) window.__flowstate = flowStore;

@@ -253,6 +253,7 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--text-2);
+  text-align: left;
 }
 .fs-lane {
   width: 100%;
