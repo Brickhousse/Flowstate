@@ -100,6 +100,41 @@ describe('runTurn', () => {
     expect(r).toMatchObject({ error: 'ANTHROPIC_API_KEY is not set.', messages: [] });
   });
 
+  it('never records an empty assistant message', async () => {
+    const tool = { type: 'tool_use', id: 't1', name: 'x', input: {} };
+    const execute = vi.fn(async () => ({ ok: true, content: 'ok', touched: [], stats: {} }));
+    const post = scripted(
+      () => response([sse([done([tool], 'tool_use')])]),
+      () => response([sse([done([], 'end_turn')])]),
+    );
+    const r = await runTurn({ post, execute }, noop, [], 'go', 'claude-sonnet-5', signal());
+    expect(r.error).toBeNull();
+    expect(r.messages.map((m) => m.role)).toEqual(['user', 'assistant', 'user']);
+    const empty = await runTurn({ post: scripted(() => response([sse([done([], 'end_turn')])])), execute }, noop, [], 'hi', 'claude-sonnet-5', signal());
+    expect(empty.messages.map((m) => m.role)).toEqual(['user']);
+  });
+
+  it('flags a text answer cut off by the length limit', async () => {
+    const post = scripted(() => response([sse([done([{ type: 'text', text: 'Half an ans' }], 'max_tokens')])]));
+    const r = await runTurn({ post, execute: vi.fn() }, noop, [], 'explain', 'claude-sonnet-5', signal());
+    expect(r.error).toBe('The response hit the length limit.');
+    expect(r.messages.map((m) => m.role)).toEqual(['user', 'assistant']);
+  });
+
+  it('reports Stopped when Stop lands during a tool call', async () => {
+    const controller = new AbortController();
+    const first = { type: 'tool_use', id: 't1', name: 'x', input: {} };
+    const second = { type: 'tool_use', id: 't2', name: 'y', input: {} };
+    const execute = vi.fn(async () => {
+      controller.abort();
+      return { ok: true, content: 'ok', touched: [], stats: {} };
+    });
+    const post = scripted(() => response([sse([['tool', first], ['tool', second], done([first, second], 'tool_use')])]));
+    const r = await runTurn({ post, execute }, noop, [], 'go', 'claude-sonnet-5', controller.signal);
+    expect(r.error).toBe('Stopped.');
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
   it(`stops after ${MAX_ROUNDS} rounds`, async () => {
     const tool = { type: 'tool_use', id: 't', name: 'x', input: {} };
     const post = scripted(() => response([sse([done([tool], 'tool_use')])]));

@@ -4,6 +4,7 @@ import { mergeStats, type Stats } from '../ai/stats';
 import { readSSE } from './sse';
 
 export const MAX_ROUNDS = 12;
+const LENGTH_LIMIT = 'The response hit the length limit.';
 
 export interface TurnDeps {
   post(body: { model: string; messages: Anthropic.MessageParam[] }, signal: AbortSignal): Promise<Response>;
@@ -80,7 +81,10 @@ export async function runTurn(
       for await (const ev of readSSE(res.body)) {
         if (ev.event === 'text') callbacks.onText((JSON.parse(ev.data) as { delta: string }).delta);
         else if (ev.event === 'tool') {
-          if (signal.aborted) break;
+          if (signal.aborted) {
+            failure = 'Stopped.';
+            break;
+          }
           const block = JSON.parse(ev.data) as Anthropic.ToolUseBlock;
           const outcome = await deps.execute(block.name, block.input);
           outcomes.set(block.id, outcome);
@@ -94,9 +98,10 @@ export async function runTurn(
     if (!done) return finish(failure ?? 'The response ended unexpectedly.', fallback);
     if (done.stop_reason === 'refusal') return finish('Claude declined this request.', history);
 
-    messages = [...messages, { role: 'assistant', content: done.content }];
+    // The API rejects an empty assistant message anywhere but last, so an empty reply is left out.
+    if (done.content.length) messages = [...messages, { role: 'assistant', content: done.content }];
     const toolUses = done.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
-    if (toolUses.length === 0) return finish(failure);
+    if (toolUses.length === 0) return finish(done.stop_reason === 'max_tokens' ? LENGTH_LIMIT : failure);
 
     const results: Anthropic.ToolResultBlockParam[] = [];
     for (const use of toolUses) {
@@ -109,7 +114,7 @@ export async function runTurn(
       results.push({ type: 'tool_result', tool_use_id: use.id, content: outcome.content, ...(outcome.ok ? {} : { is_error: true }) });
     }
     messages = appendUser(messages, results);
-    if (done.stop_reason !== 'tool_use') return finish(done.stop_reason === 'max_tokens' ? 'The response hit the length limit.' : failure);
+    if (done.stop_reason !== 'tool_use') return finish(done.stop_reason === 'max_tokens' ? LENGTH_LIMIT : failure);
   }
   return finish(`Stopped after ${MAX_ROUNDS} rounds of edits.`);
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readSSE } from './sse';
 
 function streamOf(chunks: string[]): ReadableStream<Uint8Array> {
@@ -20,5 +20,21 @@ describe('readSSE', () => {
       { event: 'done', data: '1\n2' },
       { event: 'message', data: 'tail' },
     ]);
+  });
+
+  it('cancels the stream when the consumer stops early', async () => {
+    const cancel = vi.fn();
+    const enc = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(enc.encode('data: x\n\n'));
+      },
+      cancel,
+    });
+    for await (const ev of readSSE(body)) {
+      expect(ev.data).toBe('x');
+      break;
+    }
+    expect(cancel).toHaveBeenCalled();
   });
 });
