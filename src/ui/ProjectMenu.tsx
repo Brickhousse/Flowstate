@@ -1,7 +1,8 @@
-import { ChevronDown, Plus, Workflow } from 'lucide-react';
+import { ChevronDown, Plus, Upload, Workflow } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { listProjects, saveProject } from '../api/projects';
 import { openProject } from '../boot';
+import { readProjectFile } from '../io/exportJson';
 import { createProject } from '../model/factory';
 import type { Project, ProjectMeta } from '../model/types';
 import { flowStore, useFlow } from '../store/store';
@@ -83,6 +84,26 @@ function ProjectPanel({ close }: { close: () => void }) {
       <button type="button" role="menuitem" className="menu-item" onClick={create}>
         <Plus size={13} /> New project
       </button>
+      <label role="menuitem" className="menu-item">
+        <Upload size={13} /> Import JSON
+        <input
+          type="file"
+          accept=".json,application/json"
+          hidden
+          data-testid="import-input"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            try {
+              const imported = await readProjectFile(file);
+              await saveProject(imported);
+              await switchTo(imported);
+            } catch (err) {
+              notify(errorText(err));
+            }
+          }}
+        />
+      </label>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { setDirection } from '../ops/board';
 import { flowStore, selectActiveBoard, useFlow } from '../store/store';
 import { BoardTabs } from './BoardTabs';
 import { CriticalPathButton } from './CriticalPathButton';
+import { ExportMenu } from './ExportMenu';
 import { FlagsButton } from './FlagsButton';
 import { errorText, ProjectMenu } from './ProjectMenu';
 import { applyTheme, storedTheme, type ThemeChoice } from './theme';
@@ -58,6 +59,7 @@ export function TopBar() {
       >
         {lr ? <ArrowRightLeft size={14} /> : <ArrowDownUp size={14} />}
       </button>
+      <ExportMenu />
       <span className={`save-status is-${saveStatus}`} aria-live="polite">
         {SAVE_TEXT[saveStatus]}
       </span>
