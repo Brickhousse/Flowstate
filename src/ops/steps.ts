@@ -128,6 +128,22 @@ export function deleteSteps(b: Board, ids: string[], opts: { reconnect?: boolean
   return { deleted: ids, reconnected };
 }
 
+export function withGroupMembers(b: Board, positions: Record<string, { x: number; y: number }>): Record<string, { x: number; y: number }> {
+  const byId = new Map(b.nodes.map((n) => [n.id, n]));
+  const shifts = new Map<string, { dx: number; dy: number }>();
+  for (const [id, pos] of Object.entries(positions)) {
+    const group = byId.get(id);
+    if (group?.kind === 'group') shifts.set(id, { dx: pos.x - group.x, dy: pos.y - group.y });
+  }
+  const out = { ...positions };
+  if (shifts.size === 0) return out;
+  for (const n of b.nodes) {
+    const shift = n.groupId ? shifts.get(n.groupId) : undefined;
+    if (shift && !out[n.id]) out[n.id] = { x: n.x + shift.dx, y: n.y + shift.dy };
+  }
+  return out;
+}
+
 export function setPositions(b: Board, positions: Record<string, { x: number; y: number }>): void {
   const groups = new Set<string>();
   for (const n of b.nodes) {

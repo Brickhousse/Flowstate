@@ -4,7 +4,8 @@ import { GAP_MAIN } from '../layout/place';
 import { connect, deleteEdges, disconnect, updateEdge } from './edges';
 import { OpError } from './errors';
 import { runOp } from './run';
-import { addStep, deleteSteps, resizeNode, setPositions, updateSteps } from './steps';
+import { groupSteps } from './groups';
+import { addStep, deleteSteps, resizeNode, setPositions, updateSteps, withGroupMembers } from './steps';
 import { byTitle, chain, links, node } from './testkit';
 
 describe('addStep', () => {
@@ -163,5 +164,23 @@ describe('geometry ops', () => {
     setPositions(b, { [ids[0]]: { x: 10, y: 20 } });
     resizeNode(b, ids[0], { x: 10, y: 20, w: 300, h: 10 });
     expect(node(b, ids[0])).toMatchObject({ x: 10, y: 20, w: 300, h: 24 });
+  });
+});
+
+
+describe('withGroupMembers', () => {
+  it('carries group members along with a moved group and leaves explicit positions alone', () => {
+    const { b, ids } = chain(['A', 'B', 'C']);
+    const g = groupSteps(b, [ids[0], ids[1]], 'G');
+    const group = node(b, g);
+    const a = node(b, ids[0]);
+    const out = withGroupMembers(b, { [g]: { x: group.x + 10, y: group.y + 20 }, [ids[1]]: { x: 5, y: 5 } });
+    expect(out).toEqual({
+      [g]: { x: group.x + 10, y: group.y + 20 },
+      [ids[0]]: { x: a.x + 10, y: a.y + 20 },
+      [ids[1]]: { x: 5, y: 5 },
+    });
+    expect(withGroupMembers(b, { [ids[2]]: { x: 1, y: 1 } })).toEqual({ [ids[2]]: { x: 1, y: 1 } });
+    expect(withGroupMembers(b, {})).toEqual({});
   });
 });

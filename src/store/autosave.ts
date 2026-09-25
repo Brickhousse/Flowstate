@@ -19,12 +19,18 @@ export function startAutosave(store: StoreApi<FlowStore>, save: (p: Project) => 
     timer = undefined;
   };
 
+  // Saves run strictly one after another, so an older project can never land on disk after a newer one.
+  const start = (): Promise<void> => {
+    current = (current ?? Promise.resolve()).then(run);
+    return current;
+  };
+
   const schedule = (ms: number) => {
     if (stopped) return;
     clearTimer();
     timer = setTimeout(() => {
       timer = undefined;
-      current = run();
+      start();
     }, ms);
   };
 
@@ -69,10 +75,8 @@ export function startAutosave(store: StoreApi<FlowStore>, save: (p: Project) => 
       clearTimer();
     },
     async flush() {
-      if (current) await current.catch(() => {});
       clearTimer();
-      current = run();
-      await current;
+      await start();
       if (store.getState().saveStatus === 'error') throw new Error('Could not save the current project.');
     },
   };

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { BoardNode } from '../model/types';
 import { updateSteps } from '../ops/steps';
 import { addNext } from '../ops/structure';
@@ -21,6 +21,8 @@ export function StepTitle({ node, editable, className = 'fs-title', placeholder 
 function TitleEditor({ node, className }: { node: BoardNode; className: string }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const done = useRef(false);
+  // The active board can change before a blur commits this edit (an AI create_board, a tab switch), so the edit is pinned to its board.
+  const [boardId] = useState(() => flowStore.getState().activeBoardId);
 
   useEffect(() => {
     const el = ref.current!;
@@ -36,11 +38,11 @@ function TitleEditor({ node, className }: { node: BoardNode; className: string }
     done.current = true;
     const st = flowStore.getState();
     const value = ref.current!.value.trim();
-    if (save && value !== node.title) runSafely(() => st.changeBoard((b) => updateSteps(b, [{ id: node.id, title: value }])));
+    if (save && value !== node.title) runSafely(() => st.changeBoard((b) => updateSteps(b, [{ id: node.id, title: value }]), boardId));
     st.setEditing(null);
     if (then === 'next' && node.kind === 'step') {
-      const id = runSafely(() => st.changeBoard((b) => addNext(b, node.id)));
-      if (id) {
+      const id = runSafely(() => st.changeBoard((b) => addNext(b, node.id), boardId));
+      if (id && flowStore.getState().activeBoardId === boardId) {
         st.select([id]);
         st.setEditing(id);
       }

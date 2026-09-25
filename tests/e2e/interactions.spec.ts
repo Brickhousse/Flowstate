@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { createBoard } from '../../src/model/factory';
 import { addStep } from '../../src/ops/steps';
 import { board, links, node, open, seed } from './fixtures';
 
@@ -168,6 +169,59 @@ test('deleting a step mid-drag still closes the drag undo entry', async ({ page,
     { id: 's1', x: 0, y: 0 },
     { id: 's2', x: 300, y: 0 },
   ]);
+});
+
+test('deleting a step mid-resize still closes the resize undo entry', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 300, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  const handle = page.locator('.react-flow__node[data-id="s1"] .react-flow__resize-control.handle.bottom.right');
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 60, box.y + 40, { steps: 6 });
+  await expect.poll(async () => (await board(page)).nodes[0].w).toBeGreaterThan(180);
+  expect(await page.evaluate(() => window.__flowstate!.getState().tx !== null)).toBe(true);
+  await page.evaluate(() =>
+    window.__flowstate!.getState().change((draft) => {
+      draft.boards[0].nodes = draft.boards[0].nodes.filter((n) => n.id !== 's1');
+    }),
+  );
+  await expect(node(page, 's1')).toHaveCount(0);
+  await page.mouse.move(box.x + 100, box.y + 80, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => window.__flowstate!.getState().tx)).toBeNull();
+  expect(await pastLength(page)).toBe(1);
+  await page.evaluate(() => window.__flowstate!.getState().undo());
+  expect((await board(page)).nodes).toMatchObject([
+    { id: 's1', w: 180, h: 72 },
+    { id: 's2', x: 300, y: 0 },
+  ]);
+});
+
+test('a title edit commits to the board it started on, even if the active board changed', async ({ page, request }) => {
+  const p = await seed(request, (b, project) => {
+    addStep(b, { title: 'Original', x: 0, y: 0 });
+    const other = createBoard('Other');
+    addStep(other, { title: 'Untouched', x: 0, y: 0 });
+    project.boards.push(other);
+  });
+  await open(page, p);
+  await node(page, 's1').dblclick();
+  await page.keyboard.press('Control+A');
+  await page.keyboard.type('Renamed');
+  await page.evaluate(() => {
+    const s = window.__flowstate!.getState();
+    s.setActiveBoard(s.project.boards[1].id);
+    (document.activeElement as HTMLElement).blur();
+  });
+  const titleOn = (name: string) =>
+    page.evaluate((n) => window.__flowstate!.getState().project.boards.find((b) => b.name === n)!.nodes[0].title, name);
+  await expect.poll(() => titleOn('Board 1')).toBe('Renamed');
+  expect(await titleOn('Other')).toBe('Untouched');
 });
 
 test('deleting every node of a selection drag mid-drag closes the drag undo entry', async ({ page, request }) => {

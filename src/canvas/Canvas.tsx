@@ -16,9 +16,9 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { criticalPath } from '../analysis/criticalPath';
 import { SHAPE_SIZE } from '../model/factory';
-import { SHAPES, SIDES, type Board, type Shape, type Side } from '../model/types';
+import { SHAPES, SIDES, type Shape, type Side } from '../model/types';
 import { connect } from '../ops/edges';
-import { addStep, resizeNode, setPositions } from '../ops/steps';
+import { addStep, resizeNode, setPositions, withGroupMembers } from '../ops/steps';
 import { flowStore, useFlow } from '../store/store';
 import { cursor } from './cursor';
 import { FlowEdge } from './FlowEdge';
@@ -44,18 +44,6 @@ const viewports = new Map<string, Viewport>();
 
 function asSide(value: string | null | undefined): Side | null {
   return SIDES.find((s) => s === value) ?? null;
-}
-
-function withGroupMembers(board: Board, positions: Record<string, { x: number; y: number }>) {
-  const out = { ...positions };
-  for (const [id, pos] of Object.entries(positions)) {
-    const group = board.nodes.find((n) => n.id === id && n.kind === 'group');
-    if (!group) continue;
-    const dx = pos.x - group.x;
-    const dy = pos.y - group.y;
-    for (const m of board.nodes) if (m.groupId === id && !out[m.id]) out[m.id] = { x: m.x + dx, y: m.y + dy };
-  }
-  return out;
 }
 
 function minimapColor(type: string | undefined, actor: string | null | undefined, colors: ThemeColors): string {

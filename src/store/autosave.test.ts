@@ -159,3 +159,58 @@ describe('startAutosave', () => {
     expect(store.getState().saveStatus).toBe('saved');
   });
 });
+
+
+describe('startAutosave ordering', () => {
+  it('never overlaps saves: a change made during a slow save is saved after it finishes', async () => {
+    const store = createFlowStore();
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const order: string[] = [];
+    const save = vi.fn(async (p: Project) => {
+      const label = String(p.boards[0].nodes.length);
+      inFlight++;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      order.push(`start ${label}`);
+      await new Promise((r) => setTimeout(r, label === '1' ? 1000 : 50));
+      order.push(`end ${label}`);
+      inFlight--;
+    });
+    startAutosave(store, save);
+    store.getState().changeBoard((b) => addStep(b, { title: 'A' }));
+    await vi.advanceTimersByTimeAsync(500);
+    expect(save).toHaveBeenCalledTimes(1);
+    store.getState().changeBoard((b) => addStep(b, { title: 'B' }));
+    await vi.advanceTimersByTimeAsync(600);
+    expect(save).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(400);
+    await vi.advanceTimersByTimeAsync(50);
+    expect(order).toEqual(['start 1', 'end 1', 'start 2', 'end 2']);
+    expect(maxInFlight).toBe(1);
+    expect(save.mock.calls[1][0].boards[0].nodes).toHaveLength(2);
+    expect(store.getState().saveStatus).toBe('saved');
+  });
+
+  it('flush during a slow save waits for it and never starts a second concurrent save', async () => {
+    const store = createFlowStore();
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const save = vi.fn(async (_p: Project) => {
+      inFlight++;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((r) => setTimeout(r, 300));
+      inFlight--;
+    });
+    const handle = startAutosave(store, save);
+    store.getState().changeBoard((b) => addStep(b, { title: 'A' }));
+    await vi.advanceTimersByTimeAsync(500);
+    store.getState().changeBoard((b) => addStep(b, { title: 'B' }));
+    const flushed = handle.flush();
+    await vi.advanceTimersByTimeAsync(300);
+    await vi.advanceTimersByTimeAsync(300);
+    await flushed;
+    expect(maxInFlight).toBe(1);
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(store.getState().saveStatus).toBe('saved');
+  });
+});
