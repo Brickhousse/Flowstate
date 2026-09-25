@@ -1,5 +1,5 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import { Hono } from 'hono';
+import { Hono, type MiddlewareHandler } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { HTTPException } from 'hono/http-exception';
 import { registerChat } from './chat';
@@ -15,10 +15,38 @@ export interface AppOptions {
 }
 
 const DEFAULT_MAX_BODY_SIZE = 50 * 1024 * 1024;
+const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+function isLocalUrl(url: string): boolean {
+  try {
+    return LOCAL_HOSTNAMES.has(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function mediaType(contentType: string | undefined): string {
+  return (contentType ?? '').split(';')[0].trim().toLowerCase();
+}
+
+// Stops DNS rebinding and cross-site requests from reaching the key or the project files (ADR 0004).
+export const localOnly: MiddlewareHandler = async (c, next) => {
+  // @hono/node-server always forwards Host; Hono's in-process app.request() never sets one.
+  const host = c.req.header('host') ?? new URL(c.req.url).host;
+  if (!isLocalUrl(`http://${host}`)) return c.json({ error: 'This API only answers requests addressed to localhost.' }, 403);
+  const origin = c.req.header('origin');
+  if (origin !== undefined && !isLocalUrl(origin)) return c.json({ error: 'Requests from this origin are not allowed.' }, 403);
+  if ((c.req.method === 'POST' || c.req.method === 'PUT') && mediaType(c.req.header('content-type')) !== 'application/json') {
+    return c.json({ error: 'Content-Type must be application/json.' }, 415);
+  }
+  await next();
+};
 
 export function createApp(deps: AppDeps, options: AppOptions = {}): Hono {
   const maxBodySize = options.maxBodySize ?? DEFAULT_MAX_BODY_SIZE;
   const app = new Hono();
+
+  app.use('/api/*', localOnly);
 
   app.onError((err, c) => {
     if (err instanceof StorageError) return c.json({ error: err.message }, err.status);

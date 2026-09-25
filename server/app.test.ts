@@ -1,6 +1,7 @@
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import { createProject } from '../src/model/factory';
 import { createApp } from './app';
@@ -55,5 +56,61 @@ describe('projects API', () => {
     const p = createProject();
     const res = await app.request(`/api/projects/${p.id}`, put(p));
     expect(res.status).toBe(413);
+  });
+});
+
+describe('local-only guard', () => {
+  const health = (app: Hono, headers: Record<string, string>) => app.request('/api/health', { headers });
+
+  it.each(['localhost', 'localhost:5173', 'LOCALHOST:5174', '127.0.0.1:8797', '[::1]:8797'])('serves Host %s', async (host) => {
+    const { app } = await setup();
+    expect((await health(app, { host })).status).toBe(200);
+  });
+
+  it.each(['evil.example', 'localhost.evil.example', '127.0.0.1.evil.example:8797', 'localhost@evil.example', '10.0.0.5:8797', ''])('rejects Host %j', async (host) => {
+    const { app } = await setup();
+    const res = await health(app, { host });
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toMatch(/localhost/);
+  });
+
+  it('rejects every route and method under /api for a foreign Host', async () => {
+    const { app } = await setup();
+    const p = createProject();
+    await app.request(`/api/projects/${p.id}`, put(p));
+    const foreign = { host: 'evil.example' };
+    expect((await app.request('/api/projects', { headers: foreign })).status).toBe(403);
+    expect((await app.request(`/api/projects/${p.id}`, { headers: foreign })).status).toBe(403);
+    expect((await app.request(`/api/projects/${p.id}`, { ...put(p), headers: { ...put(p).headers, ...foreign } })).status).toBe(403);
+    expect((await app.request(`/api/projects/${p.id}`, { method: 'DELETE', headers: foreign })).status).toBe(403);
+    expect((await app.request('/api/chat', { method: 'POST', headers: { 'content-type': 'application/json', ...foreign }, body: '{}' })).status).toBe(403);
+    expect((await app.request(`/api/projects/${p.id}`)).status).toBe(200);
+  });
+
+  it.each(['http://localhost:5173', 'http://127.0.0.1:8797', 'http://[::1]:5173', 'https://localhost'])('serves Origin %s', async (origin) => {
+    const { app } = await setup();
+    expect((await health(app, { origin })).status).toBe(200);
+  });
+
+  it.each(['http://evil.example', 'http://localhost.evil.example:5173', 'null', 'garbage'])('rejects Origin %j', async (origin) => {
+    const { app } = await setup();
+    const res = await health(app, { origin });
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toMatch(/origin/i);
+  });
+
+  it('requires application/json on POST and PUT, not on GET or DELETE', async () => {
+    const { app } = await setup();
+    const p = createProject();
+    const body = JSON.stringify(p);
+    const url = `/api/projects/${p.id}`;
+    expect((await app.request(url, { method: 'PUT', body })).status).toBe(415);
+    expect((await app.request(url, { method: 'PUT', headers: { 'content-type': 'text/plain' }, body })).status).toBe(415);
+    expect((await app.request('/api/chat', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: '{}' })).status).toBe(415);
+    expect((await app.request(url, { method: 'PUT', headers: { 'content-type': 'Application/JSON; charset=utf-8' }, body })).status).toBe(200);
+    expect((await app.request(url)).status).toBe(200);
+    expect((await app.request(url, { method: 'DELETE' })).status).toBe(200);
+    const chat = await app.request('/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    expect(chat.status).toBe(503);
   });
 });
