@@ -1,0 +1,51 @@
+.boot {
+  display: grid;
+  place-items: center;
+  height: 100vh;
+  color: var(--text-2);
+}
+.boot-error {
+  color: var(--blocker);
+  padding: 24px;
+  text-align: center;
+}
+.app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  height: 100vh;
+  overflow: hidden;
+}
+.workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.canvas-area {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.canvas-pane {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background: var(--canvas);
+}
+.canvas-pane.is-reference {
+  border-left: 1px solid var(--border);
+}
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--surface);
+  padding: 8px 14px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  font-size: 12.5px;
+  z-index: 50;
+}

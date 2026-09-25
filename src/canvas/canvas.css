@@ -1,0 +1,336 @@
+.fs-flow {
+  --xy-background-color: var(--canvas);
+  --xy-attribution-background-color: transparent;
+}
+/* 'group' is also a built-in React Flow node type whose default chrome would wrap .fs-group. */
+.react-flow .react-flow__node-group {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  --xy-node-boxshadow-hover: none;
+  --xy-node-boxshadow-selected: none;
+}
+.fs-step {
+  position: relative;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--text);
+  transition: opacity 0.15s;
+}
+.fs-shape {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  filter: drop-shadow(0 1px 2px var(--shape-shadow));
+}
+.fs-shape-body {
+  fill: var(--step-fill);
+  stroke: var(--step-stroke);
+  stroke-width: 1.25;
+  transition: stroke 0.15s, fill 0.15s;
+}
+.fs-shape-lip {
+  fill: none;
+  stroke: var(--step-stroke);
+  stroke-width: 1.25;
+}
+.shape-sticky .fs-shape-body {
+  fill: var(--sticky-fill);
+  stroke: var(--sticky-stroke);
+}
+.actor-person .fs-shape-body,
+.actor-person .fs-shape-lip {
+  stroke: var(--person);
+  stroke-width: 1.6;
+}
+.actor-system .fs-shape-body,
+.actor-system .fs-shape-lip {
+  stroke: var(--system);
+  stroke-width: 1.6;
+}
+.actor-agent .fs-shape-body,
+.actor-agent .fs-shape-lip {
+  stroke: var(--agent);
+  stroke-width: 1.6;
+}
+.tint-blue .fs-shape-body { fill: var(--tint-blue); }
+.tint-green .fs-shape-body { fill: var(--tint-green); }
+.tint-amber .fs-shape-body { fill: var(--tint-amber); }
+.tint-rose .fs-shape-body { fill: var(--tint-rose); }
+.tint-violet .fs-shape-body { fill: var(--tint-violet); }
+.tint-slate .fs-shape-body { fill: var(--tint-slate); }
+.fs-step.is-selected .fs-shape-body {
+  stroke: var(--accent);
+  stroke-width: 2.25;
+}
+.fs-step.is-critical .fs-shape-body {
+  stroke: var(--critical);
+  stroke-width: 2.5;
+}
+.fs-step.is-critical .fs-shape {
+  filter: drop-shadow(0 0 6px var(--critical-soft));
+}
+.is-dimmed {
+  opacity: 0.28;
+}
+.is-glowing .fs-shape,
+.fs-textnode.is-glowing {
+  animation: fs-glow 2s ease-out;
+}
+@keyframes fs-glow {
+  0% { filter: drop-shadow(0 0 0 var(--accent)); }
+  20% { filter: drop-shadow(0 0 10px var(--accent)); }
+  100% { filter: drop-shadow(0 1px 2px var(--shape-shadow)); }
+}
+.fs-step-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px;
+  max-width: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  overflow: hidden;
+}
+.shape-decision .fs-step-body { padding: 8px 22%; }
+.shape-data .fs-step-body,
+.shape-preparation .fs-step-body { padding: 8px 24px; }
+.shape-connector .fs-step-body { padding: 0; font-size: 11px; }
+.shape-sticky .fs-step-body { place-self: start; padding: 12px; text-align: left; align-items: flex-start; }
+.fs-title {
+  font-weight: 550;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.shape-sticky .fs-title {
+  font-weight: 450;
+  -webkit-line-clamp: 6;
+}
+.fs-note {
+  font-size: 11px;
+  color: var(--text-2);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.fs-no-duration {
+  color: var(--critical);
+}
+.fs-placeholder {
+  color: var(--text-3);
+  font-weight: 450;
+}
+.fs-step-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+}
+.fs-step-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fs-actor-chip {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  z-index: 2;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--on-color);
+  box-shadow: var(--shadow-sm);
+}
+.actor-person .fs-actor-chip { background: var(--person); }
+.actor-system .fs-actor-chip { background: var(--system); }
+.actor-agent .fs-actor-chip { background: var(--agent); }
+.fs-flags {
+  position: absolute;
+  top: -9px;
+  right: -6px;
+  z-index: 2;
+  display: flex;
+  gap: 3px;
+}
+.fs-edge-label .fs-flags {
+  position: static;
+}
+.fs-flag {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 9px;
+  font-size: 10.5px;
+  font-weight: 650;
+  color: var(--on-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.flag-blocker { background: var(--blocker); }
+.flag-warning { background: var(--warning); color: var(--on-warning); }
+.flag-question { background: var(--question); }
+.fs-status {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  z-index: 2;
+  box-sizing: border-box;
+}
+.status-idea { border: 1.5px dashed var(--text-3); }
+.status-planned { background: var(--text-3); }
+.status-active { background: var(--warning); }
+.status-done { background: var(--done); }
+.fs-handle {
+  width: 9px;
+  height: 9px;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.fs-step:hover .fs-handle,
+.fs-step.is-selected .fs-handle {
+  opacity: 1;
+}
+.fs-textnode {
+  font-size: 14px;
+  color: var(--text);
+  padding: 6px 8px;
+  box-sizing: border-box;
+  border-radius: 6px;
+}
+.fs-textnode.is-selected {
+  outline: 1.5px solid var(--accent);
+}
+.fs-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.fs-group {
+  position: relative;
+  border: 1.5px dashed var(--group-stroke);
+  background: var(--group-fill);
+  border-radius: 14px;
+  box-sizing: border-box;
+}
+.fs-group.is-selected {
+  border-color: var(--accent);
+  border-style: solid;
+}
+.fs-group-label {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  right: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.fs-lane {
+  width: 100%;
+  height: 100%;
+  background: var(--lane-a);
+  border-bottom: 1px solid var(--lane-line);
+  box-sizing: border-box;
+  position: relative;
+}
+.fs-lane.dir-TB {
+  border-bottom: 0;
+  border-right: 1px solid var(--lane-line);
+}
+.fs-lane.alt {
+  background: var(--lane-b);
+}
+.fs-lane-label {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  pointer-events: all;
+}
+.react-flow__node-lane {
+  pointer-events: none;
+}
+.react-flow .fs-edge {
+  stroke: var(--edge);
+  stroke-width: 1.6;
+  fill: none;
+}
+.react-flow .fs-edge.type-dependency { stroke-dasharray: 6 5; }
+.react-flow .fs-edge.type-handoff { stroke-dasharray: 1.5 5; stroke-linecap: round; }
+.react-flow .fs-edge.is-selected { stroke: var(--accent); stroke-width: 2.2; }
+.react-flow .fs-edge.is-critical { stroke: var(--critical); stroke-width: 2.6; }
+.react-flow .fs-edge.is-dimmed { opacity: 0.25; }
+.fs-edge-label {
+  position: absolute;
+  pointer-events: all;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 11.5px;
+  color: var(--text-2);
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  box-shadow: var(--shadow-sm);
+}
+.react-flow__resize-control.handle {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+}
+.react-flow__resize-control.line {
+  border-color: transparent;
+}
+.react-flow__minimap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: 28px;
+}
+.react-flow__selection {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+}
+.fs-shape-icon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+}
