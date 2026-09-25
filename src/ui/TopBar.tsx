@@ -1,4 +1,4 @@
-import { ArrowDownUp, ArrowRightLeft, Monitor, Moon, Sun, WandSparkles } from 'lucide-react';
+import { ArrowDownUp, ArrowRightLeft, Bot, Monitor, Moon, Sun, WandSparkles } from 'lucide-react';
 import { useState } from 'react';
 import { tidyBoard } from '../layout/tidyBoard';
 import { setDirection } from '../ops/board';
@@ -36,6 +36,7 @@ async function flipDirection(boardId: string): Promise<void> {
 export function TopBar() {
   const board = useFlow(selectActiveBoard);
   const saveStatus = useFlow((s) => s.saveStatus);
+  const chatOpen = useFlow((s) => s.chatOpen);
   const [theme, setTheme] = useState(storedTheme);
   const ThemeIcon = theme === 'light' ? Sun : theme === 'dark' ? Moon : Monitor;
   const lr = board.direction === 'LR';
@@ -76,6 +77,12 @@ export function TopBar() {
       >
         <ThemeIcon size={14} />
       </button>
+      {!chatOpen && (
+        <button type="button" className="topbar-btn" title="Show assistant (Ctrl+/)" onClick={() => flowStore.getState().setChatOpen(true)}>
+          <Bot size={14} />
+          <span>Assistant</span>
+        </button>
+      )}
     </header>
   );
 }
