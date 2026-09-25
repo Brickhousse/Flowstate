@@ -13,13 +13,17 @@ import { addFlagAndFocus, editBoard } from './boardChange';
 import { cursor } from './cursor';
 import { nearestInDirection, type Dir } from './navigate';
 import { reveal } from './reveal';
-import { viewCenter } from './viewport';
+import { FIT_VIEW, viewCenter } from './viewport';
 
 const FLAG_KEYS: Record<string, FlagKind> = { b: 'blocker', w: 'warning', q: 'question' };
 const ARROWS: Record<string, Dir> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
 
 export function isTyping(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
+}
+
+function isPressable(target: EventTarget | null): boolean {
+  return target instanceof Element && !!target.closest('button, a[href], [role="button"], [role="link"]');
 }
 
 function nextActor(actor: Actor | null): Actor | null {
@@ -36,6 +40,7 @@ export function useKeyboard(boardId: string, enabled: boolean): void {
 
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || isTyping(e.target)) return;
+      if ((e.key === 'Enter' || e.key === ' ') && isPressable(e.target)) return;
       const st = flowStore.getState();
       if (st.activeBoardId !== boardId || st.editingId) return;
       const board = st.project.boards.find((b) => b.id === boardId);
@@ -83,7 +88,7 @@ export function useKeyboard(boardId: string, enabled: boolean): void {
 
       if (e.code === 'Digit1' && e.shiftKey) {
         e.preventDefault();
-        rf.fitView({ padding: 0.2, duration: 300 });
+        rf.fitView({ ...FIT_VIEW, duration: 300 });
         return;
       }
       const dir = ARROWS[e.key];

@@ -84,3 +84,57 @@ test('C toggles the critical path and L tidies', async ({ page, request }) => {
     return b.nodes[0].x < b.nodes[1].x;
   }).toBe(true);
 });
+
+test('Enter and Space on a focused toolbar button press the button without adding a step', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'Triage', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  const agent = page.locator('.fs-toolbar').getByRole('button', { name: 'AI agent (A)' });
+  await agent.focus();
+  await page.keyboard.press('Enter');
+  let b = await board(page);
+  expect(b.nodes).toHaveLength(1);
+  expect(b.nodes[0].actor).toBe('agent');
+  await agent.focus();
+  await page.keyboard.press(' ');
+  b = await board(page);
+  expect(b.nodes).toHaveLength(1);
+  expect(b.nodes[0].actor).toBeNull();
+});
+
+test('Ctrl+Y redoes and W adds a warning', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'Triage', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  await page.keyboard.press('2');
+  await page.keyboard.press('Control+z');
+  expect((await board(page)).nodes[0].shape).toBe('process');
+  await page.keyboard.press('Control+y');
+  expect((await board(page)).nodes[0].shape).toBe('decision');
+  await node(page, 's1').click();
+  await page.keyboard.press('w');
+  await page.keyboard.type('Slow vendor');
+  await page.keyboard.press('Enter');
+  expect((await board(page)).nodes[0].flags).toMatchObject([{ kind: 'warning', text: 'Slow vendor' }]);
+});
+
+test('Shift+1 fits the board back into view', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', after: a });
+  });
+  await open(page, p);
+  const viewport = page.locator('.react-flow__viewport');
+  const transform = () => viewport.evaluate((el) => getComputedStyle(el).transform);
+  const fitted = await transform();
+  await page.locator('.react-flow__pane').click({ position: { x: 20, y: 20 } });
+  await page.mouse.move(300, 300);
+  await page.mouse.wheel(0, -600);
+  await expect.poll(transform).not.toBe(fitted);
+  await page.keyboard.press('Shift+1');
+  await expect.poll(transform).toBe(fitted);
+});

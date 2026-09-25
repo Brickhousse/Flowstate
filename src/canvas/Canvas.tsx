@@ -32,6 +32,7 @@ import { TextNode } from './TextNode';
 import { toFlowEdges, toFlowNodes, type FlowEdgeType, type FlowNode, type FlowView, type RenderCache } from './toFlow';
 import { useKeyboard } from './useKeyboard';
 import { useThemeColors, type ThemeColors } from './useThemeColors';
+import { FIT_VIEW } from './viewport';
 import './canvas.css';
 
 export const SHAPE_MIME = 'application/x-flowstate-shape';
@@ -281,7 +282,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       onDrop={onDrop}
       defaultViewport={saved}
       fitView={!saved}
-      fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
+      fitViewOptions={FIT_VIEW}
       connectionMode={ConnectionMode.Loose}
       minZoom={0.05}
       maxZoom={4}
