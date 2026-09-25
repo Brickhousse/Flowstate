@@ -159,4 +159,73 @@ describe('executeTool', () => {
     await run('update_steps', { updates: [{ id: 's1', duration: null, actor: null, owner: 'Ops' }] });
     expect(active().nodes[0]).toMatchObject({ durationMin: null, actor: null, owner: 'Ops' });
   });
+
+  it('does not count arrowsAdded when connecting an existing pair, only updates the label', async () => {
+    const { run, active } = setup((b) => {
+      const a = addStep(b, { title: 'A' });
+      addStep(b, { title: 'B', after: a });
+    });
+    const out = await run('connect', { links: [{ from: 's1', to: 's2', label: 'again' }] });
+    expect(out.ok).toBe(true);
+    expect(out.stats.arrowsAdded).toBeUndefined();
+    expect(active().edges[0].label).toBe('again');
+  });
+
+  it('reports flagsResolved and flagsReopened separately', async () => {
+    const { run } = setup((b) => {
+      addStep(b, { title: 'A' });
+    });
+    const flagOut = await run('add_flag', { target: 's1', kind: 'question', text: 'Why?' });
+    const flagId = (JSON.parse(flagOut.content) as { flag_id: string }).flag_id;
+    const resolved = await run('resolve_flag', { flag_id: flagId });
+    expect(resolved.stats).toEqual({ flagsResolved: 1 });
+    const reopened = await run('resolve_flag', { flag_id: flagId, resolved: false });
+    expect(reopened.stats).toEqual({ flagsReopened: 1 });
+  });
+
+  it('applies lane to new branch steps but not existing ones', async () => {
+    const { run, active } = setup((b) => {
+      addStep(b, { title: 'Kickoff' });
+    });
+    await run('set_lanes', { lanes: ['Ops', 'AI'] });
+    const aiLane = active().lanes.find((l) => l.name === 'AI')!.id;
+    const out = await run('branch_parallel', { from: 's1', branches: [[{ title: 'Check', actor: 'agent', lane: 'AI' }]] });
+    expect(out.ok).toBe(true);
+    const step = active().nodes.find((n) => n.title === 'Check')!;
+    expect(step.laneId).toBe(aiLane);
+  });
+
+  it('rejects an unknown lane in branch_parallel atomically', async () => {
+    const { run, store } = setup((b) => {
+      addStep(b, { title: 'Kickoff' });
+    });
+    const before = store.getState().project;
+    const out = await run('branch_parallel', { from: 's1', branches: [[{ title: 'Check', lane: 'Nope' }]] });
+    expect(out.ok).toBe(false);
+    expect(out.content).toContain('Unknown lane "Nope"');
+    expect(store.getState().project).toBe(before);
+  });
+
+  it('lists both steps and arrows when a flag target is unknown', async () => {
+    const { run } = setup((b) => {
+      const a = addStep(b, { title: 'A' });
+      addStep(b, { title: 'B', after: a });
+    });
+    const out = await run('add_flag', { target: 'zzz', kind: 'warning', text: 'Careful' });
+    expect(out.ok).toBe(false);
+    expect(out.content).toContain('Unknown step or arrow "zzz".');
+    expect(out.content).toContain('Steps on this board: s1 "A", s2 "B"');
+    expect(out.content).toContain('Arrows: e3: s1 -> s2');
+  });
+
+  it('reports arrowsRemoved when branch_parallel removes a direct from -> join_at arrow', async () => {
+    const { run, links } = setup((b) => {
+      const a = addStep(b, { title: 'Start' });
+      addStep(b, { title: 'End', after: a });
+    });
+    const out = await run('branch_parallel', { from: 's1', branches: [[{ title: 'Check' }]], join_at: 's2' });
+    expect(out.ok).toBe(true);
+    expect(out.stats.arrowsRemoved).toBe(1);
+    expect(links()).toEqual(['Check>End', 'Start>Check']);
+  });
 });

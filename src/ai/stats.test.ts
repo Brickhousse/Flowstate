@@ -9,4 +9,9 @@ describe('stats', () => {
     expect(describeStats({ boardsCreated: 1, tidied: 1 })).toBe('New board, tidied');
     expect(describeStats({})).toBe('');
   });
+
+  it('orders reopened flags after resolved flags', () => {
+    expect(describeStats({ flagsResolved: 1, flagsReopened: 2 })).toBe('1 resolved, 2 reopened');
+    expect(describeStats({ flagsReopened: 1 })).toBe('1 reopened');
+  });
 });

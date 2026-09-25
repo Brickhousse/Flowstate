@@ -7,6 +7,7 @@ import { OpError } from '../ops/errors';
 import { addFlag, setFlagResolved } from '../ops/flags';
 import { groupSteps } from '../ops/groups';
 import { setLanes } from '../ops/lanes';
+import { findEdge } from '../ops/query';
 import { addStep, deleteSteps, updateSteps, type StepFields, type StepUpdate } from '../ops/steps';
 import { branchParallel, insertBetween, moveSteps, type BranchItem } from '../ops/structure';
 import { addText } from '../ops/text';
@@ -104,8 +105,14 @@ const handlers: { [N in ToolName]: Handler<N> } = {
 
   connect: (ctx, input, boardId) =>
     ctx.changeBoard(boardId, (b) => {
-      const ids = input.links.map((l) => connect(b, { source: l.from, target: l.to, type: l.type, label: l.label }));
-      return { result: { arrows: ids }, touched: input.links.flatMap((l) => [l.from, l.to]), stats: { arrowsAdded: ids.length } };
+      let added = 0;
+      const ids = input.links.map((l) => {
+        const isNew = !findEdge(b, l.from, l.to, l.type ?? 'flow');
+        const id = connect(b, { source: l.from, target: l.to, type: l.type, label: l.label });
+        if (isNew) added++;
+        return id;
+      });
+      return { result: { arrows: ids }, touched: input.links.flatMap((l) => [l.from, l.to]), stats: added ? { arrowsAdded: added } : {} };
     }),
 
   disconnect: (ctx, input, boardId) =>
@@ -124,12 +131,30 @@ const handlers: { [N in ToolName]: Handler<N> } = {
 
   branch_parallel: (ctx, input, boardId) =>
     ctx.changeBoard(boardId, (b) => {
-      const items: BranchItem[][] = input.branches.map((branch) => branch.map((item) => ('existing' in item ? { existing: item.existing } : toFields(b, item).fields)));
+      type BranchMeta = { existing: string } | { fields: StepFields; laneId?: string };
+      const meta: BranchMeta[][] = input.branches.map((branch) => branch.map((item) => ('existing' in item ? { existing: item.existing } : toFields(b, item))));
+      const items: BranchItem[][] = meta.map((branch) => branch.map((m) => ('existing' in m ? { existing: m.existing } : m.fields)));
+      const directEdgeRemoved = !!(input.join_at && findEdge(b, input.from, input.join_at, 'flow'));
       const ids = branchParallel(b, input.from, items, input.join_at);
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = 0; j < ids[i].length; j++) {
+          const m = meta[i][j];
+          if (!('existing' in m) && m.laneId) updateSteps(b, [{ id: ids[i][j], laneId: m.laneId }]);
+        }
+      }
       const moved = items.flat().filter((i) => 'existing' in i).length;
       const added = ids.flat().length - moved;
       const arrows = ids.reduce((sum, br) => sum + br.length + (input.join_at ? 1 : 0), 0);
-      return { result: { branches: ids }, touched: ids.flat(), stats: { ...(added ? { stepsAdded: added } : {}), ...(moved ? { moved } : {}), arrowsAdded: arrows } };
+      return {
+        result: { branches: ids },
+        touched: ids.flat(),
+        stats: {
+          ...(added ? { stepsAdded: added } : {}),
+          ...(moved ? { moved } : {}),
+          arrowsAdded: arrows,
+          ...(directEdgeRemoved ? { arrowsRemoved: 1 } : {}),
+        },
+      };
     }),
 
   move_steps: (ctx, input, boardId) =>
@@ -146,8 +171,9 @@ const handlers: { [N in ToolName]: Handler<N> } = {
 
   resolve_flag: (ctx, input, boardId) =>
     ctx.changeBoard(boardId, (b) => {
-      setFlagResolved(b, input.flag_id, input.resolved ?? true);
-      return { result: { flag_id: input.flag_id, resolved: input.resolved ?? true }, stats: { flagsResolved: 1 } };
+      const resolved = input.resolved ?? true;
+      setFlagResolved(b, input.flag_id, resolved);
+      return { result: { flag_id: input.flag_id, resolved }, stats: resolved ? { flagsResolved: 1 } : { flagsReopened: 1 } };
     }),
 
   group: (ctx, input, boardId) =>
@@ -193,6 +219,19 @@ function stepList(project: Project, boardId: string): string {
   return shown.length ? ` Steps on this board: ${shown.join(', ')}${steps.length > 30 ? ', ...' : ''}.` : ' This board has no steps.';
 }
 
+function arrowList(project: Project, boardId: string): string {
+  const board = project.boards.find((b) => b.id === boardId);
+  const edges = board?.edges ?? [];
+  const shown = edges.slice(0, 30).map((e) => `${e.id}: ${e.source} -> ${e.target}`);
+  return shown.length ? ` Arrows: ${shown.join(', ')}${edges.length > 30 ? ', ...' : ''}.` : ' This board has no arrows.';
+}
+
+function errorHint(message: string, project: Project, boardId: string): string {
+  if (message.startsWith('Unknown step or arrow')) return stepList(project, boardId) + arrowList(project, boardId);
+  if (message.startsWith('Unknown step')) return stepList(project, boardId);
+  return '';
+}
+
 function isToolName(name: string): name is ToolName {
   return Object.hasOwn(TOOL_SCHEMAS, name);
 }
@@ -215,8 +254,7 @@ export async function executeTool(ctx: ToolContext, name: string, input: unknown
     };
   } catch (err) {
     if (err instanceof OpError || err instanceof DurationError) {
-      const hint = err.message.startsWith('Unknown step') ? stepList(ctx.getProject(), boardId) : '';
-      return fail(err.message + hint);
+      return fail(err.message + errorHint(err.message, ctx.getProject(), boardId));
     }
     throw err;
   }

@@ -8,6 +8,7 @@ export type StatKey =
   | 'arrowsRemoved'
   | 'flagsAdded'
   | 'flagsResolved'
+  | 'flagsReopened'
   | 'grouped'
   | 'lanesSet'
   | 'textAdded'
@@ -27,6 +28,7 @@ const PHRASES: Array<[StatKey, (n: number) => string]> = [
   ['arrowsRemoved', (n) => `${plural(n, 'arrow', 'arrows')} removed`],
   ['flagsAdded', (n) => plural(n, 'flag', 'flags')],
   ['flagsResolved', (n) => `${n} resolved`],
+  ['flagsReopened', (n) => `${n} reopened`],
   ['grouped', (n) => plural(n, 'group', 'groups')],
   ['lanesSet', () => 'lanes updated'],
   ['textAdded', (n) => plural(n, 'note', 'notes')],
