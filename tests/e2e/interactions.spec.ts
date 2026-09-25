@@ -143,6 +143,33 @@ async function dragFrom(page: Page, box: { x: number; y: number; width: number; 
   await page.mouse.up();
 }
 
+test('deleting a step mid-drag still closes the drag undo entry', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 300, y: 0 });
+  });
+  await open(page, p);
+  const box = (await node(page, 's1').boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 120, box.y + 90, { steps: 8 });
+  await page.evaluate(() =>
+    window.__flowstate!.getState().change((draft) => {
+      draft.boards[0].nodes = draft.boards[0].nodes.filter((n) => n.id !== 's1');
+    }),
+  );
+  await expect(node(page, 's1')).toHaveCount(0);
+  await page.mouse.move(box.x + 160, box.y + 120, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => window.__flowstate!.getState().tx)).toBeNull();
+  expect(await pastLength(page)).toBe(1);
+  await page.evaluate(() => window.__flowstate!.getState().undo());
+  expect((await board(page)).nodes).toMatchObject([
+    { id: 's1', x: 0, y: 0 },
+    { id: 's2', x: 300, y: 0 },
+  ]);
+});
+
 test('dragging a shift-selected pair is one undo entry', async ({ page, request }) => {
   const p = await seed(request, (b) => {
     addStep(b, { title: 'A', x: 0, y: 0 });

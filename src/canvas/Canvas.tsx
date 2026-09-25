@@ -81,9 +81,9 @@ function revealIds(rf: ReactFlowInstance<FlowNode, FlowEdgeType>, ids: string[])
   rf.setCenter(first.position.x + (first.width ?? 0) / 2, first.position.y + (first.height ?? 0) / 2, { zoom, duration: 400 });
 }
 
-function endDrag(dragging: { current: boolean }): void {
+function endDrag(dragging: { current: string[] | null }): void {
   if (!dragging.current) return;
-  dragging.current = false;
+  dragging.current = null;
   flowStore.getState().commit();
 }
 
@@ -101,7 +101,8 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const edgeCache = useRef<RenderCache<FlowEdgeType>>(new Map());
   const measured = useRef(new Map<string, { width: number; height: number }>());
   const [measureTick, setMeasureTick] = useState(0);
-  const dragging = useRef(false);
+  // Ids whose disappearance ends the drag: React Flow never fires onNodeDragStop once the grabbed node unmounts.
+  const dragging = useRef<string[] | null>(null);
 
   const cp = useMemo(() => (showCritical && board ? criticalPath(board) : null), [showCritical, board]);
   const view = useMemo<FlowView>(
@@ -124,6 +125,10 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
 
   useEffect(() => (editable ? setRevealer((ids) => revealIds(rf, ids)) : undefined), [rf, editable]);
   useEffect(() => () => endDrag(dragging), []);
+  useEffect(() => {
+    const watched = dragging.current;
+    if (watched && !watched.some((id) => board?.nodes.some((n) => n.id === id))) endDrag(dragging);
+  }, [board]);
 
   const startEditing = useCallback((id: string) => {
     const st = flowStore.getState();
@@ -259,9 +264,12 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
       onConnectEnd={onConnectEnd}
-      onNodeDragStart={() => {
-        dragging.current = true;
+      onNodeDragStart={(_, node) => {
+        dragging.current = [node.id];
         flowStore.getState().begin();
+      }}
+      onSelectionDragStart={(_, dragged) => {
+        dragging.current = dragged.map((n) => n.id);
       }}
       onNodeDragStop={() => endDrag(dragging)}
       onNodeDoubleClick={(_, node) => editable && node.type !== 'lane' && startEditing(node.id)}
