@@ -37,15 +37,16 @@ Flowstate is a visual workflow canvas for redesigning business processes into ag
 - **Controls sit where you work:** selecting a step shows a floating toolbar directly above it (shape, actor, colour, flag, duration). There is no side inspector.
 - **Hover handles:** hovering a step shows `+` handles on each side. Clicking one creates a connected next step, and dragging one draws an arrow to an existing step or to empty space (which creates a new step there).
 - **Board:** infinite canvas, zoom range 5% to 400%, minimap, and `Shift+1` to fit the view to the board.
-- **Board tabs:** one project holds many boards. You can split-view two boards side by side for reference.
+- **Board tabs:** one project holds many boards. `Shift+click` a tab to open it read-only beside the active board for reference.
+- **Projects:** a project menu in the top bar lists, creates and opens projects. `?project=<id>` in the URL opens one directly.
 
 ### Keyboard map
 
 | Key | Action |
 |---|---|
-| `Tab` | Add a connected next step after the selection and start typing |
-| `Enter` | Add a sibling (parallel branch from the same parent) and start typing |
-| typing / `F2` | Edit the selected step's title |
+| `Tab` | Add a connected next step after the selection and start typing (while typing: commit, then add the next step) |
+| `Enter` | Add a sibling (parallel branch from the same parent) and start typing (while typing: commit) |
+| typing / `F2` / double-click | Edit the selected step's title (`Shift+Enter` newline, `Esc` cancel) |
 | `1`-`9` | Switch the selected step's shape (section 3) |
 | `A` | Cycle actor: Person, System, AI Agent |
 | `B` / `W` / `Q` | Add a Blocker / Warning / Question flag |
@@ -56,8 +57,10 @@ Flowstate is a visual workflow canvas for redesigning business processes into ag
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
 | `Ctrl+C/V/D` | Copy / paste / duplicate |
 | `Delete` | Delete; `Shift+Delete` deletes and reconnects the neighbours |
-| `Space+drag`, wheel | Pan, zoom |
-| Arrow keys | Move the selection to the nearest connected step |
+| Left-drag on empty canvas | Marquee select |
+| `Space+drag`, middle/right-drag, wheel | Pan, pan, zoom |
+| Arrow keys | Move the selection to the nearest step in that direction, preferring connected steps |
+| `Esc`, `Ctrl+A` | Clear selection, select all |
 
 ## 3. Board content
 
@@ -80,16 +83,16 @@ Other board items include free text, **groups** (labelled frames around steps) a
 ### Step properties
 
 All of these show on the step itself:
-- **Actor:** Person, System or AI Agent, shown as a coloured left edge plus an icon.
+- **Actor:** Person, System or AI Agent, shown as an actor-coloured outline plus an icon chip on the top-left corner (works for every shape).
 - **Title**, plus an optional one-line **note**.
 - **Owner:** free text (a person, a team, or an agent name like "Intake Agent").
-- **Duration:** typed as `30m`, `2h`, `3d`, stored in minutes.
+- **Duration:** typed as `30m`, `2h`, `1.5d`, `1w`, stored in minutes. Working time: `1d` = 8h, `1w` = 5d.
 - **Status** (optional): idea, planned, active, done.
 - **Replaces** (optional): free-text references to old-process steps. Shown in the step's hover card.
 
 ### Flags
 
-Flags are badges on a step or an arrow: **Blocker** (red), **Warning** (amber) and **Question** (blue). Each has a short text and can be resolved. A Flags filter in the top bar lists every open flag, and clicking one pans to it.
+Flags are badges on a step or an arrow: **Blocker** (red), **Warning** (amber) and **Question** (cyan, kept distinct from the Person blue). Each has a short text and can be resolved. A Flags filter in the top bar lists every open flag, and clicking one pans to it.
 
 ### Arrows
 
@@ -103,7 +106,7 @@ Arrows can carry optional labels, route orthogonally around steps, and connect t
 
 ### Critical path
 
-The critical path is the longest duration-weighted path through flow and dependency arrows (handoff arrows are ignored). Steps with no duration count as 0 and show a subtle "no duration" marker. Cycles are detected and reported as a warning rather than crashing the calculation. Turning it on highlights the path, dims everything else and shows the total duration. It recalculates live while the mode is on.
+The critical path is the longest duration-weighted path through flow and dependency arrows (handoff arrows are ignored). Steps with no duration count as 0 and show a subtle "no duration" marker. Rework loops are legitimate in processes: arrows that close a loop are ignored for the calculation, and the result reports how many were ignored. Turning it on highlights the path, dims everything else and shows the total duration. It recalculates live while the mode is on.
 
 ## 4. AI chat
 
@@ -116,7 +119,7 @@ The server is a thin proxy that holds the API key. The agent loop runs in the cl
 3. For each tool call, the client applies the edit to the board through the same ops layer the UI uses, and collects the result.
 4. If Claude stopped to use tools, the client sends the tool results back and the loop continues. It ends when Claude produces a final answer or after 12 rounds.
 
-Edits appear on the board as each tool call arrives. The whole AI turn is one undo entry.
+Edits appear on the board as each tool call arrives. The whole AI turn is one undo entry; edits you make on the canvas while a turn is running join that entry. The chat Undo button works while that turn is still the latest history entry.
 
 ### Board summary sent per message
 
@@ -208,7 +211,7 @@ Flag    { id, kind: 'blocker' | 'warning' | 'question', text, resolved }
 ## 7. Visual design
 
 - Clean, calm canvas: a soft dot grid, light and dark themes (following the system setting by default), and the Inter font.
-- Actor colours: Person is warm blue, System is slate, AI Agent is violet. Flag colours are reserved (red, amber, blue) and not used for anything else.
+- Actor colours: Person is blue, System is slate, AI Agent is violet. Flag colours are reserved (red, amber, cyan), and the critical path uses orange.
 - Steps have soft shadows and rounded corners, and the selected step gets a clear focus ring. The floating toolbar fades in within 100ms.
 - All colours are defined once as design tokens, in both themes.
 
