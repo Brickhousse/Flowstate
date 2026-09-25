@@ -78,7 +78,7 @@ Flowstate is a visual workflow canvas for redesigning business processes into ag
 | 8 | Circle | Connector / join |
 | 9 | Sticky note | Freeform note |
 
-Other board items include free text, **groups** (labelled frames around steps) and **swimlanes** (horizontal bands). Swimlanes can be toggled on per board, and a step inside a lane takes that lane's owner.
+Other board items include free text, **groups** (labelled frames around steps) and **swimlanes** (horizontal bands). Swimlanes can be toggled on per board, and a step's lane records who or what owns it.
 
 ### Step properties
 
@@ -102,7 +102,7 @@ Flags are badges on a step or an arrow: **Blocker** (red), **Warning** (amber) a
 | Dependency | dashed | Target cannot start until source is done |
 | Handoff | dotted | Data or information passed |
 
-Arrows can carry optional labels, route orthogonally around steps, and connect to any side of a step. A step with several incoming flow arrows is a join, which waits for all of them.
+Arrows can carry optional labels, route with orthogonal (right-angle) paths, and connect to any side of a step. A step with several incoming flow arrows is a join, which waits for all of them.
 
 ### Critical path
 
