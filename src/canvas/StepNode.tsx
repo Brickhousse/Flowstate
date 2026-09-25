@@ -3,8 +3,10 @@ import { Clock } from 'lucide-react';
 import { memo } from 'react';
 import { formatDuration } from '../model/duration';
 import type { Side } from '../model/types';
-import { flowStore } from '../store/store';
+import { flowStore, useFlow } from '../store/store';
+import { AddHandles } from './AddHandles';
 import { FlagBadges } from './FlagBadges';
+import { FloatingToolbar } from './FloatingToolbar';
 import { ACTOR_LABEL, ActorIcon } from './labels';
 import { ShapeSvg } from './ShapeSvg';
 import { StepTitle } from './StepTitle';
@@ -21,6 +23,7 @@ const begin = () => flowStore.getState().begin();
 const commit = () => flowStore.getState().commit();
 
 export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps<StepFlowNode>) {
+  const editing = useFlow((s) => s.editingId === id);
   const { node, critical, dimmed, glowing, editable } = data;
   const className = [
     'fs-step',
@@ -37,6 +40,7 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
   return (
     <div className={className} style={{ width: node.w, height: node.h }} data-testid={`node-${id}`} title={node.replaces ? `Replaces: ${node.replaces}` : undefined}>
       {editable && <NodeResizer isVisible={selected} minWidth={40} minHeight={32} onResizeStart={begin} onResizeEnd={commit} />}
+      {editable && selected && <FloatingToolbar node={node} />}
       <ShapeSvg shape={node.shape} w={node.w} h={node.h} />
       {node.actor && (
         <span className="fs-actor-chip" title={ACTOR_LABEL[node.actor]}>
@@ -62,6 +66,7 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
       </div>
       <FlagBadges flags={node.flags} />
       {node.status && <span className={`fs-status status-${node.status}`} title={node.status} />}
+      {editable && !editing && <AddHandles nodeId={id} />}
       {HANDLES.map(([side, position]) => (
         <Handle key={side} id={side} type="source" position={position} className="fs-handle" isConnectable={editable} />
       ))}

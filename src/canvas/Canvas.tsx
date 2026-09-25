@@ -22,6 +22,7 @@ import { addStep, resizeNode, setPositions } from '../ops/steps';
 import { flowStore, useFlow } from '../store/store';
 import { cursor } from './cursor';
 import { FlowEdge } from './FlowEdge';
+import { requestFocus } from './focusKey';
 import { GroupNode } from './GroupNode';
 import { LaneNode } from './LaneNode';
 import { setRevealer } from './reveal';
@@ -261,6 +262,11 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       }}
       onNodeDragStop={() => endDrag(dragging)}
       onNodeDoubleClick={(_, node) => editable && node.type !== 'lane' && startEditing(node.id)}
+      onEdgeDoubleClick={(_, edge) => {
+        if (!editable) return;
+        requestFocus(`label:${edge.id}`);
+        flowStore.getState().select([], [edge.id]);
+      }}
       onPaneClick={onPaneClick}
       onPaneContextMenu={(e) => e.preventDefault()}
       onPaneMouseMove={(e) => {

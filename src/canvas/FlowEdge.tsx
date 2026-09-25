@@ -1,4 +1,5 @@
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, type EdgeProps } from '@xyflow/react';
+import { EdgeToolbar } from './EdgeToolbar';
 import { FlagBadges } from './FlagBadges';
 import type { FlowEdgeType } from './toFlow';
 
@@ -20,6 +21,7 @@ export function FlowEdge(props: EdgeProps<FlowEdgeType>) {
           </div>
         </EdgeLabelRenderer>
       )}
+      {data.editable && selected && <EdgeToolbar edge={edge} x={labelX} y={labelY} />}
     </>
   );
 }
