@@ -1259,6 +1259,14 @@ describe('deleteSteps', () => {
     expect(links(b)).toEqual(['A>C', 'A>D', 'C>D']);
   });
 
+  it('reconnects every input of a deleted join to its output', () => {
+    const { b, ids } = chain(['A', 'J', 'D']);
+    const c = addStep(b, { title: 'C', x: 0, y: 300 });
+    connect(b, { source: c, target: ids[1] });
+    deleteSteps(b, [ids[1]], { reconnect: true });
+    expect(links(b)).toEqual(['A>D', 'C>D']);
+  });
+
   it('clears membership when a group is deleted', () => {
     const { b, ids } = chain(['A']);
     const g = makeNode(b, 'group', { title: 'G' });
@@ -1687,6 +1695,12 @@ describe('branchParallel', () => {
     const { b, ids } = chain(['A']);
     branchParallel(b, ids[0], [[{ title: 'X1' }, { title: 'X2' }]]);
     expect(links(b)).toEqual(['A>X1', 'X1>X2']);
+  });
+
+  it('handles a branch that rejoins upstream of the split', () => {
+    const { b, ids } = chain(['A', 'B']);
+    branchParallel(b, ids[1], [[{ title: 'Rework' }]], ids[0]);
+    expect(links(b)).toEqual(['A>B', 'B>Rework', 'Rework>A']);
   });
 
   it('validates input', () => {
@@ -2493,9 +2507,11 @@ export function criticalPath(board: Board): CriticalPathResult {
   const dag = edges.filter((e) => !ignored.has(e.id));
 
   const incoming = new Map<string, BoardEdge[]>();
+  const outgoing = new Map<string, BoardEdge[]>();
   const indegree = new Map(steps.map((s) => [s.id, 0]));
   for (const e of dag) {
     incoming.set(e.target, [...(incoming.get(e.target) ?? []), e]);
+    outgoing.set(e.source, [...(outgoing.get(e.source) ?? []), e]);
     indegree.set(e.target, indegree.get(e.target)! + 1);
   }
   const queue = steps.filter((s) => indegree.get(s.id) === 0).map((s) => s.id);
@@ -2503,8 +2519,7 @@ export function criticalPath(board: Board): CriticalPathResult {
   while (queue.length) {
     const id = queue.shift()!;
     order.push(id);
-    for (const e of dag) {
-      if (e.source !== id) continue;
+    for (const e of outgoing.get(id) ?? []) {
       indegree.set(e.target, indegree.get(e.target)! - 1);
       if (indegree.get(e.target) === 0) queue.push(e.target);
     }
@@ -3286,6 +3301,7 @@ describe('startAutosave', () => {
     const save = vi.fn(async (_p: Project) => {});
     startAutosave(store, save);
     store.getState().changeBoard((b) => addStep(b, { title: 'A' }));
+    expect(store.getState().saveStatus).toBe('saving');
     await vi.advanceTimersByTimeAsync(300);
     store.getState().changeBoard((b) => addStep(b, { title: 'B' }));
     await vi.advanceTimersByTimeAsync(499);
@@ -3402,6 +3418,7 @@ export function startAutosave(store: StoreApi<FlowStore>, save: (p: Project) => 
       clearTimeout(timer);
       return;
     }
+    if (state.saveStatus !== 'error' && state.saveStatus !== 'saving') store.getState().setSaveStatus('saving');
     schedule(delayMs);
   });
 
@@ -4019,7 +4036,9 @@ export function laneNodes(board: Board, editable: boolean): LaneFlowNode[] {
   });
 }
 
-export function toFlowNodes(board: Board, view: FlowView, cache: RenderCache<FlowNode>): FlowNode[] {
+export type Measured = ReadonlyMap<string, { width: number; height: number }>;
+
+export function toFlowNodes(board: Board, view: FlowView, cache: RenderCache<FlowNode>, measured?: Measured): FlowNode[] {
   const out: FlowNode[] = laneNodes(board, view.editable);
   for (const n of board.nodes) {
     const selected = view.selection.has(n.id);
@@ -4027,12 +4046,13 @@ export function toFlowNodes(board: Board, view: FlowView, cache: RenderCache<Flo
     const dimmed = !!view.criticalNodes && !critical && n.kind === 'step';
     const glowing = n.id in view.glow;
     out.push(
-      cached(cache, n.id, [n, selected, critical, dimmed, glowing, view.editable], () => ({
+      cached(cache, n.id, [n, selected, critical, dimmed, glowing, view.editable, measured?.get(n.id)], () => ({
         id: n.id,
         type: n.kind,
         position: { x: n.x, y: n.y },
         width: n.w,
         height: n.h,
+        ...(measured?.get(n.id) ? { measured: measured.get(n.id) } : {}),
         data: { node: n, critical, dimmed, glowing, editable: view.editable },
         selected,
         draggable: view.editable,
@@ -4102,6 +4122,9 @@ Expected: PASS.
   --warning: #f5a524;
   --question: #12a3c4;
   --done: #2fb36d;
+  --on-color: #ffffff;
+  --on-warning: #3a2600;
+  --shape-shadow: rgba(16, 24, 40, 0.08);
   --step-fill: #ffffff;
   --step-stroke: #cdd3dc;
   --sticky-fill: #fff3b0;
@@ -4150,6 +4173,9 @@ Expected: PASS.
     --warning: #ffb224;
     --question: #3bc0e0;
     --done: #3dd68c;
+    --on-color: #ffffff;
+    --on-warning: #1f1400;
+    --shape-shadow: rgba(0, 0, 0, 0.35);
     --step-fill: #1f242c;
     --step-stroke: #3a414c;
     --sticky-fill: #4a4220;
@@ -4197,6 +4223,9 @@ Expected: PASS.
   --warning: #ffb224;
   --question: #3bc0e0;
   --done: #3dd68c;
+  --on-color: #ffffff;
+  --on-warning: #1f1400;
+  --shape-shadow: rgba(0, 0, 0, 0.35);
   --step-fill: #1f242c;
   --step-stroke: #3a414c;
   --sticky-fill: #4a4220;
@@ -4443,6 +4472,11 @@ export async function boot(): Promise<void> {
   flowStore.getState().loadProject(project);
   remember(project);
   autosave = startAutosave(flowStore, saveProject);
+  window.addEventListener('beforeunload', (e) => {
+    if (flowStore.getState().saveStatus !== 'saving') return;
+    void autosave?.flush();
+    e.preventDefault();
+  });
   if (import.meta.env.DEV) window.__flowstate = flowStore;
 }
 
@@ -4754,7 +4788,7 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
     .filter(Boolean)
     .join(' ');
   return (
-    <div className={className} style={{ width: node.w, height: node.h }} data-testid={`node-${id}`}>
+    <div className={className} style={{ width: node.w, height: node.h }} data-testid={`node-${id}`} title={node.replaces ? `Replaces: ${node.replaces}` : undefined}>
       {editable && <NodeResizer isVisible={selected} minWidth={40} minHeight={32} onResizeStart={begin} onResizeEnd={commit} />}
       <ShapeSvg shape={node.shape} w={node.w} h={node.h} />
       {node.actor && (
@@ -4764,14 +4798,17 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
       )}
       <div className="fs-step-body">
         <StepTitle node={node} editable={editable} />
-        {(node.owner || node.durationMin !== null) && (
+        {node.note && <div className="fs-note">{node.note}</div>}
+        {(node.owner || node.durationMin !== null || critical) && (
           <div className="fs-step-meta">
             {node.owner && <span className="fs-owner">{node.owner}</span>}
-            {node.durationMin !== null && (
+            {node.durationMin !== null ? (
               <span>
                 <Clock size={10} />
                 {formatDuration(node.durationMin)}
               </span>
+            ) : (
+              critical && <span className="fs-no-duration">no duration</span>
             )}
           </div>
         )}
@@ -4892,7 +4929,7 @@ export function FlowEdge(props: EdgeProps<FlowEdgeType>) {
   position: absolute;
   inset: 0;
   overflow: visible;
-  filter: drop-shadow(0 1px 2px rgba(16, 24, 40, 0.08));
+  filter: drop-shadow(0 1px 2px var(--shape-shadow));
 }
 .fs-shape-body {
   fill: var(--step-fill);
@@ -4951,7 +4988,7 @@ export function FlowEdge(props: EdgeProps<FlowEdgeType>) {
 @keyframes fs-glow {
   0% { filter: drop-shadow(0 0 0 var(--accent)); }
   20% { filter: drop-shadow(0 0 10px var(--accent)); }
-  100% { filter: drop-shadow(0 1px 2px rgba(16, 24, 40, 0.08)); }
+  100% { filter: drop-shadow(0 1px 2px var(--shape-shadow)); }
 }
 .fs-step-body {
   position: relative;
@@ -4984,6 +5021,18 @@ export function FlowEdge(props: EdgeProps<FlowEdgeType>) {
   font-weight: 450;
   -webkit-line-clamp: 6;
 }
+.fs-note {
+  font-size: 11px;
+  color: var(--text-2);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.fs-no-duration {
+  color: var(--critical);
+}
 .fs-placeholder {
   color: var(--text-3);
   font-weight: 450;
@@ -5014,7 +5063,7 @@ export function FlowEdge(props: EdgeProps<FlowEdgeType>) {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  color: #fff;
+  color: var(--on-color);
   box-shadow: var(--shadow-sm);
 }
 .actor-person .fs-actor-chip { background: var(--person); }
@@ -5039,7 +5088,7 @@ export function FlowEdge(props: EdgeProps<FlowEdgeType>) {
   border-radius: 9px;
   font-size: 10.5px;
   font-weight: 650;
-  color: #fff;
+  color: var(--on-color);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5048,7 +5097,7 @@ export function FlowEdge(props: EdgeProps<FlowEdgeType>) {
   cursor: pointer;
 }
 .flag-blocker { background: var(--blocker); }
-.flag-warning { background: var(--warning); color: #3a2600; }
+.flag-warning { background: var(--warning); color: var(--on-warning); }
 .flag-question { background: var(--question); }
 .fs-status {
   position: absolute;
@@ -5211,7 +5260,7 @@ import {
   type ReactFlowInstance,
   type Viewport,
 } from '@xyflow/react';
-import { useCallback, useEffect, useMemo, useRef, type DragEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { criticalPath } from '../analysis/criticalPath';
 import { SHAPE_SIZE } from '../model/factory';
 import { SHAPES, SIDES, type Board, type Shape, type Side } from '../model/types';
@@ -5287,6 +5336,8 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const rf = useReactFlow<FlowNode, FlowEdgeType>();
   const nodeCache = useRef<RenderCache<FlowNode>>(new Map());
   const edgeCache = useRef<RenderCache<FlowEdgeType>>(new Map());
+  const measured = useRef(new Map<string, { width: number; height: number }>());
+  const [measureTick, setMeasureTick] = useState(0);
 
   const cp = useMemo(() => (showCritical && board ? criticalPath(board) : null), [showCritical, board]);
   const view = useMemo<FlowView>(
@@ -5303,7 +5354,8 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
     }),
     [selection, edgeSelection, cp, glow, editable, colors],
   );
-  const nodes = useMemo(() => (board ? toFlowNodes(board, view, nodeCache.current) : []), [board, view]);
+  // React Flow drops handle bounds for nodes without `measured`, which hides their edges for a frame on every change.
+  const nodes = useMemo(() => (board ? toFlowNodes(board, view, nodeCache.current, measured.current) : []), [board, view, measureTick]);
   const edges = useMemo(() => (board ? toFlowEdges(board, view, edgeCache.current) : []), [board, view]);
 
   useEffect(() => (editable ? setRevealer((ids) => revealIds(rf, ids)) : undefined), [rf, editable]);
@@ -5320,9 +5372,14 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       const positions: Record<string, { x: number; y: number }> = {};
       const sizes: Record<string, { width: number; height: number }> = {};
       let nextSelection: Set<string> | null = null;
+      let remeasured = false;
       for (const ch of changes) {
         if (ch.type === 'position' && ch.position && !ch.id.startsWith('lane:')) positions[ch.id] = ch.position;
-        else if (ch.type === 'dimensions' && ch.resizing && ch.dimensions) sizes[ch.id] = ch.dimensions;
+        else if (ch.type === 'dimensions' && ch.dimensions) {
+          measured.current.set(ch.id, { ...ch.dimensions });
+          remeasured = true;
+          if (ch.resizing) sizes[ch.id] = ch.dimensions;
+        }
         else if (ch.type === 'select' && !ch.id.startsWith('lane:')) {
           nextSelection ??= new Set(st.selection);
           if (ch.selected) nextSelection.add(ch.id);
@@ -5341,6 +5398,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
         );
       }
       if (nextSelection && editable) st.select([...nextSelection], st.edgeSelection);
+      if (remeasured) setMeasureTick((t) => t + 1);
     },
     [boardId, editable],
   );
@@ -5466,6 +5524,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       nodesConnectable={editable}
       elementsSelectable={editable}
       onlyRenderVisibleElements={!exporting}
+      disableKeyboardA11y
       className={editable ? 'fs-flow' : 'fs-flow is-reference'}
     >
       <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color={colors.dot} />
@@ -5664,7 +5723,7 @@ test('dragging a step is one undo entry', async ({ page, request }) => {
   const moved = (await board(page)).nodes[0];
   expect(moved.x).not.toBe(0);
   expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(1);
-  await page.keyboard.press('Control+z');
+  await page.evaluate(() => window.__flowstate!.getState().undo());
   expect((await board(page)).nodes[0]).toMatchObject({ x: 0, y: 0 });
 });
 
@@ -6188,7 +6247,11 @@ In `src/canvas/Canvas.tsx`:
 
 Append to `src/canvas/canvas.css`:
 ```css
+@keyframes fs-fade {
+  from { opacity: 0; transform: translateY(3px); }
+}
 .fs-toolbar {
+  animation: fs-fade 0.1s ease-out;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -6513,6 +6576,9 @@ test('delete with reconnect, undo, duplicate and select all', async ({ page, req
   expect(await links(page)).toEqual(['A>C']);
   await page.keyboard.press('Control+z');
   expect(await links(page)).toEqual(['A>B', 'B>C']);
+  await page.keyboard.press('Control+Shift+z');
+  expect(await links(page)).toEqual(['A>C']);
+  await page.keyboard.press('Control+z');
   await node(page, 's1').click();
   await page.keyboard.press('Control+d');
   expect((await board(page)).nodes.filter((n) => n.title === 'A')).toHaveLength(2);
@@ -6772,12 +6838,12 @@ test('boards: add and rename, reference view, delete and undo', async ({ page, r
     addStep(b, { title: 'Old step' });
   });
   await open(page, p);
-  await page.getByRole('button', { name: 'New board' }).click();
+  await page.getByRole('button', { name: 'New board', exact: true }).click();
   await page.getByLabel('Board name').fill('Future v1');
   await page.getByLabel('Board name').press('Enter');
   await expect(page.locator('.board-tab.is-active')).toHaveText('Future v1');
   await expect(page.locator('.fs-canvas-main .react-flow__node-step')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Board 1' }).click({ modifiers: ['Shift'] });
+  await page.getByRole('button', { name: 'Board 1', exact: true }).click({ modifiers: ['Shift'] });
   await expect(page.locator('.canvas-pane.is-reference .react-flow__node-step')).toHaveCount(1);
   await page.getByRole('button', { name: 'Close reference' }).click();
   await expect(page.locator('.canvas-pane.is-reference')).toHaveCount(0);
@@ -8400,6 +8466,7 @@ export const TOOL_SCHEMAS = {
         StepInput.extend({
           ref: z.string().optional().describe('Temporary handle so later steps in this call can refer to this one.'),
           after: z.string().optional().describe('Step id, or a ref from earlier in this call, to connect from.'),
+          group: z.string().optional().describe('Group id to place the step in.'),
           edge_type: z.enum(EDGE_TYPES).optional(),
           edge_label: z.string().optional(),
         }),
@@ -8647,7 +8714,7 @@ const handlers: { [N in ToolName]: Handler<N> } = {
       for (const step of input.steps) {
         const { fields, laneId } = toFields(b, step);
         const after = step.after ? (refs.get(step.after) ?? step.after) : undefined;
-        const id = addStep(b, { ...fields, after, laneId, edgeType: step.edge_type, edgeLabel: step.edge_label });
+        const id = addStep(b, { ...fields, after, laneId, groupId: step.group, edgeType: step.edge_type, edgeLabel: step.edge_label });
         if (after) arrows++;
         if (step.ref) refs.set(step.ref, id);
         created.push({ ...(step.ref ? { ref: step.ref } : {}), id, title: step.title });
@@ -9310,12 +9377,13 @@ Expected: FAIL, missing modules.
 `src/chat/sse.ts`:
 ```ts
 export async function* readSSE(body: ReadableStream<Uint8Array>): AsyncGenerator<{ event: string; data: string }> {
-  const reader = body.pipeThrough(new TextDecoderStream()).getReader();
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
   let buffer = '';
   for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
-    buffer += value;
+    buffer += decoder.decode(value, { stream: true });
     let end = buffer.indexOf('\n\n');
     while (end >= 0) {
       const raw = buffer.slice(0, end);
@@ -9449,6 +9517,7 @@ export async function runTurn(
       for await (const ev of readSSE(res.body)) {
         if (ev.event === 'text') callbacks.onText((JSON.parse(ev.data) as { delta: string }).delta);
         else if (ev.event === 'tool') {
+          if (signal.aborted) break;
           const block = JSON.parse(ev.data) as Anthropic.ToolUseBlock;
           const outcome = await deps.execute(block.name, block.input);
           outcomes.set(block.id, outcome);
@@ -9704,6 +9773,7 @@ export async function sendMessage(raw: string, mentions: Mention[]): Promise<voi
   const controller = new AbortController();
   const assistantId = chat.startAssistant(controller);
   const ctx = storeToolContext(flowStore, (boardId) => tidyBoard(flowStore, boardId));
+  const projectId = flow.project.id;
 
   flowStore.getState().begin();
   let result: TurnResult;
@@ -9712,6 +9782,7 @@ export async function sendMessage(raw: string, mentions: Mention[]): Promise<voi
       {
         post: (body, signal) => fetch('/api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal }),
         execute: async (name, input) => {
+          if (flowStore.getState().project.id !== projectId) return { ok: false, content: 'Not applied: the project was closed.', touched: [], stats: {} };
           const outcome = await executeTool(ctx, name, input);
           flowStore.getState().markGlow(outcome.touched);
           reveal(outcome.touched);
@@ -9738,7 +9809,7 @@ export async function sendMessage(raw: string, mentions: Mention[]): Promise<voi
 `src/chat/Composer.tsx`:
 ```tsx
 import { Send, Square } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { BoardNode } from '../model/types';
 import { selectActiveBoard, useFlow } from '../store/store';
 import { useChat } from './chatStore';
@@ -9757,7 +9828,14 @@ export function Composer() {
   const [query, setQuery] = useState<{ start: number; term: string } | null>(null);
   const [active, setActive] = useState(0);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const pendingCaret = useRef<number | null>(null);
   const setText = (value: string) => useChat.getState().setDraft(value);
+
+  useLayoutEffect(() => {
+    if (pendingCaret.current === null || !ref.current) return;
+    ref.current.setSelectionRange(pendingCaret.current, pendingCaret.current);
+    pendingCaret.current = null;
+  }, [text]);
 
   const options = useMemo(() => {
     if (!query) return [];
@@ -9775,14 +9853,11 @@ export function Composer() {
     const el = ref.current;
     if (!query || !el) return;
     const insert = `@${node.title} `;
+    pendingCaret.current = query.start + insert.length;
     setText(text.slice(0, query.start) + insert + text.slice(el.selectionStart));
     setMentions((ms) => [...ms.filter((m) => m.label !== node.title), { label: node.title, id: node.id }]);
-    const caret = query.start + insert.length;
     setQuery(null);
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(caret, caret);
-    });
+    el.focus();
   };
 
   const submit = () => {
@@ -10397,6 +10472,8 @@ The server only proxies `messages.stream` over SSE and holds the key. The browse
 
 ## Consequences
 One source of truth and no state sync. The server forwards a tool call only once the next block starts or the message ends with `tool_use`, so a call cut off by `max_tokens` is never applied. Moving to a hosted, multi-user setup later means adding auth in front of `/api/chat` and moving storage, not moving the loop.
+
+Known limit: `begin`/`commit` is a shared depth counter, so a canvas drag that straddles the end of an AI turn, or Ctrl+Z pressed mid-turn, splits or merges the turn's undo entry and the chat Undo button does not appear. Token-owned transactions would fix this if it matters in practice.
 ```
 
 `docs/adr/0003-local-placement-with-elk-tidy.md`:
