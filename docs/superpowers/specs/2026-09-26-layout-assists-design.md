@@ -31,7 +31,7 @@ A new UI-free module `src/canvas/assist/` exports `snap(moving, others, settings
 - **Smart guides:** left, centre and right edges (x) and top, middle and bottom edges (y) of the moving box against the same lines on candidate nodes. Lane boundaries are also candidate lines. Arrows are never candidates.
 - **Equal spacing:** when the gap between the moving box and a neighbour in the same row or column equals an existing gap between two other nodes in that row or column, snap to it.
 - **Grid:** 20px, snapping the moving box's top-left corner.
-- **Candidates:** computed once at drag start. They are nodes overlapping the viewport, capped at the 200 nearest to the moving box, with their guide lines and row/column gaps precomputed.
+- **Candidates:** computed once at drag start. They are nodes overlapping the viewport, capped at the 200 nearest to the moving box. Guide lines and gaps are recomputed per move from that capped set, which is cheap.
   - Excluded: the dragged nodes, members of a dragged group, and the dragged node's own group (its frame refits around it, so snapping to it is circular).
   - During a Ctrl+drag copy, the originals' start positions are candidates.
   - Box sizes use React Flow's measured sizes, so auto-sized text nodes are correct.
@@ -136,7 +136,7 @@ A `layoutPrefs` zustand store, persisted to localStorage (per user, not per proj
 | Arrange ▸ Bring forward | selection | Ctrl+] |
 | Arrange ▸ Send backward | selection | Ctrl+[ |
 | Arrange ▸ Send to back | selection | Ctrl+Shift+[ |
-| Colour ▸ 6 presets, Default, Custom… | steps or text | |
+| Colour ▸ 6 presets, Default, Custom… | steps (text nodes have no fill) | |
 
 - **Align** uses the selection's bounding box.
 - **Distribute** keeps the two outermost nodes fixed and equalises gaps.
@@ -155,7 +155,7 @@ These are pure board operations run through `changeBoard`, so each is one undo s
 - `distributeNodes(b, ids, axis)`
 - `matchSize(b, ids, referenceId, dims)`
 - `reorder(b, ids, 'front' | 'forward' | 'backward' | 'back')`
-- `setColor(b, ids, color)`
+- Colour is set through the existing `updateSteps(b, [{ id, color }])`, with validation in `cleanFields`, so the UI and the AI share one check.
 
 **Rules:**
 - Moving a group moves its members (`withGroupMembers`). Moving a member refits its group (`setPositions`).
@@ -164,7 +164,7 @@ These are pure board operations run through `changeBoard`, so each is one undo s
   - The floating toolbar is a `NodeToolbar` portal, so it stays on top.
   - A selected node's resize handles can be covered by an overlapping node above it, as in PowerPoint.
 - Position decides lane membership (`syncLane`), so aligning steps from different lanes on the lane axis moves them into one lane. This is consistent with dragging, and one undo reverts it.
-- `setColor` accepts a preset name, `#rrggbb`, or null. Anything else throws a validation error. The file schema already stores `color` as a nullable string, so no migration is needed.
+- A colour is a preset name, `#rrggbb`, or null. Anything else throws a validation error. The file schema already stores `color` as a nullable string, so no migration is needed.
 
 **Rendering a hex colour:** apply the colour as an inline fill on `.fs-shape-body`. Choose dark or light text by relative luminance (WCAG contrast against the text tokens). Preset tints keep their theme-aware classes.
 
