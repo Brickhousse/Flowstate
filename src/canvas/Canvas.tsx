@@ -288,6 +288,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       maxZoom={4}
       panOnDrag={[1, 2]}
       selectionOnDrag={editable}
+      selectionKeyCode={null}
       selectionMode={SelectionMode.Partial}
       panActivationKeyCode="Space"
       zoomOnDoubleClick={false}

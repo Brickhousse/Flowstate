@@ -9,3 +9,4 @@
 | [0005](0005-undo-ignored-during-open-transactions.md) | Undo and redo are ignored while a transaction is open | Accepted |
 | [0006](0006-full-schema-validation-of-project-files.md) | Validate project files against a full schema on load and save | Accepted |
 | [0007](0007-pin-ai-turn-to-its-board.md) | Pin each AI turn to the board it was sent from | Accepted |
+| [0008](0008-shift-is-not-the-marquee-key.md) | Shift is the multi-select and axis-lock key, not the marquee key | Accepted |
