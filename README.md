@@ -24,6 +24,7 @@ The local API only answers pages served from localhost (ADR 0004), so other webs
 - Ctrl+Z is ignored while you are dragging or while the assistant is replying (ADR 0005).
 - Every chat message resends the whole board, so long chats cost more. "New chat" resets the history.
 - Two tabs open on the same project overwrite each other's edits.
+- Steps resize from their corners only; the middle of each edge holds the + button.
 
 ## Keys
 
@@ -42,6 +43,8 @@ The local API only answers pages served from localhost (ADR 0004), so other webs
 | Delete, Shift+Delete | Delete, or delete and reconnect around it |
 | Ctrl+Z, Ctrl+Shift+Z | Undo, redo (a whole assistant turn is one undo) |
 | Ctrl+C, Ctrl+V, Ctrl+D, Ctrl+A | Copy, paste, duplicate, select all |
+| Shift+drag, Alt+drag | Move in a straight line, or move without snapping |
+| Ctrl+' | Snap to grid on or off (the Layout menu switches each assist) |
 | Shift+1 | Fit the board |
 | Space+drag, middle or right drag | Pan |
 | Ctrl+K, Ctrl+/ | Focus the assistant, show or hide it |

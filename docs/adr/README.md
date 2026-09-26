@@ -10,3 +10,5 @@
 | [0006](0006-full-schema-validation-of-project-files.md) | Validate project files against a full schema on load and save | Accepted |
 | [0007](0007-pin-ai-turn-to-its-board.md) | Pin each AI turn to the board it was sent from | Accepted |
 | [0008](0008-shift-is-not-the-marquee-key.md) | Shift is the multi-select and axis-lock key, not the marquee key | Accepted |
+| [0009](0009-snap-by-rewriting-node-changes.md) | Snapping rewrites React Flow's node changes instead of using its snapToGrid | Accepted |
+| [0010](0010-layout-prefs-per-user.md) | Layout assist switches are per-user browser prefs, not project data | Accepted |
