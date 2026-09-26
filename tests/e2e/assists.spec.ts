@@ -12,17 +12,6 @@ async function resetZoom(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Reset zoom to 100%' }).click();
 }
 
-async function drag(page: Page, id: string, dx: number, dy: number, opts: { keys?: string[]; during?: () => Promise<void> } = {}): Promise<void> {
-  const c = await centerOf(node(page, id));
-  await page.mouse.move(c.x, c.y);
-  for (const k of opts.keys ?? []) await page.keyboard.down(k);
-  await page.mouse.down();
-  await page.mouse.move(c.x + dx, c.y + dy, { steps: 10 });
-  if (opts.during) await opts.during();
-  await page.mouse.up();
-  for (const k of [...(opts.keys ?? [])].reverse()) await page.keyboard.up(k);
-}
-
 async function node0(page: Page, id: string) {
   const b = await board(page);
   const n = b.nodes.find((x) => x.id === id);
