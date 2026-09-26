@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { addStep } from '../../src/ops/steps';
+import { addText } from '../../src/ops/text';
 import { board, node, open, seed } from './fixtures';
 
 test.use({ viewport: { width: 1600, height: 900 } });
@@ -252,4 +253,39 @@ test('resizing snaps the dragged edge unless resize snap is off', async ({ page,
   await page.mouse.move(edge2.x + 7, edge2.y, { steps: 4 });
   await page.mouse.up();
   expect(await node0(page, 's1')).toMatchObject({ x: 0, w: 207 });
+});
+
+async function resizeBy(page: Page, control: Locator, dx: number, dy: number): Promise<void> {
+  const c = await centerOf(control);
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.move(c.x + dx, c.y + dy, { steps: 8 });
+  await page.mouse.up();
+}
+
+test('widening text that overflows its height leaves the height alone', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const id = addText(b, { text: 'A long note that wraps over several lines of text', x: 0, y: 0 });
+    const t = b.nodes.find((n) => n.id === id);
+    if (t) t.w = 100;
+  });
+  await open(page, p);
+  await resetZoom(page);
+  const before = await node0(page, 't1');
+  expect((await boxOf(node(page, 't1'))).height).toBeGreaterThan(before.h + 20);
+  await node(page, 't1').click();
+  await resizeBy(page, node(page, 't1').locator('.react-flow__resize-control.line.right'), 27, 0);
+  expect(await node0(page, 't1')).toMatchObject({ x: 0, y: 0, w: 120, h: before.h });
+});
+
+test('a left-edge resize snaps the left edge and keeps the right edge fixed', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await node(page, 's1').click();
+  await resizeBy(page, node(page, 's1').locator('.react-flow__resize-control.handle.bottom.left'), -27, 0);
+  expect(await node0(page, 's1')).toMatchObject({ x: -20, y: 0, w: 200, h: 72 });
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(1);
 });
