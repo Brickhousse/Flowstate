@@ -71,6 +71,16 @@ function revealIds(rf: ReactFlowInstance<FlowNode, FlowEdgeType>, ids: string[])
   rf.setCenter(first.position.x + (first.width ?? 0) / 2, first.position.y + (first.height ?? 0) / 2, { zoom, duration: 400 });
 }
 
+// Undo React Flow's drag-start multi-select toggle in its own lookup as well as our store; see ADR 0008.
+function keepSelected(rf: ReactFlowInstance<FlowNode, FlowEdgeType>, ids: string[]): void {
+  for (const id of ids) {
+    const n = rf.getInternalNode(id);
+    if (n) n.selected = true;
+  }
+  const st = flowStore.getState();
+  st.select(ids, st.edgeSelection);
+}
+
 function endDrag(dragging: { current: string[] | null }): void {
   if (!dragging.current) return;
   dragging.current = null;
@@ -270,10 +280,12 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       onConnectStart={() => setConnecting(true)}
       onConnectEnd={onConnectEnd}
       connectionRadius={20}
-      onNodeDragStart={(_, node, dragged) => {
+      onNodeDragStart={(event, node, dragged) => {
         dragging.current = [node.id];
         flowStore.getState().begin();
-        assist.start(dragged.map((n) => n.id));
+        const ids = dragged.map((n) => n.id);
+        if (event.shiftKey) keepSelected(rf, ids);
+        assist.start(ids);
       }}
       onSelectionDragStart={(_, dragged) => {
         dragging.current = dragged.map((n) => n.id);

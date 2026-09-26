@@ -10,6 +10,8 @@ async function centerOf(locator: Locator): Promise<{ x: number; y: number }> {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
+const selection = (page: Page) => page.evaluate(() => [...window.__flowstate!.getState().selection].sort());
+
 async function resetZoom(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Reset zoom to 100%' }).click();
 }
@@ -147,4 +149,46 @@ test('turning grid snap off lands the drag where it was dropped', async ({ page,
   await page.keyboard.press('Escape');
   await drag(page, 's1', 113, 47);
   expect(await node0(page, 's1')).toMatchObject({ x: 113, y: 47 });
+});
+
+test('a Shift+drag keeps the pressed node selected', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 400, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await node(page, 's1').click();
+  await drag(page, 's1', 100, 0, { keys: ['Shift'] });
+  expect(await selection(page)).toEqual(['s1']);
+  await node(page, 's2').click({ modifiers: ['Shift'] });
+  await drag(page, 's1', 0, 100, { keys: ['Shift'] });
+  expect(await selection(page)).toEqual(['s1', 's2']);
+  await expect(page.locator('.react-flow__node.selected')).toHaveCount(2);
+  expect(await node0(page, 's1')).toMatchObject({ x: 100, y: 100 });
+  expect(await node0(page, 's2')).toMatchObject({ x: 400, y: 100 });
+});
+
+test('a Shift+drag that ends before moving still lets the next drag replace the selection', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 400, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await node(page, 's1').click();
+  const c = await centerOf(node(page, 's1'));
+  await page.keyboard.down('Shift');
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.move(c.x + 2, c.y);
+  await page.mouse.up();
+  await page.keyboard.up('Shift');
+  expect(await selection(page)).toEqual(['s1']);
+  await expect(page.locator('.react-flow__node.selected')).toHaveCount(1);
+  await drag(page, 's2', 100, 0);
+  expect(await selection(page)).toEqual(['s2']);
+  await expect(page.locator('.react-flow__node.selected')).toHaveCount(1);
+  expect(await node0(page, 's1')).toMatchObject({ x: 0, y: 0 });
+  expect(await node0(page, 's2')).toMatchObject({ x: 500, y: 0 });
 });

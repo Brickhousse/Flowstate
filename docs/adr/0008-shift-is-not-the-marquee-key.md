@@ -13,4 +13,6 @@ Rejected:
 - Moving multi-select to Control: Ctrl+drag is reserved for copy by the same spec.
 
 ## Consequences
+React Flow's multi-select toggle also runs at drag start (`handleNodeClick` from `XYDrag.startDrag`), so a Shift+drag on a selected node would drop it from the selection while the rest still moved. `onNodeDragStart` re-selects the dragged nodes when Shift is held and restores the `selected` flag that `unselectNodesAndEdges` clears on React Flow's internal node; without that second step React Flow keeps the node unselected until a position change rebuilds it, and a Shift+drag that crosses the drag threshold without moving further leaves the two stores disagreeing.
+
 Shift+left drag on the empty canvas behaves exactly like a plain left drag (marquee). The distinct "hold Shift to select" mode React Flow offers is gone, which matters only for setups that pan on a plain left drag; this canvas pans on middle and right drag. A future maintainer who restores React Flow's default `selectionKeyCode` will silently break Shift+drag on nodes again; the Shift case in `tests/e2e/assists.spec.ts` guards it.
