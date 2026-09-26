@@ -17,6 +17,14 @@ Projects are saved as JSON files in `workspace/`.
 
 Nothing leaves your machine until you send a chat message. Each message sends the current board's structure and text (steps, arrows, lanes, flags, notes) to Anthropic's API and is billed to your key. Sonnet 5 is the default; Opus 5.5 costs about twice as much per token.
 
+The local API only answers pages served from localhost (ADR 0004), so other websites cannot use your key or read your projects.
+
+## Known limits
+
+- Ctrl+Z is ignored while you are dragging or while the assistant is replying (ADR 0005).
+- Every chat message resends the whole board, so long chats cost more. "New chat" resets the history.
+- Two tabs open on the same project overwrite each other's edits.
+
 ## Keys
 
 | Key | Action |
