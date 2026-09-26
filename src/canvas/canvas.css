@@ -215,9 +215,17 @@
   border: 1.5px solid var(--accent);
   opacity: 0;
   transition: opacity 0.12s;
+  z-index: 3;
+}
+.fs-handle::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
 }
 .fs-step:hover .fs-handle,
-.fs-step.is-selected .fs-handle {
+.fs-step.is-selected .fs-handle,
+.fs-flow.is-connecting .fs-handle {
   opacity: 1;
 }
 .fs-textnode {

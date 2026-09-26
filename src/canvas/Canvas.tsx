@@ -89,6 +89,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const edgeCache = useRef<RenderCache<FlowEdgeType>>(new Map());
   const measured = useRef(new Map<string, { width: number; height: number }>());
   const [measureTick, setMeasureTick] = useState(0);
+  const [connecting, setConnecting] = useState(false);
   // Ids whose disappearance ends the drag: React Flow never fires onNodeDragStop once the grabbed node unmounts.
   const dragging = useRef<string[] | null>(null);
 
@@ -188,6 +189,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
 
   const onConnectEnd: OnConnectEnd = useCallback(
     (event, state) => {
+      setConnecting(false);
       if (state.isValid || !state.fromNode || !editable) return;
       const point = 'changedTouches' in event ? event.changedTouches[0] : event;
       const pos = rf.screenToFlowPosition({ x: point.clientX, y: point.clientY });
@@ -251,7 +253,9 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
       onConnect={onConnect}
+      onConnectStart={() => setConnecting(true)}
       onConnectEnd={onConnectEnd}
+      connectionRadius={20}
       onNodeDragStart={(_, node) => {
         dragging.current = [node.id];
         flowStore.getState().begin();
@@ -294,7 +298,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       elementsSelectable={editable}
       onlyRenderVisibleElements={!exporting}
       disableKeyboardA11y
-      className={editable ? 'fs-flow' : 'fs-flow is-reference'}
+      className={['fs-flow', !editable && 'is-reference', connecting && 'is-connecting'].filter(Boolean).join(' ')}
     >
       <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color={colors.dot} />
       {editable && (
