@@ -53,6 +53,9 @@ async function node0(page: Page, id: string) {
   return n;
 }
 
+// The step's shape paints over its 1px edge resize lines, so resize from the corner and move only sideways.
+const cornerOf = (page: Page, id: string) => centerOf(node(page, id).locator('.react-flow__resize-control.handle.bottom.right'));
+
 test('a plain drag from one dot to another connects those sides', async ({ page, request }) => {
   const p = await seed(request, (b) => {
     addStep(b, { title: 'Collect the signed approval from finance', x: 0, y: 0 });
@@ -222,4 +225,31 @@ test('dragging a marquee selection by its rectangle snaps and is one undo entry'
   expect(await node0(page, 's1')).toMatchObject({ x: 120, y: 40 });
   expect(await node0(page, 's2')).toMatchObject({ x: 420, y: 40 });
   expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(1);
+});
+
+test('resizing snaps the dragged edge unless resize snap is off', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await node(page, 's1').click();
+  const edge = await cornerOf(page, 's1');
+  await page.mouse.move(edge.x, edge.y);
+  await page.mouse.down();
+  await page.mouse.move(edge.x + 27, edge.y, { steps: 8 });
+  await page.mouse.up();
+  expect(await node0(page, 's1')).toMatchObject({ x: 0, w: 200 });
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(1);
+
+  await page.getByRole('button', { name: 'Layout assists' }).click();
+  await page.getByRole('menuitemcheckbox', { name: 'Snap while resizing' }).click();
+  await page.keyboard.press('Escape');
+  await node(page, 's1').click();
+  const edge2 = await cornerOf(page, 's1');
+  await page.mouse.move(edge2.x, edge2.y);
+  await page.mouse.down();
+  await page.mouse.move(edge2.x + 7, edge2.y, { steps: 4 });
+  await page.mouse.up();
+  expect(await node0(page, 's1')).toMatchObject({ x: 0, w: 207 });
 });

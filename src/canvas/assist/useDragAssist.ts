@@ -7,7 +7,7 @@ import { flowStore } from '../../store/store';
 import { buildCandidates, rectOf, type SizeOf } from './candidates';
 import { mods, watchModifiers } from './modifiers';
 import { assistOverlay, clearOverlay } from './overlay';
-import { lockAxis, snapMove, type Axis, type Candidates } from './snap';
+import { lockAxis, RESIZE_MIN, snapMove, snapResize, type Axis, type Candidates } from './snap';
 
 export type XY = { x: number; y: number };
 export type Size = { width: number; height: number };
@@ -25,6 +25,7 @@ export interface DragAssist {
   active(): boolean;
   start(ids: string[]): void;
   adjustMove(positions: Record<string, XY>): void;
+  adjustResize(positions: Record<string, XY>, sizes: Record<string, Size>): void;
   finish(): void;
 }
 
@@ -85,6 +86,30 @@ export function useDragAssist(boardId: string, editable: boolean, measured: Read
           if (p && positions[id]) positions[id] = { x: p.x + s.delta.x, y: p.y + s.delta.y };
         }
         assistOverlay.setState({ guides: snap.guides, ghosts: mods.ctrl ? s.ghosts : [] });
+      },
+      adjustResize(positions, sizes) {
+        const prefs = layoutPrefs.getState().prefs;
+        const b = boardOf();
+        if (!b || !editable || !prefs.resizeSnap) return;
+        const { rect: viewRect, zoom } = view();
+        const moved = (a: number, c: number) => Math.abs(a - c) > 0.01;
+        for (const [id, d] of Object.entries(sizes)) {
+          const n = b.nodes.find((x) => x.id === id);
+          if (!n) continue;
+          const pos = positions[id] ?? { x: n.x, y: n.y };
+          const raw = { x: pos.x, y: pos.y, w: d.width, h: d.height };
+          // The board holds last frame's snapped rect, so an edge that differs from it is the one being dragged.
+          const edges = {
+            left: moved(raw.x, n.x),
+            top: moved(raw.y, n.y),
+            right: moved(raw.x + raw.w, n.x + n.w),
+            bottom: moved(raw.y + raw.h, n.y + n.h),
+          };
+          const out = snapResize(raw, edges, buildCandidates(b, [id], raw, viewRect, sizeOf), prefs, zoom, mods.alt, RESIZE_MIN[n.kind]);
+          if (positions[id] || out.rect.x !== raw.x || out.rect.y !== raw.y) positions[id] = { x: out.rect.x, y: out.rect.y };
+          sizes[id] = { width: out.rect.w, height: out.rect.h };
+          assistOverlay.setState({ guides: out.guides });
+        }
       },
       finish() {
         session.current = null;

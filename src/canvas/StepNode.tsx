@@ -5,6 +5,8 @@ import { formatDuration } from '../model/duration';
 import type { Side } from '../model/types';
 import { flowStore, useFlow } from '../store/store';
 import { AddHandles } from './AddHandles';
+import { endResize } from './assist/overlay';
+import { RESIZE_MIN } from './assist/snap';
 import { FlagBadges } from './FlagBadges';
 import { FloatingToolbar } from './FloatingToolbar';
 import { ACTOR_LABEL, ActorIcon } from './labels';
@@ -20,7 +22,6 @@ const HANDLES: Array<[Side, Position]> = [
 ];
 
 const begin = () => flowStore.getState().begin();
-const commit = () => flowStore.getState().commit();
 
 export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps<StepFlowNode>) {
   const editing = useFlow((s) => s.editingId === id);
@@ -39,7 +40,7 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
     .join(' ');
   return (
     <div className={className} style={{ width: node.w, height: node.h }} data-testid={`node-${id}`} title={node.replaces ? `Replaces: ${node.replaces}` : undefined}>
-      {editable && <NodeResizer isVisible={selected} minWidth={40} minHeight={32} onResizeStart={begin} onResizeEnd={commit} />}
+      {editable && <NodeResizer isVisible={selected} minWidth={RESIZE_MIN.step.w} minHeight={RESIZE_MIN.step.h} onResizeStart={begin} onResizeEnd={endResize} />}
       {editable && selected && <FloatingToolbar node={node} />}
       <ShapeSvg shape={node.shape} w={node.w} h={node.h} />
       {node.actor && (
