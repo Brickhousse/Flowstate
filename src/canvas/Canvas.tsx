@@ -20,6 +20,8 @@ import { SHAPES, SIDES, type Shape, type Side } from '../model/types';
 import { connect } from '../ops/edges';
 import { addStep, resizeNode, setPositions, withGroupMembers } from '../ops/steps';
 import { flowStore, useFlow } from '../store/store';
+import { GuidesOverlay } from './assist/GuidesOverlay';
+import { useDragAssist } from './assist/useDragAssist';
 import { cursor } from './cursor';
 import { FlowEdge } from './FlowEdge';
 import { requestFocus } from './focusKey';
@@ -88,6 +90,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const nodeCache = useRef<RenderCache<FlowNode>>(new Map());
   const edgeCache = useRef<RenderCache<FlowEdgeType>>(new Map());
   const measured = useRef(new Map<string, { width: number; height: number }>());
+  const assist = useDragAssist(boardId, editable, measured.current);
   const [measureTick, setMeasureTick] = useState(0);
   const [connecting, setConnecting] = useState(false);
   // Ids whose disappearance ends the drag: React Flow never fires onNodeDragStop once the grabbed node unmounts.
@@ -113,11 +116,20 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const edges = useMemo(() => (board ? toFlowEdges(board, view, edgeCache.current) : []), [board, view]);
 
   useEffect(() => (editable ? setRevealer((ids) => revealIds(rf, ids)) : undefined), [rf, editable]);
-  useEffect(() => () => endDrag(dragging), []);
+  useEffect(
+    () => () => {
+      assist.finish();
+      endDrag(dragging);
+    },
+    [assist],
+  );
   useEffect(() => {
     const watched = dragging.current;
-    if (watched && !watched.some((id) => board?.nodes.some((n) => n.id === id))) endDrag(dragging);
-  }, [board]);
+    if (watched && !watched.some((id) => board?.nodes.some((n) => n.id === id))) {
+      assist.finish();
+      endDrag(dragging);
+    }
+  }, [board, assist]);
 
   const startEditing = useCallback((id: string) => {
     const st = flowStore.getState();
@@ -145,6 +157,8 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
           else nextSelection.delete(ch.id);
         }
       }
+      // React Flow's drag-end change carries its own unsnapped positions, so every change in a drag is snapped.
+      if (editable && Object.keys(positions).length && assist.active()) assist.adjustMove(positions);
       if (editable && (Object.keys(positions).length || Object.keys(sizes).length)) {
         runSafely(() =>
           st.changeBoard((b) => {
@@ -159,7 +173,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       if (nextSelection && editable) st.select([...nextSelection], st.edgeSelection);
       if (remeasured) setMeasureTick((t) => t + 1);
     },
-    [boardId, editable],
+    [boardId, editable, assist],
   );
 
   const onEdgesChange = useCallback(
@@ -256,14 +270,18 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       onConnectStart={() => setConnecting(true)}
       onConnectEnd={onConnectEnd}
       connectionRadius={20}
-      onNodeDragStart={(_, node) => {
+      onNodeDragStart={(_, node, dragged) => {
         dragging.current = [node.id];
         flowStore.getState().begin();
+        assist.start(dragged.map((n) => n.id));
       }}
       onSelectionDragStart={(_, dragged) => {
         dragging.current = dragged.map((n) => n.id);
       }}
-      onNodeDragStop={() => endDrag(dragging)}
+      onNodeDragStop={() => {
+        assist.finish();
+        endDrag(dragging);
+      }}
       onNodeDoubleClick={(_, node) => editable && node.type !== 'lane' && startEditing(node.id)}
       onEdgeDoubleClick={(_, edge) => {
         if (!editable) return;
@@ -301,6 +319,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       disableKeyboardA11y
       className={['fs-flow', !editable && 'is-reference', connecting && 'is-connecting'].filter(Boolean).join(' ')}
     >
+      {editable && <GuidesOverlay />}
       <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color={colors.dot} />
       {editable && (
         <MiniMap

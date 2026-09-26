@@ -2,6 +2,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { addStep } from '../../src/ops/steps';
 import { board, node, open, seed } from './fixtures';
 
+test.use({ viewport: { width: 1600, height: 900 } });
+
 async function centerOf(locator: Locator): Promise<{ x: number; y: number }> {
   const box = await locator.boundingBox();
   if (!box) throw new Error('element has no box');
@@ -10,6 +12,19 @@ async function centerOf(locator: Locator): Promise<{ x: number; y: number }> {
 
 async function resetZoom(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Reset zoom to 100%' }).click();
+}
+
+async function drag(page: Page, id: string, dx: number, dy: number, opts: { keys?: string[]; during?: () => Promise<void> } = {}): Promise<void> {
+  const c = await centerOf(node(page, id));
+  await page.mouse.move(c.x, c.y);
+  for (const k of opts.keys ?? []) await page.keyboard.down(k);
+  await page.mouse.down();
+  // React Flow starts the drag on the first move past its 1px threshold and measures from there, not from the press.
+  await page.mouse.move(c.x + 2, c.y);
+  await page.mouse.move(c.x + 2 + dx, c.y + dy, { steps: 10 });
+  if (opts.during) await opts.during();
+  await page.mouse.up();
+  for (const k of [...(opts.keys ?? [])].reverse()) await page.keyboard.up(k);
 }
 
 async function node0(page: Page, id: string) {
@@ -62,4 +77,74 @@ test('layout switches persist across a reload', async ({ page, request }) => {
   await page.keyboard.press('Control+Quote');
   await page.getByRole('button', { name: 'Layout assists' }).click();
   await expect(page.getByRole('menuitemcheckbox', { name: 'Snap to grid' })).toHaveAttribute('aria-checked', 'true');
+});
+
+test('dragging snaps to the grid', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await drag(page, 's1', 113, 47);
+  expect(await node0(page, 's1')).toMatchObject({ x: 120, y: 40 });
+});
+
+test('a smart guide beats the grid and shows only while dragging', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 400, y: 203 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await drag(page, 's2', 0, -200, {
+    during: async () => {
+      // Playwright calls a horizontal SVG line hidden (0px bounding height), so check the overlay and attachment.
+      await expect(page.locator('.fs-guides')).toBeVisible();
+      await expect(page.locator('.fs-guide').first()).toBeAttached();
+    },
+  });
+  expect(await node0(page, 's2')).toMatchObject({ x: 400, y: 0 });
+  await expect(page.locator('.fs-guide')).toHaveCount(0);
+});
+
+test('an equal gap snaps and shows a spacing mark', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 200, y: 0 });
+    addStep(b, { title: 'C', x: 503, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await drag(page, 's3', -100, 0, {
+    during: async () => {
+      await expect(page.locator('.fs-gap').first()).toBeVisible();
+    },
+  });
+  expect(await node0(page, 's3')).toMatchObject({ x: 400, y: 0 });
+});
+
+test('Alt suspends snapping and Shift locks the axis', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 405, y: 203 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await drag(page, 's2', 0, -200, { keys: ['Alt'] });
+  expect(await node0(page, 's2')).toMatchObject({ x: 405, y: 3 });
+  await drag(page, 's2', 150, 12, { keys: ['Shift'] });
+  expect(await node0(page, 's2')).toMatchObject({ x: 560, y: 3 });
+});
+
+test('turning grid snap off lands the drag where it was dropped', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await page.getByRole('button', { name: 'Layout assists' }).click();
+  await page.getByRole('menuitemcheckbox', { name: 'Snap to grid' }).click();
+  await page.keyboard.press('Escape');
+  await drag(page, 's1', 113, 47);
+  expect(await node0(page, 's1')).toMatchObject({ x: 113, y: 47 });
 });
