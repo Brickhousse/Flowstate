@@ -31,17 +31,31 @@ A new UI-free module `src/canvas/assist/` exports `snap(moving, others, settings
 - **Smart guides:** left, centre and right edges (x) and top, middle and bottom edges (y) of the moving box against the same lines on candidate nodes. Lane boundaries are also candidate lines. Arrows are never candidates.
 - **Equal spacing:** when the gap between the moving box and a neighbour in the same row or column equals an existing gap between two other nodes in that row or column, snap to it.
 - **Grid:** 20px, snapping the moving box's top-left corner.
-- **Candidates:** nodes overlapping the viewport, capped at the 200 nearest to the moving box. Lanes are never moved by snapping.
+- **Candidates:** computed once at drag start. They are nodes overlapping the viewport, capped at the 200 nearest to the moving box, with their guide lines and row/column gaps precomputed.
+  - Excluded: the dragged nodes, members of a dragged group, and the dragged node's own group (its frame refits around it, so snapping to it is circular).
+  - During a Ctrl+drag copy, the originals' start positions are candidates.
+  - Box sizes use React Flow's measured sizes, so auto-sized text nodes are correct.
 
 **Rendering:** guides draw in a `ViewportPortal` overlay as 1px accent lines spanning the matched nodes. Equal-spacing matches draw small measured brackets on each equal gap. The overlay clears on drop.
 
-**Integration:** `Canvas.onNodesChange` receives drag position changes (`dragging: true`), computes the raw delta of the dragged set, calls `snap`, and applies the snapped delta to every dragged node before `setPositions`. Resize changes (`resizing: true`) snap only the edge being dragged, to the grid and to other nodes' edges, when resize snap is on.
+**Integration:**
+- At drag start, record each dragged node's start position.
+- On every position change during an active pointer drag, `Canvas.onNodesChange`:
+  1. Takes the raw delta (reference node's position minus its start).
+  2. Calls `snap`.
+  3. Applies the snapped delta to every dragged node before `setPositions`.
+- The final change must be snapped too. React Flow's drag-end change (`dragging: false`) carries its own unsnapped positions (`XYDrag` `updateNodePositions(dragItems, false)`), and handling only `dragging: true` would undo the snap on drop. It uses the last known modifier state.
+- **Resize** (`resizing: true`), when resize snap is on: infer the moving edges from which of x, y, w and h changed, then snap only those edges to the grid and to other nodes' edges. This also applies to the final resize change.
 
 **Modifiers,** read live from the drag's pointer events:
 - **Shift:** lock movement to the axis with the larger total displacement since drag start.
+  - Shift is also React Flow's multi-select key, so Shift+drag on an unselected node adds it to the selection and drags the whole selection. This matches PowerPoint.
 - **Alt:** suspend all snapping while held.
+  - On Windows, releasing Alt focuses the browser menu, which would swallow the next shortcut. Call `preventDefault` on that Alt keyup when the Alt press happened during a drag.
 
 **Never snapped:** AI edits, Tidy, paste, keyboard-created steps and imports. Only pointer drags and resizes snap.
+
+**Reference view** (`editable: false`) gets no snapping, guides, context menu or shortcuts.
 
 ## 3. Layout preferences
 
@@ -58,7 +72,7 @@ A `layoutPrefs` zustand store, persisted to localStorage (per user, not per proj
 - Storage reads and writes are wrapped so a blocked or corrupt store falls back to the defaults.
 - A "Layout" dropdown in `TopBar` holds one switch per pref.
 - The pane context menu repeats them as checkmark items.
-- Ctrl+' toggles `gridSnap`.
+- Ctrl+' toggles `gridSnap`, matched on `e.code === 'Quote'`.
 
 ## 4. Ctrl+drag copy
 
@@ -72,6 +86,7 @@ A `layoutPrefs` zustand store, persisted to localStorage (per user, not per proj
   5. Commit.
 
   All of this happens inside the same transaction, so it is one undo step. A zero delta creates nothing.
+- **Timing:** React Flow applies the final positions before `onNodeDragStop` (`XYDrag` end handler), so the restore in step 2 runs after the snapped drop has landed.
 - **Why Ctrl is read at drop:** pressing or releasing Ctrl mid-drag changes the outcome, as in PowerPoint.
 - **Edges:** copies keep arrows among themselves only. Originals keep every arrow. This matches Ctrl+C / Ctrl+V.
 - **Ctrl+Shift+drag:** the same, with the Shift axis lock from section 2.
@@ -80,6 +95,9 @@ A `layoutPrefs` zustand store, persisted to localStorage (per user, not per proj
 
 1. Write a Playwright test: create two steps, then plain-drag from step A's right dot to step B's left dot. Assert one new edge with `sourceSide: right` and `targetSide: left`.
 2. Run it and confirm it fails. Record why Ctrl+drag currently connects.
+   - React Flow already gives handles the `nodrag` class (`@xyflow/react` Handle), and on Windows Ctrl is only its zoom-activation key, so the drag filter is not what blocks a plain drag.
+   - Expected cause: the press lands on `.fs-step-body`, which covers the inner half of the dot.
+   - Ctrl+drag must be re-checked after the fix, because slice 3 gives it a new meaning.
 3. Fix:
    - Give `.fs-handle` a z-index above `.fs-step-body`.
    - Keep the dot 9px visually, with a transparent 20px hit area.
@@ -89,7 +107,12 @@ A `layoutPrefs` zustand store, persisted to localStorage (per user, not per proj
 
 ## 6. Context menu
 
-**Opening rule:** on right-button pointerdown, record the position. The `contextmenu` event opens the menu only if the pointer moved less than 4px; otherwise it was a pan and nothing opens.
+**Opening rule:**
+- On the canvas wrapper, listen in the capture phase.
+- Always `preventDefault` the native `contextmenu` event, on the pane, nodes and edges.
+- On right-button pointerdown, record the position. On right-button pointerup, open our menu only if the pointer moved less than 4px; otherwise it was a pan.
+- Opening on pointerup instead of on `contextmenu` works on every platform. macOS fires `contextmenu` on pointerdown, before any movement is known.
+- Shift+F10 and the ContextMenu key open the menu anchored to the selection.
 - Right-clicking an unselected node selects it first.
 - Right-clicking inside a multi-selection keeps it.
 
@@ -137,6 +160,10 @@ These are pure board operations run through `changeBoard`, so each is one undo s
 **Rules:**
 - Moving a group moves its members (`withGroupMembers`). Moving a member refits its group (`setPositions`).
 - `reorder` changes only the order of steps and text within `b.nodes`, which is already their render order. Groups stay at `zIndex -1` and lanes at `-2`, so nothing can go behind a lane.
+- Set `elevateNodesOnSelect={false}`. React Flow's default raises selected nodes, which would make Send to back look like a no-op until you deselect.
+  - The floating toolbar is a `NodeToolbar` portal, so it stays on top.
+  - A selected node's resize handles can be covered by an overlapping node above it, as in PowerPoint.
+- Position decides lane membership (`syncLane`), so aligning steps from different lanes on the lane axis moves them into one lane. This is consistent with dragging, and one undo reverts it.
 - `setColor` accepts a preset name, `#rrggbb`, or null. Anything else throws a validation error. The file schema already stores `color` as a nullable string, so no migration is needed.
 
 **Rendering a hex colour:** apply the colour as an inline fill on `.fs-shape-body`. Choose dark or light text by relative luminance (WCAG contrast against the text tokens). Preset tints keep their theme-aware classes.
@@ -153,7 +180,7 @@ These are pure board operations run through `changeBoard`, so each is one undo s
 | Ctrl+' | Toggle grid snap |
 
 - Plain arrows keep their current job of moving the selection to the nearest node.
-- Consecutive nudges within 500ms merge into one undo step.
+- Each nudge is its own undo step, as in PowerPoint. Merging nudges would need an open transaction, and undo is ignored while one is open (ADR 0005), so Ctrl+Z straight after a nudge would do nothing.
 - The bracket shortcuts match on `e.code` (`BracketLeft`, `BracketRight`) so they work on any keyboard layout.
 
 ## 9. AI chat
