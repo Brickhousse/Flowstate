@@ -7,6 +7,7 @@ import { deleteEdges } from '../ops/edges';
 import { addStep, deleteSteps, updateSteps } from '../ops/steps';
 import { addNext, addSibling } from '../ops/structure';
 import { addText } from '../ops/text';
+import { layoutPrefs } from '../store/layoutPrefs';
 import { flowStore } from '../store/store';
 import { notify } from '../ui/toast';
 import { addFlagAndFocus, editBoard } from './boardChange';
@@ -81,6 +82,10 @@ export function useKeyboard(boardId: string, enabled: boolean): void {
           e.preventDefault();
           const ids = editBoard((b) => pasteSubgraph(b, copySubgraph(b, sel), 40, 40));
           if (ids) st.select(ids);
+        } else if (e.code === 'Quote') {
+          e.preventDefault();
+          layoutPrefs.getState().toggle('gridSnap');
+          notify(`Snap to grid ${layoutPrefs.getState().prefs.gridSnap ? 'on' : 'off'}`);
         }
         return;
       }

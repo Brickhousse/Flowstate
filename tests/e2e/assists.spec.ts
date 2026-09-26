@@ -42,3 +42,24 @@ test('a plain drag from one dot to another connects those sides', async ({ page,
   expect(b.edges).toHaveLength(1);
   expect(b.edges[0]).toMatchObject({ source: 's1', target: 's2', sourceSide: 'right', targetSide: 'left' });
 });
+
+test('layout switches persist across a reload', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await page.getByRole('button', { name: 'Layout assists' }).click();
+  const grid = page.getByRole('menuitemcheckbox', { name: 'Snap to grid' });
+  await expect(grid).toHaveAttribute('aria-checked', 'true');
+  await grid.click();
+  await expect(grid).toHaveAttribute('aria-checked', 'false');
+  await page.reload();
+  await page.locator('.react-flow__pane').waitFor();
+  await page.getByRole('button', { name: 'Layout assists' }).click();
+  await expect(page.getByRole('menuitemcheckbox', { name: 'Snap to grid' })).toHaveAttribute('aria-checked', 'false');
+  await page.keyboard.press('Escape');
+  await page.locator('.react-flow__pane').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('Control+Quote');
+  await page.getByRole('button', { name: 'Layout assists' }).click();
+  await expect(page.getByRole('menuitemcheckbox', { name: 'Snap to grid' })).toHaveAttribute('aria-checked', 'true');
+});

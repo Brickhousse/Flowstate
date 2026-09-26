@@ -7,6 +7,7 @@ import { BoardTabs } from './BoardTabs';
 import { CriticalPathButton } from './CriticalPathButton';
 import { ExportMenu } from './ExportMenu';
 import { FlagsButton } from './FlagsButton';
+import { LayoutMenu } from './LayoutMenu';
 import { errorText, ProjectMenu } from './ProjectMenu';
 import { applyTheme, storedTheme, type ThemeChoice } from './theme';
 import { notify } from './toast';
@@ -47,6 +48,7 @@ export function TopBar() {
       <div className="topbar-spacer" />
       <FlagsButton />
       <CriticalPathButton />
+      <LayoutMenu />
       <button type="button" className="topbar-btn" title="Tidy layout (L)" onClick={() => runTidy(board.id)}>
         <WandSparkles size={14} />
         <span>Tidy</span>

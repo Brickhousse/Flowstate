@@ -401,3 +401,12 @@
   cursor: pointer;
   color: var(--text-3);
 }
+.menu-shortcut {
+  margin-left: auto;
+  padding-left: 16px;
+  color: var(--text-3);
+  font-size: 11px;
+}
+.is-hidden {
+  visibility: hidden;
+}
