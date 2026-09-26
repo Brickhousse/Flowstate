@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Rect } from '../../layout/geometry';
-import { lockAxis, snapMove, type Candidates, type SnapPrefs } from './snap';
+import { lockAxis, snapMove, snapResize, type Candidates, type SnapPrefs } from './snap';
 
 const box = (x: number, y: number, w = 100, h = 50): Rect => ({ x, y, w, h });
 const cands = (boxes: Rect[], yLines: number[] = [], xLines: number[] = []): Candidates => ({ boxes, xLines, yLines });
@@ -67,6 +67,33 @@ describe('snapMove', () => {
     const r = snapMove(box(-6, -6), cands([]), ALL, 1, FREE);
     expect(Object.is(r.dx, 6) && Object.is(r.dy, 6)).toBe(true);
     expect(Object.is(snapMove(box(0, 0), cands([]), ALL, 1, FREE).dx, 0)).toBe(true);
+  });
+});
+
+describe('snapResize', () => {
+  const MIN = { w: 40, h: 32 };
+  const none = { left: false, right: false, top: false, bottom: false };
+
+  it('snaps a dragged right edge to a neighbour line', () => {
+    const r = snapResize({ x: -200, y: 100, w: 297, h: 50 }, { ...none, right: true }, cands([box(0, 0)]), ALL, 1, false, MIN);
+    expect(r.rect).toEqual({ x: -200, y: 100, w: 300, h: 50 });
+    expect(r.guides.some((g) => g.kind === 'line' && g.axis === 'x' && g.at === 100)).toBe(true);
+  });
+
+  it('falls back to the grid for the dragged edge only', () => {
+    expect(snapResize({ x: 3, y: 0, w: 130, h: 47 }, { ...none, right: true, bottom: true }, cands([]), ALL, 1, false, MIN).rect).toEqual({ x: 3, y: 0, w: 137, h: 40 });
+  });
+
+  it('moves the left edge and keeps the right edge fixed', () => {
+    expect(snapResize({ x: 97, y: 0, w: 103, h: 50 }, { ...none, left: true }, cands([box(0, 200)]), ALL, 1, false, MIN).rect).toEqual({ x: 100, y: 0, w: 100, h: 50 });
+  });
+
+  it('refuses a snap that would shrink below the minimum size', () => {
+    expect(snapResize({ x: 97, y: 0, w: 42, h: 50 }, { ...none, left: true }, cands([box(100, 200)]), ALL, 1, false, MIN).rect).toEqual({ x: 97, y: 0, w: 42, h: 50 });
+  });
+
+  it('does nothing while Alt is held', () => {
+    expect(snapResize({ x: 0, y: 0, w: 133, h: 50 }, { ...none, right: true }, cands([]), ALL, 1, true, MIN).rect).toEqual({ x: 0, y: 0, w: 133, h: 50 });
   });
 });
 

@@ -148,3 +148,54 @@ export function snapMove(m: Rect, c: Candidates, prefs: SnapPrefs, zoom: number,
 export function lockAxis(dx: number, dy: number): Axis {
   return Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
 }
+
+export interface ResizeEdges {
+  left: boolean;
+  right: boolean;
+  top: boolean;
+  bottom: boolean;
+}
+
+function snapEdge(v: number, targets: number[], t: number, prefs: SnapPrefs): number {
+  const d = prefs.smartGuides ? nearest([v], targets, t) : null;
+  if (d !== null) return v + d;
+  return prefs.gridSnap ? Math.round(v / GRID) * GRID : v;
+}
+
+export function snapResize(
+  r: Rect,
+  edges: ResizeEdges,
+  c: Candidates,
+  prefs: SnapPrefs,
+  zoom: number,
+  alt: boolean,
+  min: { w: number; h: number },
+): { rect: Rect; guides: Guide[] } {
+  if (alt) return { rect: r, guides: [] };
+  const t = SNAP_PX / zoom;
+  const xs = targetLines(c, 'x');
+  const ys = targetLines(c, 'y');
+  let { x, y, w, h } = r;
+  if (edges.left) {
+    const nx = snapEdge(x, xs, t, prefs);
+    if (x + w - nx >= min.w) {
+      w += x - nx;
+      x = nx;
+    }
+  } else if (edges.right) {
+    const right = snapEdge(x + w, xs, t, prefs);
+    if (right - x >= min.w) w = right - x;
+  }
+  if (edges.top) {
+    const ny = snapEdge(y, ys, t, prefs);
+    if (y + h - ny >= min.h) {
+      h += y - ny;
+      y = ny;
+    }
+  } else if (edges.bottom) {
+    const bottom = snapEdge(y + h, ys, t, prefs);
+    if (bottom - y >= min.h) h = bottom - y;
+  }
+  const rect = { x, y, w, h };
+  return { rect, guides: prefs.smartGuides ? [...alignGuides(rect, c, 'x'), ...alignGuides(rect, c, 'y')] : [] };
+}
