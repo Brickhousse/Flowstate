@@ -4,20 +4,37 @@ import { board, node, open, seed } from './fixtures';
 
 test.use({ viewport: { width: 1600, height: 900 } });
 
-async function centerOf(locator: Locator): Promise<{ x: number; y: number }> {
+async function boxOf(locator: Locator): Promise<{ x: number; y: number; width: number; height: number }> {
   const box = await locator.boundingBox();
   if (!box) throw new Error('element has no box');
+  return box;
+}
+
+async function centerOf(locator: Locator): Promise<{ x: number; y: number }> {
+  const box = await boxOf(locator);
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
 const selection = (page: Page) => page.evaluate(() => [...window.__flowstate!.getState().selection].sort());
 
+async function marquee(page: Page, from: Locator, to: Locator): Promise<Locator> {
+  const a = await boxOf(from);
+  const b = await boxOf(to);
+  await page.mouse.move(a.x - 40, a.y - 40);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width + 40, b.y + b.height + 40, { steps: 12 });
+  await page.mouse.up();
+  const rect = page.locator('.react-flow__nodesselection-rect');
+  await expect(rect).toBeVisible();
+  return rect;
+}
+
 async function resetZoom(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Reset zoom to 100%' }).click();
 }
 
-async function drag(page: Page, id: string, dx: number, dy: number, opts: { keys?: string[]; during?: () => Promise<void> } = {}): Promise<void> {
-  const c = await centerOf(node(page, id));
+async function drag(page: Page, target: string | Locator, dx: number, dy: number, opts: { keys?: string[]; during?: () => Promise<void> } = {}): Promise<void> {
+  const c = await centerOf(typeof target === 'string' ? node(page, target) : target);
   await page.mouse.move(c.x, c.y);
   for (const k of opts.keys ?? []) await page.keyboard.down(k);
   await page.mouse.down();
@@ -191,4 +208,18 @@ test('a Shift+drag that ends before moving still lets the next drag replace the 
   await expect(page.locator('.react-flow__node.selected')).toHaveCount(1);
   expect(await node0(page, 's1')).toMatchObject({ x: 0, y: 0 });
   expect(await node0(page, 's2')).toMatchObject({ x: 500, y: 0 });
+});
+
+test('dragging a marquee selection by its rectangle snaps and is one undo entry', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 300, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  const rect = await marquee(page, node(page, 's1'), node(page, 's2'));
+  await drag(page, rect, 113, 47);
+  expect(await node0(page, 's1')).toMatchObject({ x: 120, y: 40 });
+  expect(await node0(page, 's2')).toMatchObject({ x: 420, y: 40 });
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(1);
 });
