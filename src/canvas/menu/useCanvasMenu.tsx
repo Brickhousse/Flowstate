@@ -8,6 +8,15 @@ import { nodeEntries, paneEntries } from './entries';
 
 const CLICK_SLOP = 4;
 
+// Spec: match size uses the right-clicked node, not just any selected one.
+function topSelectedAt(x: number, y: number, selection: string[]): string | null {
+  for (const el of document.elementsFromPoint(x, y)) {
+    const id = el.closest('.react-flow__node')?.getAttribute('data-id');
+    if (id && selection.includes(id)) return id;
+  }
+  return null;
+}
+
 export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
   const rf = useReactFlow();
   const rfStore = useStoreApi();
@@ -36,14 +45,15 @@ export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
       const at = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
       const id = e.target.closest('.react-flow__node')?.getAttribute('data-id');
       const st = flowStore.getState();
+      let refId: string | null = null;
       if (e.target.closest('.react-flow__nodesselection') && st.selection.length) {
-        setMenu({ at: { x: e.clientX, y: e.clientY }, entries: nodeEntries(boardId, at) });
+        refId = topSelectedAt(e.clientX, e.clientY, st.selection) ?? st.selection[0];
       } else if (id && !id.startsWith('lane:')) {
         if (!st.selection.includes(id)) st.select([id]);
-        setMenu({ at: { x: e.clientX, y: e.clientY }, entries: nodeEntries(boardId, at) });
-      } else {
-        setMenu({ at: { x: e.clientX, y: e.clientY }, entries: paneEntries(boardId, at) });
+        refId = id;
       }
+      if (refId) setMenu({ at: { x: e.clientX, y: e.clientY }, entries: nodeEntries(boardId, refId, at) });
+      else setMenu({ at: { x: e.clientX, y: e.clientY }, entries: paneEntries(boardId, at) });
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'ContextMenu' && !(e.key === 'F10' && e.shiftKey)) return;
@@ -54,7 +64,7 @@ export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
       if (!box) return;
       e.preventDefault();
       const corner = { x: box.x, y: box.y + box.h };
-      setMenu({ at: rf.flowToScreenPosition(corner), entries: nodeEntries(boardId, corner) });
+      setMenu({ at: rf.flowToScreenPosition(corner), entries: nodeEntries(boardId, st.selection[0], corner) });
     };
     document.addEventListener('contextmenu', onContextMenu, true);
     window.addEventListener('pointerdown', onDown, true);

@@ -104,7 +104,11 @@ function MenuList({ entries, close, onBack }: { entries: MenuEntry[]; close: () 
               {e.kind === 'item' && e.checked !== undefined && <Check size={13} className={e.checked ? undefined : 'is-hidden'} />}
               {e.kind === 'item' && e.icon}
               <span>{e.label}</span>
-              {e.kind === 'item' && e.shortcut && <span className="menu-shortcut">{e.shortcut}</span>}
+              {e.kind === 'item' && e.shortcut && (
+                <span className="menu-shortcut" aria-hidden>
+                  {e.shortcut}
+                </span>
+              )}
               {e.kind === 'submenu' && <ChevronRight size={13} className="menu-shortcut" />}
             </button>
             {isOpen && <MenuList entries={e.entries} close={close} onBack={back} />}
