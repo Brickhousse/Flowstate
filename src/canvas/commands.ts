@@ -1,6 +1,6 @@
 import { boundsOf } from '../layout/geometry';
 import type { Board } from '../model/types';
-import { copySubgraph, pasteSubgraph } from '../ops/clipboard';
+import { copySubgraph, pasteSubgraph, type Clip } from '../ops/clipboard';
 import { deleteEdges } from '../ops/edges';
 import { deleteSteps, setPositions, withGroupMembers } from '../ops/steps';
 import { flowStore } from '../store/store';
@@ -18,19 +18,28 @@ function boardOf(boardId: string): Board | undefined {
   return flowStore.getState().project.boards.find((b) => b.id === boardId);
 }
 
-export function copySelection(boardId: string): void {
-  const st = flowStore.getState();
-  const b = boardOf(boardId);
-  if (!b || !st.selection.length) return;
-  st.setClipboard(copySubgraph(b, st.selection));
+function keep(clip: Clip): void {
+  flowStore.getState().setClipboard(clip);
   pasteCount = 0;
+}
+
+export function copySelection(boardId: string): void {
+  const sel = flowStore.getState().selection;
+  const b = boardOf(boardId);
+  if (!b || !sel.length) return;
+  keep(copySubgraph(b, sel));
 }
 
 export function cutSelection(boardId: string): void {
   const sel = flowStore.getState().selection;
   if (!sel.length) return;
-  copySelection(boardId);
-  run(boardId, (b) => deleteSteps(b, sel));
+  const clip = run(boardId, (b) => {
+    const c = copySubgraph(b, sel);
+    deleteSteps(b, c.nodes.map((n) => n.id));
+    return c;
+  });
+  if (!clip) return;
+  keep(clip);
   flowStore.getState().select([]);
 }
 

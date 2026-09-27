@@ -1,8 +1,9 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { connect } from '../../src/ops/edges';
+import { groupSteps } from '../../src/ops/groups';
 import { addStep } from '../../src/ops/steps';
 import { addText } from '../../src/ops/text';
-import { board, node, open, seed, titles } from './fixtures';
+import { board, links, node, open, seed, titles } from './fixtures';
 
 test.use({ viewport: { width: 1600, height: 900 } });
 
@@ -430,16 +431,36 @@ test('a project carrying an unknown colour still opens with the default fill', a
   expect(await node(page, 's1').locator('.fs-shape-body').getAttribute('style')).toBeNull();
 });
 
-test('Ctrl+X cuts and Ctrl+V pastes back', async ({ page, request }) => {
+test('Ctrl+X cuts without reconnecting and Ctrl+V pastes back', async ({ page, request }) => {
   const p = await seed(request, (b) => {
-    addStep(b, { title: 'A', x: 0, y: 0 });
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const m = addStep(b, { title: 'B', after: a });
+    addStep(b, { title: 'C', after: m });
   });
   await open(page, p);
-  await node(page, 's1').click();
+  await node(page, 's2').click();
   await page.keyboard.press('Control+X');
-  expect(await titles(page)).toEqual([]);
+  expect(await titles(page)).toEqual(['A', 'C']);
+  expect(await links(page)).toEqual([]);
   await page.keyboard.press('Control+V');
-  expect(await titles(page)).toEqual(['A']);
+  expect(await titles(page)).toEqual(['A', 'C', 'B']);
+});
+
+test('cutting a group removes its members too, so a paste restores the same count', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const m = addStep(b, { title: 'B', x: 240, y: 0 });
+    groupSteps(b, [a, m], 'Phase');
+  });
+  await open(page, p);
+  await node(page, 'g3').click({ position: { x: 4, y: 4 } });
+  expect(await selection(page)).toEqual(['g3']);
+  await page.keyboard.press('Control+X');
+  expect((await board(page)).nodes).toEqual([]);
+  await page.keyboard.press('Control+V');
+  const after = (await board(page)).nodes;
+  expect(after).toHaveLength(3);
+  expect(after.filter((n) => n.groupId).map((n) => n.title)).toEqual(['A', 'B']);
 });
 
 test('Ctrl+arrows nudge by a grid step or a pixel, one undo each', async ({ page, request }) => {
