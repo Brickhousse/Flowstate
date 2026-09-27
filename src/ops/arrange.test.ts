@@ -158,4 +158,13 @@ describe('arrange inside the store', () => {
     expect(b.nodes.map((n) => n.x)).toEqual([0, 0]);
     expect(store.getState().past.length).toBe(before + 2);
   });
+
+  it('adds no undo step when front or back leaves the order unchanged', () => {
+    const store = createFlowStore();
+    const ids = store.getState().changeBoard((b) => [addStep(b, { title: 'A', x: 0, y: 0 }), addStep(b, { title: 'B', x: 50, y: 20 })]);
+    const before = store.getState().past.length;
+    store.getState().changeBoard((b) => reorder(b, [ids[1]], 'front'));
+    store.getState().changeBoard((b) => reorder(b, [ids[0]], 'back'));
+    expect(store.getState().past.length).toBe(before);
+  });
 });

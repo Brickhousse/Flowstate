@@ -96,7 +96,8 @@ export function reorder(b: Board, ids: string[], move: OrderMove): string[] {
   if (move === 'front' || move === 'back') {
     const chosen = b.nodes.filter((n) => picked.has(n.id));
     const rest = b.nodes.filter((n) => !picked.has(n.id));
-    b.nodes = move === 'front' ? [...rest, ...chosen] : [...chosen, ...rest];
+    const next = move === 'front' ? [...rest, ...chosen] : [...chosen, ...rest];
+    if (next.some((n, i) => n !== b.nodes[i])) b.nodes = next;
   } else {
     const dir = move === 'forward' ? 1 : -1;
     const order = b.nodes.map((n) => n.id).filter((id) => picked.has(id));
