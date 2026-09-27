@@ -2,6 +2,19 @@
 
 One entry per working session, most recent first. Long-term status lives in `PROJECT_STATUS.md`.
 
+### ✅ Session 2026-09-26: layout-assists playtest approved
+
+The user approved the playtest of Tasks 1 to 6 with no issues. The SDD ledger records it; Task 7 is next. No code changed.
+
+**Operational mutations (all authorized):**
+- Removed seven docs-only commits for a separate project from `feat/layout-assists` (reset to `91c9078`). They were never pushed and are preserved elsewhere.
+- Snapshotted the user's project to `D:\Projects\Flowstate-backups\` (outside the repo).
+
+**Lessons:**
+- `workspace/` is git-ignored, so `git clean -fdx` deletes saved projects; snapshots live in `D:\Projects\Flowstate-backups\`.
+
+**State at close / next session:** see `PROJECT_STATUS.md`. Resume the layout-assists SDD run at Task 7.
+
 ### ⚠️ Session 2026-09-26: layout assists specced, planned, and 6 of 14 tasks built (paused for playtest)
 
 The user asked for PowerPoint-style layout comfort:
