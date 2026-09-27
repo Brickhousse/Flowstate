@@ -1,6 +1,6 @@
 import { Handle, NodeResizer, Position, type NodeProps } from '@xyflow/react';
 import { Clock } from 'lucide-react';
-import { memo } from 'react';
+import { memo, useLayoutEffect, useRef } from 'react';
 import { fillOf } from '../model/color';
 import { formatDuration } from '../model/duration';
 import type { Side } from '../model/types';
@@ -24,9 +24,24 @@ const HANDLES: Array<[Side, Position]> = [
 
 const begin = () => flowStore.getState().begin();
 
+function fitTitle(body: HTMLElement): void {
+  const title = body.querySelector(':scope > div.fs-title');
+  if (!title) return;
+  const style = getComputedStyle(body);
+  const gap = parseFloat(style.rowGap) || 0;
+  let room = body.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+  for (const child of body.children) if (child !== title) room -= child.getBoundingClientRect().height + gap;
+  const line = parseFloat(getComputedStyle(title).lineHeight);
+  body.style.setProperty('--title-lines', String(Math.max(1, Math.floor(room / line))));
+}
+
 export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps<StepFlowNode>) {
   const editing = useFlow((s) => s.editingId === id);
   const { node, critical, dimmed, glowing, editable } = data;
+  const body = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (body.current) fitTitle(body.current);
+  }, [node.w, node.h, node.shape, node.title, node.note, node.owner, node.durationMin, critical, editing]);
   const fill = fillOf(node.color);
   const className = [
     'fs-step',
@@ -51,7 +66,7 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
           <ActorIcon actor={node.actor} />
         </span>
       )}
-      <div className="fs-step-body">
+      <div ref={body} className="fs-step-body">
         <StepTitle node={node} editable={editable} />
         {node.note && <div className="fs-note">{node.note}</div>}
         {(node.owner || node.durationMin !== null || critical) && (

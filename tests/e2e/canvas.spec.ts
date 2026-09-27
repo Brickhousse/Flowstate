@@ -105,3 +105,25 @@ test('switching boards mid-drag still closes the undo entry', async ({ page, req
   });
   expect(state).toEqual({ tx: null, past: 1 });
 });
+
+test('a taller step shows more of a long title', async ({ page, request }) => {
+  const title = 'Collect the signed intake form, check every field against the policy register, and escalate any gaps to the owner';
+  const p = await seed(request, (b) => {
+    addStep(b, { title, x: 0, y: 0 });
+    addStep(b, { title, x: 300, y: 0 });
+    addStep(b, { title, shape: 'decision', x: 600, y: 0 });
+    b.nodes[1].h = 220;
+    b.nodes[2].h = 300;
+  });
+  await open(page, p);
+  const clipped = (id: string) => node(page, id).locator('.fs-title').evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+  expect(await clipped('s1')).toBe(true);
+  expect(await clipped('s2')).toBe(false);
+  const band = await node(page, 's3').evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const text = el.querySelector('.fs-title')!.getBoundingClientRect();
+    return { top: text.top - box.top, bottom: box.bottom - text.bottom, h: box.height };
+  });
+  expect(band.top).toBeGreaterThanOrEqual(band.h / 4 - 1);
+  expect(band.bottom).toBeGreaterThanOrEqual(band.h / 4 - 1);
+});
