@@ -2,9 +2,16 @@
 
 Status: Accepted (2026-09-26)
 
+## Context
+React Flow raises selected nodes by default. The model already renders `board.nodes` in order, so that order is the stacking order whenever nothing is selected.
+
 ## Decision
 - z-order is the order of `board.nodes`, so older files need no migration.
 - `elevateNodesOnSelect={false}`, because React Flow's default raises selected nodes and made Send to back look like a no-op until you deselected.
+
+Rejected:
+- A per-node `zIndex` field: it needs a schema change and a migration, and it duplicates the array order.
+- Keeping `elevateNodesOnSelect`: Send to back looks like a no-op until the node is deselected.
 
 ## Consequences
 - The floating toolbar is a `NodeToolbar` portal and stays on top.

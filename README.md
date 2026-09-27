@@ -50,7 +50,7 @@ The local API only answers pages served from localhost (ADR 0004), so other webs
 | Ctrl+' | Snap to grid on or off (the Layout menu switches each assist) |
 | Shift+1 | Fit the board |
 | Space+drag, middle or right drag | Pan |
-| Right-click, Shift+F10, ContextMenu key | Open the menu for the node or pane under it |
+| Right-click, Shift+F10, ContextMenu key | Open the menu (right-click: under the pointer; keys: at the selection) |
 | Ctrl+K, Ctrl+/ | Focus the assistant, show or hide it |
 
 Shift+click a board tab to view it read-only beside the active board.
