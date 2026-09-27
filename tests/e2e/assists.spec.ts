@@ -633,6 +633,7 @@ test('colour and layer order from the menu', async ({ page, request }) => {
   await expect(node(page, 's1')).toHaveClass(/ink-light/);
   await node(page, 's1').click({ button: 'right', position: { x: 20, y: 10 } });
   await page.getByRole('menuitem', { name: 'Arrange', exact: true }).hover();
+  await expect(page.getByRole('menuitem', { name: 'Bring to front', exact: true })).toHaveAttribute('aria-keyshortcuts', 'Control+Shift+]');
   await page.getByRole('menuitem', { name: 'Bring to front', exact: true }).click();
   expect((await board(page)).nodes.map((n) => n.id)).toEqual(['s2', 's1']);
 });

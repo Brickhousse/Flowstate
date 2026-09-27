@@ -10,6 +10,15 @@ export type MenuEntry =
 
 export type MenuAnchor = { x: number; y: number };
 
+// aria-keyshortcuts wants UI Events modifier/key names, not the display abbreviations we show.
+const ARIA_KEY: Record<string, string> = { Ctrl: 'Control', Del: 'Delete' };
+function ariaShortcut(shortcut: string): string {
+  return shortcut
+    .split('+')
+    .map((part) => ARIA_KEY[part] ?? part)
+    .join('+');
+}
+
 type Actionable = Extract<MenuEntry, { kind: 'item' | 'submenu' }>;
 
 function actionable(e: MenuEntry | undefined): e is Actionable {
@@ -97,6 +106,7 @@ function MenuList({ entries, close, onBack }: { entries: MenuEntry[]; close: () 
               aria-checked={e.kind === 'item' ? e.checked : undefined}
               aria-haspopup={e.kind === 'submenu' ? 'menu' : undefined}
               aria-expanded={e.kind === 'submenu' ? isOpen : undefined}
+              aria-keyshortcuts={e.kind === 'item' && e.shortcut ? ariaShortcut(e.shortcut) : undefined}
               disabled={e.disabled}
               className={`menu-item${i === active ? ' is-active' : ''}`}
               onClick={() => activate(i)}
