@@ -22,6 +22,8 @@ const DESCRIPTIONS: Record<ToolName, string> = {
   read_board: 'Read the full summary of another board in this project.',
   create_board: 'Create a new board, for example a future-state redesign, and switch to it unless switch_to is false.',
   tidy: 'Auto-layout a whole board. Use after building or restructuring many steps at once.',
+  arrange:
+    'Line up, space out, resize or layer existing steps without changing arrows. align_* lines them up on an edge or centre (2 or more), distribute_* makes the gaps equal (3 or more), match_* copies the size of "reference", and bring_*/send_* change which overlapping step is drawn on top.',
 };
 
 export const TOOL_DEFS: Anthropic.Tool[] = (Object.keys(TOOL_SCHEMAS) as ToolName[]).map((name) => {

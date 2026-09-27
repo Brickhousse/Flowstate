@@ -228,6 +228,46 @@ describe('executeTool', () => {
     expect(out.stats.arrowsRemoved).toBe(1);
     expect(links()).toEqual(['Check>End', 'Start>Check']);
   });
+
+  it('aligns and distributes steps through arrange', async () => {
+    const { run, active } = setup((b) => {
+      addStep(b, { title: 'A', x: 0, y: 0 });
+      addStep(b, { title: 'B', x: 250, y: 90 });
+      addStep(b, { title: 'C', x: 600, y: 30 });
+    });
+    const top = await run('arrange', { ids: ['s1', 's2', 's3'], action: 'align_top' });
+    expect(top.ok).toBe(true);
+    expect(top.stats).toEqual({ arranged: 3 });
+    expect(active().nodes.map((n) => n.y)).toEqual([0, 0, 0]);
+    await run('arrange', { ids: ['s1', 's2', 's3'], action: 'distribute_horizontal' });
+    expect(active().nodes.map((n) => n.x)).toEqual([0, 300, 600]);
+    await run('arrange', { ids: ['s1'], action: 'bring_to_front' });
+    expect(active().nodes.map((n) => n.id)).toEqual(['s2', 's3', 's1']);
+  });
+
+  it('needs a reference for match actions and reports it', async () => {
+    const { run, active } = setup((b) => {
+      addStep(b, { title: 'A', x: 0, y: 0 });
+      addStep(b, { title: 'D', shape: 'decision', x: 300, y: 0 });
+    });
+    const missing = await run('arrange', { ids: ['s1', 's2'], action: 'match_size' });
+    expect(missing.ok).toBe(false);
+    expect(missing.content).toMatch(/reference/);
+    const ok = await run('arrange', { ids: ['s2'], action: 'match_size', reference: 's1' });
+    expect(ok.ok).toBe(true);
+    expect(active().nodes[1]).toMatchObject({ w: 180, h: 72 });
+  });
+
+  it('colours steps and rejects unknown colours', async () => {
+    const { run, active } = setup((b) => {
+      addStep(b, { title: 'A', x: 0, y: 0 });
+    });
+    expect((await run('update_steps', { updates: [{ id: 's1', color: 'green' }] })).ok).toBe(true);
+    expect(active().nodes[0].color).toBe('green');
+    const bad = await run('update_steps', { updates: [{ id: 's1', color: 'red' }] });
+    expect(bad.ok).toBe(false);
+    expect(bad.content).toMatch(/Unknown colour/);
+  });
 });
 
 

@@ -8,10 +8,11 @@ import { addFlag, setFlagResolved } from '../ops/flags';
 import { groupSteps } from '../ops/groups';
 import { setLanes } from '../ops/lanes';
 import { findEdge } from '../ops/query';
+import { alignNodes, distributeNodes, matchSize, reorder, type AlignEdge, type DistributeAxis, type MatchDims, type OrderMove } from '../ops/arrange';
 import { addStep, deleteSteps, updateSteps, type StepFields, type StepUpdate } from '../ops/steps';
 import { branchParallel, insertBetween, moveSteps, type BranchItem } from '../ops/structure';
 import { addText } from '../ops/text';
-import { TOOL_SCHEMAS, type StepInputValue, type ToolName } from './schemas';
+import { TOOL_SCHEMAS, type ArrangeAction, type StepInputValue, type ToolName } from './schemas';
 import type { Stats } from './stats';
 
 export interface ToolContext {
@@ -70,6 +71,38 @@ function toFields(board: Board, input: StepInputValue): { fields: StepFields; la
   };
   if (input.duration !== undefined) fields.durationMin = parseDuration(input.duration);
   return { fields, laneId: input.lane ? resolveLane(board, input.lane) : undefined };
+}
+
+const ALIGN: Partial<Record<ArrangeAction, AlignEdge>> = {
+  align_left: 'left',
+  align_center: 'center',
+  align_right: 'right',
+  align_top: 'top',
+  align_middle: 'middle',
+  align_bottom: 'bottom',
+};
+const DISTRIBUTE: Partial<Record<ArrangeAction, DistributeAxis>> = { distribute_horizontal: 'horizontal', distribute_vertical: 'vertical' };
+const MATCH: Partial<Record<ArrangeAction, MatchDims>> = { match_width: 'width', match_height: 'height', match_size: 'both' };
+const ORDER: Partial<Record<ArrangeAction, OrderMove>> = {
+  bring_to_front: 'front',
+  bring_forward: 'forward',
+  send_backward: 'backward',
+  send_to_back: 'back',
+};
+
+function applyArrange(b: Board, ids: string[], action: ArrangeAction, reference: string | undefined): string[] {
+  const edge = ALIGN[action];
+  if (edge) return alignNodes(b, ids, edge);
+  const axis = DISTRIBUTE[action];
+  if (axis) return distributeNodes(b, ids, axis);
+  const dims = MATCH[action];
+  if (dims) {
+    if (!reference) throw new OpError(`${action} needs "reference": the step whose size to copy.`);
+    return matchSize(b, ids, reference, dims);
+  }
+  const move = ORDER[action];
+  if (move) return reorder(b, ids, move);
+  throw new OpError(`Unknown arrange action "${action}".`);
 }
 
 const handlers: { [N in ToolName]: Handler<N> } = {
@@ -211,6 +244,12 @@ const handlers: { [N in ToolName]: Handler<N> } = {
     await ctx.tidy(boardId);
     return { result: 'Tidied the board.', stats: { tidied: 1 } };
   },
+
+  arrange: (ctx, input, boardId) =>
+    ctx.changeBoard(boardId, (b) => {
+      const ids = applyArrange(b, input.ids, input.action, input.reference);
+      return { result: { arranged: ids }, touched: ids, stats: { arranged: ids.length } };
+    }),
 };
 
 function fail(content: string): ToolOutcome {

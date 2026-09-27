@@ -12,7 +12,8 @@ export type StatKey =
   | 'grouped'
   | 'lanesSet'
   | 'textAdded'
-  | 'tidied';
+  | 'tidied'
+  | 'arranged';
 
 export type Stats = Partial<Record<StatKey, number>>;
 
@@ -24,6 +25,7 @@ const PHRASES: Array<[StatKey, (n: number) => string]> = [
   ['stepsUpdated', (n) => `${n} updated`],
   ['stepsDeleted', (n) => `${n} deleted`],
   ['moved', (n) => `${n} moved`],
+  ['arranged', (n) => `${n} arranged`],
   ['arrowsAdded', (n) => `${plural(n, 'arrow', 'arrows')} added`],
   ['arrowsRemoved', (n) => `${plural(n, 'arrow', 'arrows')} removed`],
   ['flagsAdded', (n) => plural(n, 'flag', 'flags')],

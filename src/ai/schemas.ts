@@ -4,6 +4,25 @@ import { ACTORS, EDGE_TYPES, FLAG_KINDS, SHAPES, STATUSES } from '../model/types
 const board = z.string().optional().describe('Board name or id. Defaults to the board the user is looking at.');
 const id = z.string().describe('Id from the board summary, like s12.');
 
+export const ARRANGE_ACTIONS = [
+  'align_left',
+  'align_center',
+  'align_right',
+  'align_top',
+  'align_middle',
+  'align_bottom',
+  'distribute_horizontal',
+  'distribute_vertical',
+  'match_width',
+  'match_height',
+  'match_size',
+  'bring_to_front',
+  'bring_forward',
+  'send_backward',
+  'send_to_back',
+] as const;
+export type ArrangeAction = (typeof ARRANGE_ACTIONS)[number];
+
 export const StepInput = z.object({
   title: z.string().min(1).describe('Short title, ideally 2 to 6 words.'),
   shape: z.enum(SHAPES).optional().describe('Defaults to process.'),
@@ -47,6 +66,7 @@ export const TOOL_SCHEMAS = {
           status: z.enum(STATUSES).nullable().optional(),
           lane: z.string().nullable().optional(),
           replaces: z.string().optional(),
+          color: z.string().nullable().optional().describe('blue, green, amber, rose, violet, slate, a #rrggbb value, or null for the default.'),
         }),
       )
       .min(1),
@@ -80,6 +100,12 @@ export const TOOL_SCHEMAS = {
   read_board: z.object({ board: z.string().describe('Board name or id.') }),
   create_board: z.object({ name: z.string().min(1), switch_to: z.boolean().optional() }),
   tidy: z.object({ board }),
+  arrange: z.object({
+    board,
+    ids: z.array(id).min(1),
+    action: z.enum(ARRANGE_ACTIONS),
+    reference: z.string().optional().describe('For match_width, match_height and match_size: the step whose size to copy.'),
+  }),
 };
 
 export type ToolName = keyof typeof TOOL_SCHEMAS;

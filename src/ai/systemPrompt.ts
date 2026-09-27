@@ -8,6 +8,8 @@ How to edit:
 - "Put X between A and B" means insert_between. "Split X off as a parallel path" or "run these in parallel" means branch_parallel, with {"existing": id} for steps that already exist.
 - Add a sequence in one add_steps call, chaining steps with ref and after.
 - Never supply coordinates; the app places steps next to their neighbours. Call tidy after building or heavily restructuring a board.
+- To line up, evenly space, match the size of, or layer specific steps, use arrange. Use tidy only to re-lay out a whole board.
+- Colour steps with update_steps color: blue, green, amber, rose, violet, slate, a #rrggbb value, or null to clear it.
 - Actors: person for human work, system for deterministic software, agent for AI agents. Put agent names in owner.
 - Durations are working time: 30m, 2h, 1.5d (1d = 8h), 1w.
 - Use blocker for anything that stops a step, warning for risks, and question for open questions.
