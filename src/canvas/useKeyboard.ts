@@ -2,15 +2,16 @@ import { useReactFlow } from '@xyflow/react';
 import { useEffect } from 'react';
 import { tidyBoard } from '../layout/tidyBoard';
 import { ACTORS, SHAPES, type Actor, type FlagKind } from '../model/types';
-import { copySubgraph, pasteSubgraph } from '../ops/clipboard';
-import { deleteEdges } from '../ops/edges';
-import { addStep, deleteSteps, updateSteps } from '../ops/steps';
+import { reorder, type OrderMove } from '../ops/arrange';
+import { addStep, updateSteps } from '../ops/steps';
 import { addNext, addSibling } from '../ops/structure';
 import { addText } from '../ops/text';
 import { layoutPrefs } from '../store/layoutPrefs';
 import { flowStore } from '../store/store';
 import { notify } from '../ui/toast';
+import { GRID } from './assist/snap';
 import { addFlagAndFocus, editBoard } from './boardChange';
+import { arrangeSelection, copySelection, cutSelection, duplicateSelection, nudgeSelection, pasteClipboard, removeSelection } from './commands';
 import { cursor } from './cursor';
 import { nearestInDirection, type Dir } from './navigate';
 import { reveal } from './reveal';
@@ -18,6 +19,7 @@ import { FIT_VIEW, viewCenter } from './viewport';
 
 const FLAG_KEYS: Record<string, FlagKind> = { b: 'blocker', w: 'warning', q: 'question' };
 const ARROWS: Record<string, Dir> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+const NUDGE: Record<Dir, [number, number]> = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
 
 export function isTyping(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
@@ -37,7 +39,6 @@ export function useKeyboard(boardId: string, enabled: boolean): void {
 
   useEffect(() => {
     if (!enabled) return;
-    let pasteCount = 0;
 
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || isTyping(e.target)) return;
@@ -59,6 +60,7 @@ export function useKeyboard(boardId: string, enabled: boolean): void {
       const key = e.key.toLowerCase();
 
       if (e.ctrlKey || e.metaKey) {
+        const arrow = ARROWS[e.key];
         if (key === 'z') {
           e.preventDefault();
           if (e.shiftKey) st.redo();
@@ -70,18 +72,25 @@ export function useKeyboard(boardId: string, enabled: boolean): void {
           e.preventDefault();
           st.select(board.nodes.map((n) => n.id));
         } else if (key === 'c' && sel.length) {
-          st.setClipboard(copySubgraph(board, sel));
-          pasteCount = 0;
+          copySelection(boardId);
+        } else if (key === 'x' && sel.length) {
+          e.preventDefault();
+          cutSelection(boardId);
         } else if (key === 'v' && st.clipboard) {
           e.preventDefault();
-          pasteCount += 1;
-          const clip = st.clipboard;
-          const ids = editBoard((b) => pasteSubgraph(b, clip, 40 * pasteCount, 40 * pasteCount));
-          if (ids) st.select(ids);
+          pasteClipboard(boardId);
         } else if (key === 'd' && sel.length) {
           e.preventDefault();
-          const ids = editBoard((b) => pasteSubgraph(b, copySubgraph(b, sel), 40, 40));
-          if (ids) st.select(ids);
+          duplicateSelection(boardId);
+        } else if (arrow && sel.length && layoutPrefs.getState().prefs.arrowNudge) {
+          e.preventDefault();
+          const step = e.shiftKey ? 1 : GRID;
+          const [dx, dy] = NUDGE[arrow];
+          nudgeSelection(boardId, dx * step, dy * step);
+        } else if ((e.code === 'BracketRight' || e.code === 'BracketLeft') && sel.length) {
+          e.preventDefault();
+          const move: OrderMove = e.code === 'BracketRight' ? (e.shiftKey ? 'front' : 'forward') : e.shiftKey ? 'back' : 'backward';
+          arrangeSelection(boardId, (b, ids) => reorder(b, ids, move));
         } else if (e.code === 'Quote') {
           e.preventDefault();
           layoutPrefs.getState().toggle('gridSnap');
@@ -137,12 +146,7 @@ export function useKeyboard(boardId: string, enabled: boolean): void {
         case 'Backspace':
           if (!sel.length && !st.edgeSelection.length) return;
           e.preventDefault();
-          editBoard((b) => {
-            if (sel.length) deleteSteps(b, sel, { reconnect: e.shiftKey });
-            const edges = st.edgeSelection.filter((id) => b.edges.some((x) => x.id === id));
-            if (edges.length) deleteEdges(b, edges);
-          });
-          st.select([]);
+          removeSelection(boardId, e.shiftKey);
           return;
       }
 

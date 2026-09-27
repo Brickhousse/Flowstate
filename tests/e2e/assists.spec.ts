@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { connect } from '../../src/ops/edges';
 import { addStep } from '../../src/ops/steps';
 import { addText } from '../../src/ops/text';
-import { board, node, open, seed } from './fixtures';
+import { board, node, open, seed, titles } from './fixtures';
 
 test.use({ viewport: { width: 1600, height: 900 } });
 
@@ -428,4 +428,50 @@ test('a project carrying an unknown colour still opens with the default fill', a
   await expect(node(page, 's1')).toBeVisible();
   await expect(node(page, 's1')).not.toHaveClass(/tint-|ink-/);
   expect(await node(page, 's1').locator('.fs-shape-body').getAttribute('style')).toBeNull();
+});
+
+test('Ctrl+X cuts and Ctrl+V pastes back', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  await page.keyboard.press('Control+X');
+  expect(await titles(page)).toEqual([]);
+  await page.keyboard.press('Control+V');
+  expect(await titles(page)).toEqual(['A']);
+});
+
+test('Ctrl+arrows nudge by a grid step or a pixel, one undo each', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  await page.keyboard.press('Control+ArrowRight');
+  await page.keyboard.press('Control+Shift+ArrowDown');
+  expect(await node0(page, 's1')).toMatchObject({ x: 20, y: 1 });
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(2);
+  await page.keyboard.press('Control+Z');
+  expect(await node0(page, 's1')).toMatchObject({ x: 20, y: 0 });
+});
+
+test('layer shortcuts change which step is drawn on top, even while selected', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 60, y: 20 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await node(page, 's1').click({ position: { x: 20, y: 10 } });
+  const overlap = await centerOf(node(page, 's2'));
+  const topAt = () =>
+    page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('.react-flow__node')?.getAttribute('data-id') ?? null, { x: overlap.x - 60, y: overlap.y });
+  expect(await topAt()).toBe('s2');
+  await page.keyboard.press('Control+Shift+BracketRight');
+  expect((await board(page)).nodes.map((n) => n.id)).toEqual(['s2', 's1']);
+  expect(await topAt()).toBe('s1');
+  await page.keyboard.press('Control+BracketLeft');
+  expect((await board(page)).nodes.map((n) => n.id)).toEqual(['s1', 's2']);
+  expect(await topAt()).toBe('s2');
 });

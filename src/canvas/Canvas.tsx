@@ -290,6 +290,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       onConnectStart={() => setConnecting(true)}
       onConnectEnd={onConnectEnd}
       connectionRadius={20}
+      elevateNodesOnSelect={false}
       onNodeDragStart={(event, node, dragged) => {
         dragging.current = [node.id];
         flowStore.getState().begin();
