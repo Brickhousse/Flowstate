@@ -578,3 +578,77 @@ test('right-clicking a marquee selection offers edit actions for the whole selec
   await expect(page.getByRole('menuitem', { name: 'Duplicate' })).toBeVisible();
   expect(await selection(page)).toEqual(['s1', 's2']);
 });
+
+test('align and distribute from the menu, one undo step each', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 250, y: 90 });
+    addStep(b, { title: 'C', x: 600, y: 30 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await page.locator('.react-flow__pane').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('Control+A');
+  await node(page, 's1').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Align', exact: true }).hover();
+  await page.getByRole('menuitem', { name: 'Top', exact: true }).click();
+  expect((await board(page)).nodes.map((n) => n.y)).toEqual([0, 0, 0]);
+  await node(page, 's1').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Distribute', exact: true }).hover();
+  await page.getByRole('menuitem', { name: 'Horizontally', exact: true }).click();
+  expect((await board(page)).nodes.map((n) => n.x)).toEqual([0, 300, 600]);
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(2);
+});
+
+test('match size copies the right-clicked step', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'D', shape: 'decision', x: 300, y: 0 });
+  });
+  await open(page, p);
+  await page.locator('.react-flow__pane').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('Control+A');
+  await node(page, 's1').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Match size', exact: true }).hover();
+  await page.getByRole('menuitem', { name: 'Both', exact: true }).click();
+  expect(await node0(page, 's2')).toMatchObject({ w: 180, h: 72 });
+});
+
+test('colour and layer order from the menu', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 60, y: 20 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await node(page, 's1').click({ button: 'right', position: { x: 20, y: 10 } });
+  await page.getByRole('menuitem', { name: 'Colour', exact: true }).hover();
+  await page.getByRole('menuitem', { name: 'Green', exact: true }).click();
+  expect((await node0(page, 's1')).color).toBe('green');
+  await expect(node(page, 's1')).toHaveClass(/tint-green/);
+  await node(page, 's1').click({ button: 'right', position: { x: 20, y: 10 } });
+  await page.getByRole('menuitem', { name: 'Colour', exact: true }).hover();
+  await page.getByLabel('Custom colour').fill('#123456');
+  expect((await node0(page, 's1')).color).toBe('#123456');
+  await expect(node(page, 's1')).toHaveClass(/ink-light/);
+  await node(page, 's1').click({ button: 'right', position: { x: 20, y: 10 } });
+  await page.getByRole('menuitem', { name: 'Arrange', exact: true }).hover();
+  await page.getByRole('menuitem', { name: 'Bring to front', exact: true }).click();
+  expect((await board(page)).nodes.map((n) => n.id)).toEqual(['s2', 's1']);
+});
+
+test('match size on a marquee selection uses the node under the right-click, not the first selected', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', shape: 'terminal', x: 300, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await marquee(page, node(page, 's1'), node(page, 's2'));
+  const c = await centerOf(node(page, 's2'));
+  await page.mouse.click(c.x, c.y, { button: 'right' });
+  await page.getByRole('menuitem', { name: 'Match size', exact: true }).hover();
+  await page.getByRole('menuitem', { name: 'Both', exact: true }).click();
+  expect(await node0(page, 's1')).toMatchObject({ w: 160, h: 56 });
+  expect(await node0(page, 's2')).toMatchObject({ w: 160, h: 56 });
+});
