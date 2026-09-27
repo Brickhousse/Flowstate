@@ -301,6 +301,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
         dragging.current = dragged.map((n) => n.id);
       }}
       onNodeDragStop={(event) => {
+        // The copy lands before endDrag commits so it shares the drag's undo entry; see ADR 0011.
         const copy = assist.finish(event);
         if (copy) {
           const ids = runSafely(() =>
