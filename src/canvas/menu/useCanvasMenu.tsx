@@ -29,7 +29,7 @@ export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
     if (!editable) return;
     let down: MenuAnchor | null = null;
     const inCanvas = (t: EventTarget | null): t is Element => t instanceof Element && !!rfStore.getState().domNode?.contains(t);
-    // Our menu opens on pointerup so a right-drag can still pan; the native menu would fire first on macOS.
+    // why: ADR-0012
     const onContextMenu = (e: MouseEvent) => {
       if (inCanvas(e.target) && !isTyping(e.target)) e.preventDefault();
     };

@@ -13,3 +13,5 @@
 | [0009](0009-snap-by-rewriting-node-changes.md) | Snapping rewrites React Flow's node changes instead of using its snapToGrid | Accepted |
 | [0010](0010-layout-prefs-per-user.md) | Layout assist switches are per-user browser prefs, not project data | Accepted |
 | [0011](0011-ctrl-drag-copy-reads-the-drop-event.md) | Ctrl+drag copy reads the modifier from the drop event and runs inside the drag transaction | Accepted |
+| [0012](0012-right-click-menu-on-pointerup.md) | Right-click menu opens on pointerup and yields to right-drag panning | Accepted |
+| [0013](0013-honest-layer-order.md) | Layer order is the board's node order and selection does not raise nodes | Accepted |

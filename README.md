@@ -42,11 +42,15 @@ The local API only answers pages served from localhost (ADR 0004), so other webs
 | Arrow keys | Move to the nearest step in that direction |
 | Delete, Shift+Delete | Delete, or delete and reconnect around it |
 | Ctrl+Z, Ctrl+Shift+Z | Undo, redo (a whole assistant turn is one undo) |
-| Ctrl+C, Ctrl+V, Ctrl+D, Ctrl+A | Copy, paste, duplicate, select all |
+| Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D, Ctrl+A | Copy, cut, paste, duplicate, select all |
 | Shift+drag, Alt+drag | Move in a straight line, or move without snapping |
+| Ctrl+drag, Ctrl+Shift+drag | Drop a copy, or copy in a straight line |
+| Ctrl+arrow | Nudge by a grid step (Shift for 1px) |
+| Ctrl+], Ctrl+[ | Bring forward, send backward (Shift for front/back) |
 | Ctrl+' | Snap to grid on or off (the Layout menu switches each assist) |
 | Shift+1 | Fit the board |
 | Space+drag, middle or right drag | Pan |
+| Right-click, Shift+F10, ContextMenu key | Open the menu for the node or pane under it |
 | Ctrl+K, Ctrl+/ | Focus the assistant, show or hide it |
 
 Shift+click a board tab to view it read-only beside the active board.

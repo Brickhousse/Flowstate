@@ -4,9 +4,10 @@
 
 ## Complete
 - v1 as specified in `docs/superpowers/specs/2026-09-25-flowstate-design.md`: infinite canvas with 9 shapes, free text, groups and swimlanes; actors, durations, owners, status and flags; flow, dependency and handoff arrows; parallel branches; live critical path; keyboard-first editing and floating toolbars; boards, reference view and projects; autosave with undo/redo; PNG, SVG and JSON export and import; Claude chat that edits the board through the same operations as the UI. Merged to `master`.
+- Layout assists: all 14 tasks built on `feat/layout-assists`, drag and resize snapping with smart guides and spacing guides, Ctrl+drag copy, align and distribute, custom colour, Ctrl+X, nudge and layer shortcuts, the right-click menu, and AI arrange. Awaiting a final playtest and merge.
 
 ## In flight
-- Layout assists on branch `feat/layout-assists` (spec `docs/superpowers/specs/2026-09-26-layout-assists-design.md`, plan `docs/superpowers/plans/2026-09-26-layout-assists.md`). Tasks 1 to 6 of 14 are done: connection-dot fix, per-user Layout switches, and drag and resize snapping with smart guides, spacing guides, Shift lock and Alt suspend. The user's playtest of Tasks 1 to 6 passed with no issues. Next are Tasks 7 to 14: Ctrl+drag copy, align and distribute, custom colour, Ctrl+X, nudge and layer shortcuts, the right-click menu, and AI arrange.
+- Playtest layout assists Tasks 7 to 13 (Ctrl+drag copy, right-click menu including Shift+F10, align and distribute, layer order, custom colour, Ctrl+arrow nudge, Ctrl+X), then merge `feat/layout-assists`.
 - Human playtest of the full app (keyboard-only and chat-only builds against the 2-minute target in the spec).
 - Live API check: `$env:LIVE_API=1; npx playwright test tests/e2e/live.spec.ts` plus one real "draft an agentic version" request. Needs the user's go-ahead because it spends API credit.
 
@@ -32,3 +33,4 @@ Finish layout assists, then the co-building assistant, then team sharing: hosted
 | 2026-09-25/26 | Spec, plan, v1 built and merged; private GitHub repo created |
 | 2026-09-26 | Layout assists specced and planned; Tasks 1 to 6 built on `feat/layout-assists` |
 | 2026-09-26 | Tasks 1 to 6 playtest approved |
+| 2026-09-26 | Layout assists Tasks 7 to 14 built and reviewed |
