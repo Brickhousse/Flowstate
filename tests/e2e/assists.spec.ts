@@ -653,3 +653,20 @@ test('match size on a marquee selection uses the node under the right-click, not
   expect(await node0(page, 's1')).toMatchObject({ w: 160, h: 56 });
   expect(await node0(page, 's2')).toMatchObject({ w: 160, h: 56 });
 });
+
+test('a custom colour from the menu survives the picker taking window focus', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Colour', exact: true }).hover();
+  const custom = page.getByLabel('Custom colour');
+  await custom.focus();
+  // Firefox on Windows and macOS open a native picker that blurs the window; Chromium's in-page one does not.
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await expect(menu(page)).toBeVisible();
+  await custom.fill('#123456');
+  expect((await node0(page, 's1')).color).toBe('#123456');
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(1);
+});

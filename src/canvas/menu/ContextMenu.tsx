@@ -143,14 +143,19 @@ export function ContextMenu({ at, entries, onClose }: { at: MenuAnchor; entries:
     const onDown = (e: PointerEvent) => {
       if (!ref.current?.contains(e.target as Node)) onClose();
     };
+    // A native colour dialog blurs the window; closing then would unmount the input before its change fires.
+    const onBlur = () => {
+      const a = document.activeElement;
+      if (!(a instanceof HTMLInputElement && a.type === 'color' && ref.current?.contains(a))) onClose();
+    };
     window.addEventListener('pointerdown', onDown, true);
     window.addEventListener('wheel', onClose, true);
-    window.addEventListener('blur', onClose);
+    window.addEventListener('blur', onBlur);
     window.addEventListener('resize', onClose);
     return () => {
       window.removeEventListener('pointerdown', onDown, true);
       window.removeEventListener('wheel', onClose, true);
-      window.removeEventListener('blur', onClose);
+      window.removeEventListener('blur', onBlur);
       window.removeEventListener('resize', onClose);
     };
   }, [onClose]);
