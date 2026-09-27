@@ -12,3 +12,4 @@
 | [0008](0008-shift-is-not-the-marquee-key.md) | Shift is the multi-select and axis-lock key, not the marquee key | Accepted |
 | [0009](0009-snap-by-rewriting-node-changes.md) | Snapping rewrites React Flow's node changes instead of using its snapToGrid | Accepted |
 | [0010](0010-layout-prefs-per-user.md) | Layout assist switches are per-user browser prefs, not project data | Accepted |
+| [0011](0011-ctrl-drag-copy-reads-the-drop-event.md) | Ctrl+drag copy reads the modifier from the drop event and runs inside the drag transaction | Accepted |
