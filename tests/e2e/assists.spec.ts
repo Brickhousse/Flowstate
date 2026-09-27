@@ -565,3 +565,16 @@ test('right-clicking inside a title editor keeps the browser menu', async ({ pag
   await expect(menu(page)).toHaveCount(0);
   expect(await page.evaluate(() => document.body.dataset.ctxPrevented)).toBe('false');
 });
+
+test('right-clicking a marquee selection offers edit actions for the whole selection', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 300, y: 0 });
+  });
+  await open(page, p);
+  await marquee(page, node(page, 's1'), node(page, 's2'));
+  const c = await centerOf(node(page, 's1'));
+  await page.mouse.click(c.x, c.y, { button: 'right' });
+  await expect(page.getByRole('menuitem', { name: 'Duplicate' })).toBeVisible();
+  expect(await selection(page)).toEqual(['s1', 's2']);
+});

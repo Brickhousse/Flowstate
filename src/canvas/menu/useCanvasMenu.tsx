@@ -36,7 +36,9 @@ export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
       const at = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
       const id = e.target.closest('.react-flow__node')?.getAttribute('data-id');
       const st = flowStore.getState();
-      if (id && !id.startsWith('lane:')) {
+      if (e.target.closest('.react-flow__nodesselection') && st.selection.length) {
+        setMenu({ at: { x: e.clientX, y: e.clientY }, entries: nodeEntries(boardId, at) });
+      } else if (id && !id.startsWith('lane:')) {
         if (!st.selection.includes(id)) st.select([id]);
         setMenu({ at: { x: e.clientX, y: e.clientY }, entries: nodeEntries(boardId, at) });
       } else {

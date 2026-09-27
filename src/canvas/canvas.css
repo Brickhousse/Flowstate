@@ -580,3 +580,6 @@
   opacity: 0.45;
   cursor: default;
 }
+.fs-menu .menu-item:disabled {
+  background: transparent;
+}
