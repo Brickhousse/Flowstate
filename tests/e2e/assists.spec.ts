@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { connect } from '../../src/ops/edges';
 import { addStep } from '../../src/ops/steps';
 import { addText } from '../../src/ops/text';
 import { board, node, open, seed } from './fixtures';
@@ -288,4 +289,118 @@ test('a left-edge resize snaps the left edge and keeps the right edge fixed', as
   await resizeBy(page, node(page, 's1').locator('.react-flow__resize-control.handle.bottom.left'), -27, 0);
   expect(await node0(page, 's1')).toMatchObject({ x: -20, y: 0, w: 200, h: 72 });
   expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(1);
+});
+
+test('Ctrl+drag leaves the original and drops a copy, undone in one step', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'B', x: 400, y: 0 });
+    connect(b, { source: a, target: c });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await drag(page, 's1', 0, 200, {
+    keys: ['Control'],
+    during: async () => {
+      await expect(page.locator('.fs-ghost')).toBeVisible();
+    },
+  });
+  const b = await board(page);
+  expect(b.nodes.map((n) => [n.title, n.x, n.y])).toEqual([
+    ['A', 0, 0],
+    ['B', 400, 0],
+    ['A', 0, 200],
+  ]);
+  expect(b.edges).toHaveLength(1);
+  const copyId = b.nodes[2].id;
+  expect(await page.evaluate(() => window.__flowstate!.getState().selection)).toEqual([copyId]);
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(1);
+  await page.keyboard.press('Control+Z');
+  expect((await board(page)).nodes.map((n) => [n.title, n.x, n.y])).toEqual([
+    ['A', 0, 0],
+    ['B', 400, 0],
+  ]);
+});
+
+test('Ctrl+Shift+drag drops the copy in line with the original', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await drag(page, 's1', 300, 15, { keys: ['Control', 'Shift'] });
+  expect((await board(page)).nodes.map((n) => [n.x, n.y])).toEqual([
+    [0, 0],
+    [300, 0],
+  ]);
+});
+
+test('a copy snaps to its own original', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await page.getByRole('button', { name: 'Layout assists' }).click();
+  await page.getByRole('menuitemcheckbox', { name: 'Snap to grid' }).click();
+  await page.keyboard.press('Escape');
+  await drag(page, 's1', 4, 150, { keys: ['Control'] });
+  expect((await board(page)).nodes.map((n) => [n.x, n.y])).toEqual([
+    [0, 0],
+    [0, 150],
+  ]);
+});
+
+test('releasing Ctrl before the drop makes it a plain move', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  const c = await centerOf(node(page, 's1'));
+  await page.mouse.move(c.x, c.y);
+  await page.keyboard.down('Control');
+  await page.mouse.down();
+  await page.mouse.move(c.x + 2, c.y);
+  await page.mouse.move(c.x + 2, c.y + 200, { steps: 10 });
+  await page.keyboard.up('Control');
+  await page.mouse.up();
+  const b = await board(page);
+  expect(b.nodes).toHaveLength(1);
+  expect(b.nodes[0]).toMatchObject({ x: 0, y: 200 });
+});
+
+test('Ctrl+drag of a pair copies both nodes and the arrow between them', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'B', x: 300, y: 0 });
+    connect(b, { source: a, target: c });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await node(page, 's1').click();
+  await node(page, 's2').click({ modifiers: ['Shift'] });
+  await drag(page, 's1', 0, 200, { keys: ['Control'] });
+  const b = await board(page);
+  expect(b.nodes.map((n) => [n.title, n.x, n.y])).toEqual([
+    ['A', 0, 0],
+    ['B', 300, 0],
+    ['A', 0, 200],
+    ['B', 300, 200],
+  ]);
+  const copies = b.nodes.slice(2).map((n) => n.id);
+  expect(b.edges.map((e) => [e.source, e.target])).toEqual([['s1', 's2'], copies]);
+  expect(await selection(page)).toEqual([...copies].sort());
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(1);
+});
+
+test('a Ctrl+drag that snaps back to its start creates nothing', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await drag(page, 's1', 3, 0, { keys: ['Control'] });
+  expect((await board(page)).nodes.map((n) => [n.x, n.y])).toEqual([[0, 0]]);
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(0);
 });

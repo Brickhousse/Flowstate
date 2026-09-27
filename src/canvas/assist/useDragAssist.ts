@@ -21,12 +21,18 @@ interface Session {
   delta: XY;
 }
 
+export interface CopyDrop {
+  ids: string[];
+  start: Record<string, XY>;
+  delta: XY;
+}
+
 export interface DragAssist {
   active(): boolean;
   start(ids: string[]): void;
   adjustMove(positions: Record<string, XY>): void;
   adjustResize(positions: Record<string, XY>, sizes: Record<string, Size>): void;
-  finish(): void;
+  finish(event?: { ctrlKey: boolean; metaKey: boolean }): CopyDrop | null;
 }
 
 export function useDragAssist(boardId: string, editable: boolean, measured: ReadonlyMap<string, Size>): DragAssist {
@@ -79,7 +85,8 @@ export function useDragAssist(boardId: string, editable: boolean, measured: Read
           else dx = 0;
         }
         const moving = { ...s.box, x: s.box.x + dx, y: s.box.y + dy };
-        const snap = snapMove(moving, s.cands, layoutPrefs.getState().prefs, view().zoom, { alt: mods.alt, lock });
+        const cands = mods.ctrl ? { ...s.cands, boxes: [...s.cands.boxes, ...s.ghosts] } : s.cands;
+        const snap = snapMove(moving, cands, layoutPrefs.getState().prefs, view().zoom, { alt: mods.alt, lock });
         s.delta = { x: dx + snap.dx, y: dy + snap.dy };
         for (const id of s.ids) {
           const p = s.start.get(id);
@@ -111,9 +118,13 @@ export function useDragAssist(boardId: string, editable: boolean, measured: Read
           assistOverlay.setState({ guides: out.guides });
         }
       },
-      finish() {
+      finish(event) {
+        const s = session.current;
         session.current = null;
         clearOverlay();
+        if (!s || !event || !(event.ctrlKey || event.metaKey)) return null;
+        if (s.delta.x === 0 && s.delta.y === 0) return null;
+        return { ids: s.ids, start: Object.fromEntries(s.start), delta: s.delta };
       },
     };
   }, [boardId, editable, measured, rfStore]);

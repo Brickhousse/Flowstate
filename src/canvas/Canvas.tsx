@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type
 import { criticalPath } from '../analysis/criticalPath';
 import { SHAPE_SIZE } from '../model/factory';
 import { SHAPES, SIDES, type Shape, type Side } from '../model/types';
+import { copySubgraph, pasteSubgraph } from '../ops/clipboard';
 import { connect } from '../ops/edges';
 import { addStep, resizeNode, setPositions, withGroupMembers } from '../ops/steps';
 import { flowStore, useFlow } from '../store/store';
@@ -299,8 +300,17 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       onSelectionDragStart={(_, dragged) => {
         dragging.current = dragged.map((n) => n.id);
       }}
-      onNodeDragStop={() => {
-        assist.finish();
+      onNodeDragStop={(event) => {
+        const copy = assist.finish(event);
+        if (copy) {
+          const ids = runSafely(() =>
+            flowStore.getState().changeBoard((b) => {
+              setPositions(b, copy.start);
+              return pasteSubgraph(b, copySubgraph(b, copy.ids), copy.delta.x, copy.delta.y);
+            }, boardId),
+          );
+          if (ids) flowStore.getState().select(ids);
+        }
         endDrag(dragging);
       }}
       onNodeDoubleClick={(_, node) => editable && node.type !== 'lane' && startEditing(node.id)}
