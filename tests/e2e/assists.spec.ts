@@ -670,3 +670,58 @@ test('a custom colour from the menu survives the picker taking window focus', as
   expect((await node0(page, 's1')).color).toBe('#123456');
   expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(1);
 });
+
+test('Tab closes the menu without adding a step', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click({ button: 'right' });
+  await expect(menu(page)).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(menu(page)).toHaveCount(0);
+  expect(await titles(page)).toEqual(['A']);
+  expect(await page.evaluate(() => window.__flowstate!.getState().editingId)).toBeNull();
+});
+
+test('a letter typed while the menu is open does not reach the canvas', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click({ button: 'right' });
+  await page.keyboard.press('c');
+  await expect(menu(page)).toBeVisible();
+  expect(await page.evaluate(() => window.__flowstate!.getState().criticalPath)).toBe(false);
+  expect(await page.evaluate(() => window.__flowstate!.getState().editingId)).toBeNull();
+});
+
+test('reopening the menu from the keyboard starts it with no submenu open', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Arrange', exact: true }).hover();
+  await expect(page.getByRole('menu')).toHaveCount(2);
+  // Park the pointer away from where the reopened menu lands, so a hover cannot reset the submenu instead.
+  await page.mouse.move(5, 5);
+  // The open menu swallows Shift+F10, so send it where it lands when focus is outside the menu.
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', shiftKey: true })));
+  await expect(page.getByRole('menuitem', { name: 'Cut' })).toBeVisible();
+  await expect(page.getByRole('menu')).toHaveCount(1);
+});
+
+test('Enter on the custom colour input goes to the input, not the highlighted menu item', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    b.nodes[0].color = 'green';
+  });
+  await open(page, p);
+  await node(page, 's1').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Colour', exact: true }).hover();
+  await page.getByLabel('Custom colour').focus();
+  await page.keyboard.press('Enter');
+  expect((await node0(page, 's1')).color).toBe('green');
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(0);
+});

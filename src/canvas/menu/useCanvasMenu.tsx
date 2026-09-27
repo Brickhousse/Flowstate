@@ -1,5 +1,5 @@
 import { useReactFlow, useStoreApi } from '@xyflow/react';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { boundsOf } from '../../layout/geometry';
 import { flowStore } from '../../store/store';
 import { isTyping } from '../useKeyboard';
@@ -20,7 +20,8 @@ function topSelectedAt(x: number, y: number, selection: string[]): string | null
 export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
   const rf = useReactFlow();
   const rfStore = useStoreApi();
-  const [menu, setMenu] = useState<{ at: MenuAnchor; entries: MenuEntry[] } | null>(null);
+  const [menu, setMenu] = useState<{ at: MenuAnchor; entries: MenuEntry[]; n: number } | null>(null);
+  const opens = useRef(0);
   const close = useCallback(() => setMenu(null), []);
 
   useEffect(() => setMenu(null), [boardId]);
@@ -52,8 +53,8 @@ export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
         if (!st.selection.includes(id)) st.select([id]);
         refId = id;
       }
-      if (refId) setMenu({ at: { x: e.clientX, y: e.clientY }, entries: nodeEntries(boardId, refId, at) });
-      else setMenu({ at: { x: e.clientX, y: e.clientY }, entries: paneEntries(boardId, at) });
+      const entries = refId ? nodeEntries(boardId, refId, at) : paneEntries(boardId, at);
+      setMenu({ at: { x: e.clientX, y: e.clientY }, entries, n: ++opens.current });
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'ContextMenu' && !(e.key === 'F10' && e.shiftKey)) return;
@@ -64,7 +65,7 @@ export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
       if (!box) return;
       e.preventDefault();
       const corner = { x: box.x, y: box.y + box.h };
-      setMenu({ at: rf.flowToScreenPosition(corner), entries: nodeEntries(boardId, st.selection[0], corner) });
+      setMenu({ at: rf.flowToScreenPosition(corner), entries: nodeEntries(boardId, st.selection[0], corner), n: ++opens.current });
     };
     document.addEventListener('contextmenu', onContextMenu, true);
     window.addEventListener('pointerdown', onDown, true);
@@ -78,5 +79,5 @@ export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
     };
   }, [boardId, editable, rf, rfStore]);
 
-  return menu ? <ContextMenu at={menu.at} entries={menu.entries} onClose={close} /> : null;
+  return menu ? <ContextMenu key={menu.n} at={menu.at} entries={menu.entries} onClose={close} /> : null;
 }

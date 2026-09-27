@@ -1,6 +1,7 @@
 import { Check, ChevronRight } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { isTyping } from '../useKeyboard';
 
 export type MenuEntry =
   | { kind: 'item'; label: string; shortcut?: string; disabled?: boolean; checked?: boolean; icon?: ReactNode; run: () => void }
@@ -18,6 +19,8 @@ function ariaShortcut(shortcut: string): string {
     .map((part) => ARIA_KEY[part] ?? part)
     .join('+');
 }
+
+const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta']);
 
 type Actionable = Extract<MenuEntry, { kind: 'item' | 'submenu' }>;
 
@@ -55,6 +58,10 @@ function MenuList({ entries, close, onBack }: { entries: MenuEntry[]; close: () 
     ref.current?.focus();
   };
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Escape' && e.key !== 'Tab' && isTyping(e.target)) {
+      e.stopPropagation();
+      return;
+    }
     switch (e.key) {
       case 'ArrowDown':
         move(1);
@@ -76,7 +83,11 @@ function MenuList({ entries, close, onBack }: { entries: MenuEntry[]; close: () 
         if (onBack) onBack();
         else close();
         break;
+      case 'Tab':
+        close();
+        break;
       default:
+        if (!MODIFIERS.has(e.key)) e.stopPropagation();
         return;
     }
     e.preventDefault();
