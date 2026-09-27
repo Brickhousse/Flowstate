@@ -544,3 +544,39 @@
   background: none;
   cursor: pointer;
 }
+.fs-context-menu {
+  position: fixed;
+  z-index: 50;
+}
+.fs-menu {
+  position: relative;
+  top: 0;
+  right: auto;
+  min-width: 220px;
+  max-height: none;
+  overflow: visible;
+  outline: none;
+}
+.fs-menu-row {
+  position: relative;
+}
+.fs-menu-row > .fs-menu {
+  position: absolute;
+  top: -6px;
+  left: calc(100% + 4px);
+}
+.fs-menu-row > .fs-menu.flip-x {
+  left: auto;
+  right: calc(100% + 4px);
+}
+.fs-menu-row > .fs-menu.flip-y {
+  top: auto;
+  bottom: -6px;
+}
+.menu-item.is-active:not(:disabled) {
+  background: var(--surface-2);
+}
+.menu-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

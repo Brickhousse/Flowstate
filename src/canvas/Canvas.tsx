@@ -28,6 +28,7 @@ import { FlowEdge } from './FlowEdge';
 import { requestFocus } from './focusKey';
 import { GroupNode } from './GroupNode';
 import { LaneNode } from './LaneNode';
+import { useCanvasMenu } from './menu/useCanvasMenu';
 import { setRevealer } from './reveal';
 import { runSafely } from './safe';
 import { StepNode } from './StepNode';
@@ -98,6 +99,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const colors = useThemeColors();
   const rf = useReactFlow<FlowNode, FlowEdgeType>();
   useKeyboard(boardId, editable);
+  const menu = useCanvasMenu(boardId, editable);
   const nodeCache = useRef<RenderCache<FlowNode>>(new Map());
   const edgeCache = useRef<RenderCache<FlowEdgeType>>(new Map());
   const measured = useRef(new Map<string, { width: number; height: number }>());
@@ -322,7 +324,6 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
         flowStore.getState().select([], [edge.id]);
       }}
       onPaneClick={onPaneClick}
-      onPaneContextMenu={(e) => e.preventDefault()}
       onPaneMouseMove={(e) => {
         cursor.flow = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
       }}
@@ -353,6 +354,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       className={['fs-flow', !editable && 'is-reference', connecting && 'is-connecting'].filter(Boolean).join(' ')}
     >
       {editable && <GuidesOverlay />}
+      {menu}
       <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color={colors.dot} />
       {editable && (
         <MiniMap

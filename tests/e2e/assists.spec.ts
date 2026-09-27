@@ -496,3 +496,72 @@ test('layer shortcuts change which step is drawn on top, even while selected', a
   expect((await board(page)).nodes.map((n) => n.id)).toEqual(['s1', 's2']);
   expect(await topAt()).toBe('s2');
 });
+
+const menu = (page: Page) => page.locator('.fs-context-menu');
+
+test('right-click opens the pane menu, right-drag pans without one', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  const pane = (await page.locator('.react-flow__pane').boundingBox())!;
+  const spot = { x: pane.x + 30, y: pane.y + 30 };
+  const transform = () => page.locator('.react-flow__viewport').getAttribute('style');
+  const before = await transform();
+  await page.mouse.move(spot.x, spot.y);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(spot.x + 120, spot.y + 80, { steps: 8 });
+  await page.mouse.up({ button: 'right' });
+  await expect(menu(page)).toHaveCount(0);
+  expect(await transform()).not.toBe(before);
+  await page.mouse.click(spot.x, spot.y, { button: 'right' });
+  await expect(menu(page)).toBeVisible();
+  await expect(page.getByRole('menuitemcheckbox', { name: 'Snap to grid' })).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
+  await expect(menu(page)).toHaveCount(0);
+});
+
+test('the menu works from the keyboard and toggles a layout switch', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  const pane = (await page.locator('.react-flow__pane').boundingBox())!;
+  await page.mouse.click(pane.x + 30, pane.y + 30, { button: 'right' });
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(menu(page)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Layout assists' }).click();
+  await expect(page.getByRole('menuitemcheckbox', { name: 'Snap to grid' })).toHaveAttribute('aria-checked', 'false');
+});
+
+test('right-clicking an unselected step selects it and offers edit actions', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click({ button: 'right' });
+  expect(await page.evaluate(() => window.__flowstate!.getState().selection)).toEqual(['s1']);
+  await page.getByRole('menuitem', { name: 'Duplicate' }).click();
+  expect(await titles(page)).toEqual(['A', 'A']);
+  await node(page, 's1').click();
+  await page.keyboard.press('Shift+F10');
+  await expect(page.getByRole('menuitem', { name: 'Cut' })).toBeVisible();
+});
+
+test('right-clicking inside a title editor keeps the browser menu', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').dblclick();
+  const editor = node(page, 's1').locator('[contenteditable="true"], input, textarea').first();
+  await expect(editor).toBeVisible();
+  await page.evaluate(() => {
+    window.addEventListener('contextmenu', (e) => (document.body.dataset.ctxPrevented = String(e.defaultPrevented)), { once: true });
+  });
+  await editor.click({ button: 'right' });
+  await expect(menu(page)).toHaveCount(0);
+  expect(await page.evaluate(() => document.body.dataset.ctxPrevented)).toBe('false');
+});
