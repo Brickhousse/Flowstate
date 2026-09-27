@@ -725,3 +725,59 @@ test('Enter on the custom colour input goes to the input, not the highlighted me
   expect((await node0(page, 's1')).color).toBe('green');
   expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(0);
 });
+
+async function switchOff(page: Page, ...labels: string[]): Promise<void> {
+  for (const label of labels) {
+    await page.getByRole('button', { name: 'Layout assists' }).click();
+    const item = page.getByRole('menuitemcheckbox', { name: label });
+    await expect(item).toHaveAttribute('aria-checked', 'true');
+    await item.click();
+    await page.keyboard.press('Escape');
+  }
+}
+
+test('turning smart guides off drops the step where it was released, with no guide', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 400, y: 203 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await switchOff(page, 'Snap to grid', 'Smart guides');
+  await drag(page, 's2', 0, -200, {
+    during: async () => {
+      await expect(page.locator('.fs-guide')).toHaveCount(0);
+    },
+  });
+  expect(await node0(page, 's2')).toMatchObject({ x: 400, y: 3 });
+});
+
+test('turning spacing guides off ignores an equal gap and shows no spacing mark', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'B', x: 200, y: 0 });
+    addStep(b, { title: 'C', x: 503, y: 0 });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await switchOff(page, 'Snap to grid', 'Spacing guides');
+  await drag(page, 's3', -100, 0, {
+    during: async () => {
+      await expect(page.locator('.fs-gap')).toHaveCount(0);
+    },
+  });
+  expect(await node0(page, 's3')).toMatchObject({ x: 403, y: 0 });
+});
+
+test('turning Ctrl+arrow nudge off leaves the selection in place', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await switchOff(page, 'Ctrl+arrow nudge');
+  await node(page, 's1').click();
+  await page.keyboard.press('Control+ArrowRight');
+  await page.keyboard.press('Control+Shift+ArrowDown');
+  expect(await node0(page, 's1')).toMatchObject({ x: 0, y: 0 });
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(0);
+});
