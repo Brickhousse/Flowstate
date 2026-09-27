@@ -105,7 +105,7 @@ export function useDragAssist(boardId: string, editable: boolean, measured: Read
           if (!n) continue;
           const pos = positions[id] ?? { x: n.x, y: n.y };
           const raw = { x: pos.x, y: pos.y, w: d.width, h: d.height };
-          // The board holds last frame's snapped rect, so an edge that differs from it is the one being dragged.
+          // why: ADR-0009
           const edges = {
             left: moved(raw.x, n.x),
             top: moved(raw.y, n.y),

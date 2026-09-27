@@ -161,7 +161,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
         if (ch.type === 'position' && ch.position && !ch.id.startsWith('lane:')) positions[ch.id] = ch.position;
         else if (ch.type === 'dimensions' && ch.dimensions) {
           if (ch.resizing) sizes[ch.id] = ch.dimensions;
-          // The resize-end change repeats the resizer's unsnapped size, so only DOM measurements are taken as is.
+          // why: ADR-0009
           else if (ch.resizing === undefined) {
             measured.current.set(ch.id, { ...ch.dimensions });
             remeasured = true;
@@ -173,10 +173,10 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
           else nextSelection.delete(ch.id);
         }
       }
-      // React Flow's drag-end change carries its own unsnapped positions, so every change in a drag is snapped.
+      // why: ADR-0009
       if (editable && Object.keys(positions).length && assist.active()) assist.adjustMove(positions);
       if (editable && Object.keys(sizes).length) assist.adjustResize(positions, sizes);
-      // The resizer starts its next drag from `measured`, and the DOM never re-measures a snapped size it already renders.
+      // The DOM never re-measures a size it already renders, so a snapped size must be recorded here (ADR-0009).
       for (const [id, d] of Object.entries(sizes)) {
         measured.current.set(id, { ...d });
         remeasured = true;
