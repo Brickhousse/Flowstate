@@ -51,10 +51,10 @@ function databaseLip(w: number, h: number): string {
   return `M${INSET},${INSET + ry} A${(w - 2 * INSET) / 2},${ry} 0 0 0 ${w - INSET},${INSET + ry}`;
 }
 
-export function ShapeSvg({ shape, w, h }: { shape: Shape; w: number; h: number }) {
+export function ShapeSvg({ shape, w, h, fill }: { shape: Shape; w: number; h: number; fill?: string }) {
   return (
     <svg className="fs-shape" width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden>
-      <path className="fs-shape-body" d={shapePath(shape, w, h)} />
+      <path className="fs-shape-body" d={shapePath(shape, w, h)} style={fill ? { fill } : undefined} />
       {shape === 'database' && <path className="fs-shape-lip" d={databaseLip(w, h)} />}
     </svg>
   );

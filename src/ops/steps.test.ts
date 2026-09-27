@@ -168,6 +168,19 @@ describe('geometry ops', () => {
 });
 
 
+describe('step colour', () => {
+  it('stores presets and hex colours and rejects anything else', () => {
+    const { b, ids } = chain(['A']);
+    updateSteps(b, [{ id: ids[0], color: '#12ab34' }]);
+    expect(node(b, ids[0]).color).toBe('#12ab34');
+    updateSteps(b, [{ id: ids[0], color: 'violet' }]);
+    expect(node(b, ids[0]).color).toBe('violet');
+    expect(() => updateSteps(b, [{ id: ids[0], color: 'red' }])).toThrow(OpError);
+    updateSteps(b, [{ id: ids[0], color: null }]);
+    expect(node(b, ids[0]).color).toBeNull();
+  });
+});
+
 describe('withGroupMembers', () => {
   it('carries group members along with a moved group and leaves explicit positions alone', () => {
     const { b, ids } = chain(['A', 'B', 'C']);

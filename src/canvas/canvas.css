@@ -519,3 +519,28 @@
   stroke-dasharray: 4 4;
   vector-effect: non-scaling-stroke;
 }
+.fs-step.ink-dark {
+  --text: #1b2130;
+  --text-2: #3f4757;
+  --text-3: #5b6475;
+}
+.fs-step.ink-light {
+  --text: #ffffff;
+  --text-2: #e6e9ef;
+  --text-3: #c9ced8;
+}
+.fs-color-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.fs-color-input input[type='color'] {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}

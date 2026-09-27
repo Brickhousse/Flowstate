@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { consumeFocus, registerFocus } from '../canvas/focusKey';
+import { isHex } from '../model/color';
 
 export function ToolButton({ title, active, className, onClick, children }: { title: string; active?: boolean; className?: string; onClick: () => void; children: ReactNode }) {
   return (
@@ -68,6 +69,24 @@ export function FieldInput({
         }
       }}
     />
+  );
+}
+
+export function ColorInput({ label, value, onPick, className, children }: { label: string; value: string | null; onPick: (hex: string) => void; className?: string; children?: ReactNode }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // React's onChange fires on every picker drag step, which would flood undo; the native change fires once.
+    const onChange = () => onPick(el.value);
+    el.addEventListener('change', onChange);
+    return () => el.removeEventListener('change', onChange);
+  }, [onPick]);
+  return (
+    <label className={className} title={label}>
+      <input ref={ref} type="color" aria-label={label} className="nodrag" defaultValue={value && isHex(value) ? value : '#4c6ef5'} />
+      {children}
+    </label>
   );
 }
 

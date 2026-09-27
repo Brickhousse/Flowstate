@@ -404,3 +404,28 @@ test('a Ctrl+drag that snaps back to its start creates nothing', async ({ page, 
   expect((await board(page)).nodes.map((n) => [n.x, n.y])).toEqual([[0, 0]]);
   expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(0);
 });
+
+test('a custom colour from the toolbar fills the shape in one undo step', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  await page.getByTitle('Colour', { exact: true }).click();
+  await page.getByLabel('Custom colour').fill('#ff8800');
+  expect((await node0(page, 's1')).color).toBe('#ff8800');
+  await expect(node(page, 's1').locator('.fs-shape-body')).toHaveCSS('fill', 'rgb(255, 136, 0)');
+  await expect(node(page, 's1')).toHaveClass(/ink-dark/);
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(1);
+});
+
+test('a project carrying an unknown colour still opens with the default fill', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    b.nodes[0].color = 'red';
+  });
+  await open(page, p);
+  await expect(node(page, 's1')).toBeVisible();
+  await expect(node(page, 's1')).not.toHaveClass(/tint-|ink-/);
+  expect(await node(page, 's1').locator('.fs-shape-body').getAttribute('style')).toBeNull();
+});

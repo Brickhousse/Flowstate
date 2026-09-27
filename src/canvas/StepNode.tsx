@@ -1,6 +1,7 @@
 import { Handle, NodeResizer, Position, type NodeProps } from '@xyflow/react';
 import { Clock } from 'lucide-react';
 import { memo } from 'react';
+import { fillOf } from '../model/color';
 import { formatDuration } from '../model/duration';
 import type { Side } from '../model/types';
 import { flowStore, useFlow } from '../store/store';
@@ -26,11 +27,13 @@ const begin = () => flowStore.getState().begin();
 export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps<StepFlowNode>) {
   const editing = useFlow((s) => s.editingId === id);
   const { node, critical, dimmed, glowing, editable } = data;
+  const fill = fillOf(node.color);
   const className = [
     'fs-step',
     `shape-${node.shape}`,
     node.actor && `actor-${node.actor}`,
-    node.color && `tint-${node.color}`,
+    fill?.kind === 'tint' && `tint-${fill.tint}`,
+    fill?.kind === 'hex' && `ink-${fill.ink}`,
     selected && 'is-selected',
     critical && 'is-critical',
     dimmed && 'is-dimmed',
@@ -42,7 +45,7 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
     <div className={className} style={{ width: node.w, height: node.h }} data-testid={`node-${id}`} title={node.replaces ? `Replaces: ${node.replaces}` : undefined}>
       {editable && <NodeResizer isVisible={selected} minWidth={RESIZE_MIN.step.w} minHeight={RESIZE_MIN.step.h} onResizeStart={begin} onResizeEnd={endResize} />}
       {editable && selected && <FloatingToolbar node={node} />}
-      <ShapeSvg shape={node.shape} w={node.w} h={node.h} />
+      <ShapeSvg shape={node.shape} w={node.w} h={node.h} fill={fill?.kind === 'hex' ? fill.hex : undefined} />
       {node.actor && (
         <span className="fs-actor-chip" title={ACTOR_LABEL[node.actor]}>
           <ActorIcon actor={node.actor} />
