@@ -781,3 +781,36 @@ test('turning Ctrl+arrow nudge off leaves the selection in place', async ({ page
   expect(await node0(page, 's1')).toMatchObject({ x: 0, y: 0 });
   expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(0);
 });
+
+test('Ctrl+drag of a group copies the frame and its members, undone in one step', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const m = addStep(b, { title: 'B', x: 240, y: 0 });
+    groupSteps(b, [a, m], 'Phase');
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await switchOff(page, 'Snap to grid');
+  const before = (await board(page)).nodes;
+  const frame = await boxOf(node(page, 'g3'));
+  const grip = { x: frame.x + 6, y: frame.y + 6 };
+  await page.mouse.move(grip.x, grip.y);
+  await page.keyboard.down('Control');
+  await page.mouse.down();
+  await page.mouse.move(grip.x, grip.y + 2);
+  await page.mouse.move(grip.x, grip.y + 202, { steps: 10 });
+  await page.mouse.up();
+  await page.keyboard.up('Control');
+  const after = (await board(page)).nodes;
+  expect(after.slice(0, 3)).toEqual(before);
+  const copies = after.slice(3);
+  const group = copies.find((n) => n.kind === 'group');
+  expect(group).toMatchObject({ title: 'Phase', x: before[2].x, y: before[2].y + 200 });
+  expect(copies.filter((n) => n.kind === 'step').map((n) => [n.title, n.x, n.y, n.groupId])).toEqual([
+    ['A', 0, 200, group?.id],
+    ['B', 240, 200, group?.id],
+  ]);
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(1);
+  await page.keyboard.press('Control+Z');
+  expect((await board(page)).nodes).toEqual(before);
+});
