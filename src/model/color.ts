@@ -21,10 +21,22 @@ function channel(v: number): number {
   return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
 
-export function inkOn(hex: string): 'dark' | 'light' {
+function luminance(hex: string): number {
   const n = Number.parseInt(hex.slice(1), 16);
-  const lum = 0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255);
-  return (lum + 0.05) / 0.05 >= 1.05 / (lum + 0.05) ? 'dark' : 'light';
+  return 0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255);
+}
+
+function contrast(a: number, b: number): number {
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+// Must match --text in .fs-step.ink-dark and .fs-step.ink-light (canvas.css).
+const INK_DARK = luminance('#1b2130');
+const INK_LIGHT = luminance('#ffffff');
+
+export function inkOn(hex: string): 'dark' | 'light' {
+  const lum = luminance(hex);
+  return contrast(lum, INK_DARK) >= contrast(lum, INK_LIGHT) ? 'dark' : 'light';
 }
 
 export function fillOf(color: string | null): Fill {

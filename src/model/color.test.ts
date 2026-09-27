@@ -21,4 +21,8 @@ describe('colour', () => {
     expect(inkOn('#000000')).toBe('light');
     expect(inkOn('#1b2130')).toBe('light');
   });
+
+  it('weighs ink against the text tokens, not pure black', () => {
+    expect(inkOn('#7a7a7a')).toBe('light');
+  });
 });
