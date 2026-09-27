@@ -7,7 +7,7 @@
 - Layout assists: all 14 tasks built on `feat/layout-assists`, drag and resize snapping with smart guides and spacing guides, Ctrl+drag copy, align and distribute, custom colour, Ctrl+X, nudge and layer shortcuts, the right-click menu, and AI arrange. Awaiting a final playtest and merge.
 
 ## In flight
-- Playtest layout assists Tasks 7 to 13 (Ctrl+drag copy, right-click menu including Shift+F10, align and distribute, layer order, custom colour, Ctrl+arrow nudge, Ctrl+X), then merge `feat/layout-assists`.
+- Playtest layout assists Tasks 7 to 13 (Ctrl+drag copy, right-click menu including Shift+F10, align and distribute, layer order, custom colour, Ctrl+arrow nudge, Ctrl+X), then merge `feat/layout-assists`. Also check: menu Custom colour in Firefox (the picker blurs the window), no native menu beside ours on Shift+F10, and Alt held before a drag then Delete.
 - Human playtest of the full app (keyboard-only and chat-only builds against the 2-minute target in the spec).
 - Live API check: `$env:LIVE_API=1; npx playwright test tests/e2e/live.spec.ts` plus one real "draft an agentic version" request. Needs the user's go-ahead because it spends API credit.
 
@@ -20,6 +20,14 @@
 - Co-building assistant (next AI feature after layout assists). On request, the assistant infers what a step needs, such as inputs that feed into it and both outcomes of a decision. It flags gaps as questions and adds its steps and arrows as dashed proposals the user accepts or dismisses. Needs its own spec. Likely starts with a `feeds_into` option on `add_steps`.
 - Step edges resize only from the corners, because the edge midpoints hold the + buttons.
 - Small cleanups: cache lane nodes and prune render caches, share one critical-path computation between canvas and top bar.
+- Layout assists follow-ups from the whole-branch review:
+  - macOS Ctrl+click opens no canvas menu (ADR 0012).
+  - The menu's Custom colour is not reachable by keyboard.
+  - The perf gate (p95 under 50ms) is too loose to catch a regression.
+  - Tidy and its failure toast are repeated in three places.
+  - The `XY` type is defined three times.
+  - `endResize` belongs beside the resize wiring, not in `overlay.ts`.
+  - Right-clicking the node toolbar or an edge label opens the pane menu.
 
 ## Scrapped
 - None.
