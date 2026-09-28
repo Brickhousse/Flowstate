@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createBoard } from '../model/factory';
+import { reattach, resetPath, setBends } from './arrowPath';
 import { applyTidy } from './board';
 import { copySubgraph, pasteSubgraph } from './clipboard';
 import { connect } from './edges';
+import { OpError } from './errors';
 import { groupSteps } from './groups';
+import { runOp } from './run';
 import { addStep, setPositions, withGroupMembers } from './steps';
 
 const BENDS = [{ x: 300, y: 36 }, { x: 300, y: 236 }];
@@ -63,5 +66,59 @@ describe('bends follow their boxes', () => {
     const { b, a, c } = shaped();
     applyTidy(b, { positions: { [a]: { x: 0, y: 0 }, [c]: { x: 252, y: 0 } }, laneHeights: {} });
     expect(b.edges[0].bends).toEqual([]);
+  });
+});
+
+describe('reattach', () => {
+  it('moves an end to another side of the same box and keeps the bends', () => {
+    const { b, e, c } = shaped();
+    reattach(b, e, 'target', c, 'top');
+    expect(b.edges[0]).toMatchObject({ target: c, targetSide: 'top', bends: BENDS });
+  });
+
+  it('moves an end to another box and clears the bends', () => {
+    const { b, e } = shaped();
+    const d = addStep(b, { title: 'D', x: 400, y: 500 });
+    reattach(b, e, 'target', d, 'left');
+    expect(b.edges[0]).toMatchObject({ target: d, targetSide: 'left', bends: [] });
+  });
+
+  it('changes nothing when the end is dropped on the side it already uses', () => {
+    const { b, e, a } = shaped();
+    expect(runOp(b, (d) => reattach(d, e, 'source', a, 'right')).board).toBe(b);
+  });
+
+  it('refuses a self-link, a group frame and a duplicate of the same type', () => {
+    const { b, e, a, c } = shaped();
+    const d = addStep(b, { title: 'D', x: 800, y: 0 });
+    connect(b, { source: a, target: d });
+    const g = groupSteps(b, [d], 'G');
+    expect(() => reattach(b, e, 'target', a, 'left')).toThrow(`Cannot connect ${a} to itself.`);
+    expect(() => reattach(b, e, 'target', g, 'left')).toThrow('Groups cannot be connected');
+    expect(() => reattach(b, e, 'target', d, 'left')).toThrow(OpError);
+    expect(b.edges[0]).toMatchObject({ source: a, target: c, bends: BENDS });
+  });
+
+  it('allows the same pair when the existing arrow is of another type', () => {
+    const { b, e, a } = shaped();
+    const d = addStep(b, { title: 'D', x: 800, y: 0 });
+    connect(b, { source: a, target: d, type: 'dependency' });
+    reattach(b, e, 'target', d, 'left');
+    expect(b.edges[0].target).toBe(d);
+  });
+});
+
+describe('setBends and resetPath', () => {
+  it('stores bends without repeated or collinear points', () => {
+    const { b, e } = shaped();
+    setBends(b, e, [{ x: 300, y: 36 }, { x: 300, y: 100 }, { x: 300, y: 236 }, { x: 300, y: 236 }]);
+    expect(b.edges[0].bends).toEqual(BENDS);
+  });
+
+  it('drops the bends, and leaves an automatic arrow untouched', () => {
+    const { b, e } = shaped();
+    resetPath(b, [e]);
+    expect(b.edges[0].bends).toEqual([]);
+    expect(runOp(b, (d) => resetPath(d, [e])).board).toBe(b);
   });
 });

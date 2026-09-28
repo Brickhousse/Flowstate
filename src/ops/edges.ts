@@ -1,5 +1,5 @@
 import { allocId } from '../model/factory';
-import type { Board, EdgeType, Side } from '../model/types';
+import type { Board, BoardNode, EdgeType, Side } from '../model/types';
 import { OpError } from './errors';
 import { findEdge, getEdge, getNode } from './query';
 
@@ -12,13 +12,17 @@ export interface ConnectArgs {
   targetSide?: Side | null;
 }
 
-export function connect(b: Board, args: ConnectArgs): string {
-  const source = getNode(b, args.source);
-  const target = getNode(b, args.target);
+export function assertLinkable(source: BoardNode, target: BoardNode): void {
   if (source.kind === 'group' || target.kind === 'group') {
     throw new OpError('Groups cannot be connected. Connect the steps inside them.');
   }
   if (source.id === target.id) throw new OpError(`Cannot connect ${source.id} to itself.`);
+}
+
+export function connect(b: Board, args: ConnectArgs): string {
+  const source = getNode(b, args.source);
+  const target = getNode(b, args.target);
+  assertLinkable(source, target);
   const type = args.type ?? 'flow';
   const existing = findEdge(b, source.id, target.id, type);
   if (existing) {
