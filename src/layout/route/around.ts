@@ -1,6 +1,6 @@
 import type { Side, XY } from '../../model/types';
 import { overlaps, type Rect } from '../geometry';
-import { sideAxis, stubEnd } from './ports';
+import { SIDE_DIR, sideAxis, stubEnd } from './ports';
 import { simplify } from './through';
 
 export const AROUND_PAD = 16;
@@ -93,6 +93,8 @@ export function searchAround(input: AroundInput, opts: AroundOptions = {}): XY[]
   if (inside(s.x, s.y) || inside(t.x, t.y)) return null;
   const goal = { ix: xs.indexOf(t.x), iy: ys.indexOf(t.y) };
   const endAxis = sideAxis(input.targetSide) === 'x' ? 0 : 1;
+  const out = SIDE_DIR[input.sourceSide];
+  const into = SIDE_DIR[input.targetSide];
   const guess = (ix: number, iy: number) => Math.abs(xs[ix] - t.x) + Math.abs(ys[iy] - t.y);
   const best = new Map<number, number>();
   const key = (ix: number, iy: number, axis: number) => (iy * xs.length + ix) * 2 + axis;
@@ -121,6 +123,8 @@ export function searchAround(input: AroundInput, opts: AroundOptions = {}): XY[]
       if (inside(b.x, b.y) || blocked(a, b)) continue;
       const axis = dx !== 0 ? 0 : 1;
       const atGoal = ix === goal.ix && iy === goal.iy;
+      // A state records its axis, not its direction, so doubling back over a stub would look free.
+      if ((!cur.from && dx === -out.x && dy === -out.y) || (atGoal && dx === into.x && dy === into.y)) continue;
       const cost = cur.cost + Math.abs(b.x - a.x) + Math.abs(b.y - a.y) + (axis !== cur.axis ? TURN_COST : 0) + (atGoal && axis !== endAxis ? TURN_COST : 0);
       const k = key(ix, iy, axis);
       if ((best.get(k) ?? Infinity) <= cost) continue;

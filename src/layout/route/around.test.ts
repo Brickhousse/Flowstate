@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import type { XY } from '../../model/types';
 import type { Rect } from '../geometry';
 import { searchAround } from './around';
+import { STUB, stubEnd } from './ports';
 
 const A = { x: 0, y: 0, w: 180, h: 72 };
 const B = { x: 300, y: 0, w: 180, h: 72 };
 const C = { x: 600, y: 0, w: 180, h: 72 };
 const from = { x: 185.5, y: 36 };
 const to = { x: 594.5, y: 36 };
+
+const leg = (p: XY, q: XY) => Math.abs(q.x - p.x) + Math.abs(q.y - p.y);
 
 function cuts(points: XY[], r: Rect): boolean {
   return points.slice(1).some((q, i) => {
@@ -41,6 +44,24 @@ describe('searchAround', () => {
   it('reports no route when an end is boxed in', () => {
     const cage = [{ x: 560, y: -100, w: 20, h: 300 }, { x: 560, y: -100, w: 400, h: 20 }, { x: 560, y: 180, w: 400, h: 20 }, { x: 940, y: -100, w: 20, h: 300 }];
     expect(searchAround({ source: from, sourceSide: 'right', target: to, targetSide: 'left', boxes: [A, C, ...cage] })).toBeNull();
+  });
+
+  it('leaves and enters each port along its side for at least a full stub', () => {
+    const D = { x: -400, y: 300, w: 180, h: 72 };
+    const E = { x: 400, y: -300, w: 180, h: 72 };
+    const cases = [
+      { source: from, sourceSide: 'right', target: { x: -405.5, y: 336 }, targetSide: 'left' },
+      { source: { x: 90, y: 77.5 }, sourceSide: 'bottom', target: { x: 585.5, y: -264 }, targetSide: 'right' },
+    ] as const;
+    for (const c of cases) {
+      const points = searchAround({ ...c, boxes: [A, D, E] })!;
+      const first = leg(points[0], points[1]);
+      const last = leg(points[points.length - 2], points[points.length - 1]);
+      expect(first).toBeGreaterThanOrEqual(STUB);
+      expect(points[1]).toEqual(stubEnd(c.source, c.sourceSide, first));
+      expect(last).toBeGreaterThanOrEqual(STUB);
+      expect(points[points.length - 2]).toEqual(stubEnd(c.target, c.targetSide, last));
+    }
   });
 
   it('routes across a 200-box board inside the time limit', () => {
