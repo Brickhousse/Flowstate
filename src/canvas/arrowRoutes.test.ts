@@ -15,6 +15,17 @@ function row() {
   return { b, a, c, d, ac, cd };
 }
 
+function crossing() {
+  const b = createBoard('B');
+  const a = addStep(b, { title: 'A', x: 0, y: 0 });
+  const c = addStep(b, { title: 'C', x: 400, y: 300 });
+  const e = addStep(b, { title: 'E', x: 0, y: 200 });
+  const f = addStep(b, { title: 'F', x: 400, y: 500 });
+  const shared = connect(b, { source: a, target: c });
+  const apart = connect(b, { source: e, target: f });
+  return { b, e, shared, apart };
+}
+
 describe('arrowRoutes', () => {
   it('starts and ends each arrow at the outer edge of its side dots', () => {
     const { b, ac, cd } = row();
@@ -67,13 +78,7 @@ describe('arrowRoutes', () => {
   });
 
   it('moves a separate arrow off a line it would share, and only that arrow', () => {
-    const b = createBoard('B');
-    const a = addStep(b, { title: 'A', x: 0, y: 0 });
-    const c = addStep(b, { title: 'C', x: 400, y: 300 });
-    const e = addStep(b, { title: 'E', x: 0, y: 200 });
-    const f = addStep(b, { title: 'F', x: 400, y: 500 });
-    const shared = connect(b, { source: a, target: c });
-    const apart = connect(b, { source: e, target: f });
+    const { b, shared, apart } = crossing();
     const before = arrowRoutes(b, new Map());
     b.edges[1].separate = true;
     const after = arrowRoutes(b, new Map());
@@ -88,5 +93,50 @@ describe('arrowRoutes', () => {
     const first = arrowRoutes(b, cache).get(ac);
     const next = runOp(b, (draft) => setPositions(draft, { [d]: { x: 400, y: 340 } })).board;
     expect(arrowRoutes(next, cache).get(ac)).toBe(first);
+  });
+
+  it('draws a separate arrow that clashes with nothing exactly as a shared one', () => {
+    const { b, ac } = row();
+    const cache: RouteCache = new Map();
+    const shared = arrowRoutes(b, cache).get(ac);
+    b.edges[0].separate = true;
+    expect(arrowRoutes(b, cache).get(ac)).toBe(shared);
+  });
+
+  it('keeps the same route object for a shifted arrow when nothing near it moved', () => {
+    const { b, apart } = crossing();
+    b.edges[1].separate = true;
+    const far = addStep(b, { title: 'Far', x: 2000, y: 2000 });
+    const cache: RouteCache = new Map();
+    const first = arrowRoutes(b, cache).get(apart);
+    const next = runOp(b, (draft) => setPositions(draft, { [far]: { x: 2000, y: 2100 } })).board;
+    expect(arrowRoutes(next, cache).get(apart)).toBe(first);
+  });
+
+  it('spreads a separate hand-shaped arrow but never shifts it off a shared line', () => {
+    const { b, e, apart } = crossing();
+    const g = addStep(b, { title: 'G', x: 400, y: 700 });
+    connect(b, { source: e, target: g });
+    b.edges[1].bends = [{ x: 290, y: 300 }];
+    b.edges[1].separate = true;
+    b.edges[2].separate = true;
+    expect(arrowRoutes(b, new Map()).get(apart)!.points).toEqual([
+      { x: 185.5, y: 224 },
+      { x: 207.5, y: 224 },
+      { x: 207.5, y: 300 },
+      { x: 290, y: 300 },
+      { x: 290, y: 536 },
+      { x: 394.5, y: 536 },
+    ]);
+  });
+
+  it('keeps the route object of a shared arrow that a separate arrow moves off', () => {
+    const { b, shared, apart } = crossing();
+    const cache: RouteCache = new Map();
+    const before = arrowRoutes(b, cache);
+    b.edges[1].separate = true;
+    const after = arrowRoutes(b, cache);
+    expect(after.get(apart)).not.toBe(before.get(apart));
+    expect(after.get(shared)).toBe(before.get(shared));
   });
 });

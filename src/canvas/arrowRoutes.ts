@@ -54,8 +54,11 @@ export function arrowRoutes(board: Board, cache: RouteCache): Map<string, Route>
   }
   if (!spots) return out;
   const movable = links.filter((l) => l.e.separate && !l.e.bends.length).map((l) => l.e.id);
-  const shifted = shiftLines(new Map([...out].map(([id, r]) => [id, simplify(r.points)])), movable);
-  for (const [id, points] of shifted) {
+  const plain = new Map([...out].map(([id, r]) => [id, simplify(r.points)]));
+  for (const [id, points] of shiftLines(plain, movable)) {
+    const base = plain.get(id);
+    // why: simplifying drops the stub-end points, which would change the corner radii of an arrow that did not move.
+    if (base && samePoints(base, points)) continue;
     const key = `${id}|apart`;
     const hit = cache.get(key);
     const route = hit && samePoints(hit.value.points, points) ? hit.value : { points, label: halfway(points) };
