@@ -2,13 +2,13 @@ import { useReactFlow } from '@xyflow/react';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
-import { moveSegment, samePoints, segmentAxis, simplify } from '../layout/route/polyline';
 import { SIDES, type Board, type BoardEdge, type Side, type XY } from '../model/types';
 import { reattach, setBends, type ArrowEnd } from '../ops/arrowPath';
 import { layoutPrefs } from '../store/layoutPrefs';
 import { flowStore } from '../store/store';
 import { mods } from './assist/modifiers';
 import { GRID } from './assist/snap';
+import { bendReshape, reshapedBends, segmentReshape, type Reshape } from './reshape';
 import { runSafely } from './safe';
 
 const DRAG_SLOP = 3;
@@ -19,10 +19,7 @@ export function useReattaching(): boolean {
   return useStore(arrowDrag, (s) => s.reattaching);
 }
 
-type Shape =
-  | { kind: 'segment'; points: XY[]; bends: XY[]; index: number; across: 'x' | 'y'; offset: number }
-  | { kind: 'bend'; bends: XY[]; index: number; offset: XY };
-type Session = Shape | { kind: 'end'; end: ArrowEnd };
+type Session = Reshape | { kind: 'end'; end: ArrowEnd };
 
 export interface HandleEvents {
   onPointerDown(e: ReactPointerEvent<SVGElement>): void;
@@ -37,15 +34,6 @@ export interface ArrowDrag {
 
 function snap(v: number): number {
   return layoutPrefs.getState().prefs.gridSnap && !mods.alt ? Math.round(v / GRID) * GRID : v;
-}
-
-function bendsFor(s: Shape, at: XY): XY[] {
-  if (s.kind === 'segment') {
-    const moved = simplify(moveSegment(s.points, s.index, snap(at[s.across] + s.offset)));
-    // why: storing an unchanged route's corners would silently turn an automatic arrow hand-shaped.
-    return samePoints(moved, simplify(s.points)) ? s.bends : moved.slice(1, -1);
-  }
-  return s.bends.map((p, i) => (i === s.index ? { x: snap(at.x + s.offset.x), y: snap(at.y + s.offset.y) } : p));
 }
 
 function dotAt(x: number, y: number): { nodeId: string; side: Side } | null {
@@ -98,7 +86,7 @@ export function useArrowDrag(edge: BoardEdge, points: XY[]): ArrowDrag {
         moving = true;
         flowStore.getState().begin();
       }
-      change((b) => setBends(b, edge.id, bendsFor(s, toFlow(ev))));
+      change((b) => setBends(b, edge.id, reshapedBends(s, toFlow(ev), snap)));
     };
     const finish = (drop: PointerEvent | null) => {
       window.removeEventListener('pointermove', onMove);
@@ -125,18 +113,7 @@ export function useArrowDrag(edge: BoardEdge, points: XY[]): ArrowDrag {
   return {
     ghost,
     end: (end) => ({ onPointerDown: (e) => track(e, { kind: 'end', end }) }),
-    segment: (index) => ({
-      onPointerDown: (e) => {
-        const across = segmentAxis(points[index], points[index + 1]) === 'x' ? 'y' : 'x';
-        track(e, { kind: 'segment', points, bends: edge.bends, index, across, offset: points[index][across] - toFlow(e)[across] });
-      },
-    }),
-    bend: (index) => ({
-      onPointerDown: (e) => {
-        const at = toFlow(e);
-        const p = edge.bends[index];
-        track(e, { kind: 'bend', bends: edge.bends, index, offset: { x: p.x - at.x, y: p.y - at.y } });
-      },
-    }),
+    segment: (index) => ({ onPointerDown: (e) => track(e, segmentReshape(points, edge.bends, index, toFlow(e))) }),
+    bend: (index) => ({ onPointerDown: (e) => track(e, bendReshape(edge.bends, index, toFlow(e))) }),
   };
 }
