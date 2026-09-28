@@ -1,7 +1,8 @@
+import { shiftLines, spreadPorts, type ArrowEnds } from '../layout/route/apart';
 import { elbow } from '../layout/route/elbow';
 import { halfway } from '../layout/route/path';
 import { edgeSides, portAt } from '../layout/route/ports';
-import { through } from '../layout/route/through';
+import { simplify, through } from '../layout/route/through';
 import type { Board, BoardEdge, BoardNode, Direction, XY } from '../model/types';
 import { cached, type RenderCache } from './renderCache';
 
@@ -35,10 +36,31 @@ function linksOf(board: Board): Link[] {
   return links;
 }
 
+function ends({ e, s, t }: Link, direction: Direction): ArrowEnds {
+  const sides = edgeSides(direction, e);
+  return { id: e.id, separate: e.separate, source: { node: s.id, side: sides.source, box: s }, target: { node: t.id, side: sides.target, box: t } };
+}
+
+const samePoints = (a: XY[], b: XY[]) => a.length === b.length && a.every((p, i) => p.x === b[i].x && p.y === b[i].y);
+
 export function arrowRoutes(board: Board, cache: RouteCache): Map<string, Route> {
+  const links = linksOf(board);
+  // why: the board-wide pass runs only when some arrow is separate (ADR-0015).
+  const spots = links.some((l) => l.e.separate) ? spreadPorts(links.map((l) => ends(l, board.direction))) : null;
   const out = new Map<string, Route>();
-  for (const link of linksOf(board)) {
-    out.set(link.e.id, cached(cache, link.e.id, [link.e, link.s, link.t, board.direction], () => draw(link, board.direction, MIDDLE)));
+  for (const link of links) {
+    const at = spots?.get(link.e.id) ?? MIDDLE;
+    out.set(link.e.id, cached(cache, link.e.id, [link.e, link.s, link.t, board.direction, at.source, at.target], () => draw(link, board.direction, at)));
+  }
+  if (!spots) return out;
+  const movable = links.filter((l) => l.e.separate && !l.e.bends.length).map((l) => l.e.id);
+  const shifted = shiftLines(new Map([...out].map(([id, r]) => [id, simplify(r.points)])), movable);
+  for (const [id, points] of shifted) {
+    const key = `${id}|apart`;
+    const hit = cache.get(key);
+    const route = hit && samePoints(hit.value.points, points) ? hit.value : { points, label: halfway(points) };
+    cache.set(key, { deps: [], value: route });
+    out.set(id, route);
   }
   return out;
 }

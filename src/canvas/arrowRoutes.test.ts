@@ -51,4 +51,42 @@ describe('arrowRoutes', () => {
     b.nodes = b.nodes.filter((n) => n.title !== 'A');
     expect(arrowRoutes(b, new Map()).has(ac)).toBe(false);
   });
+
+  it('spreads separate arrows along a side and keeps shared ones on the midpoint', () => {
+    const b = createBoard('B');
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const up = addStep(b, { title: 'Up', x: 400, y: -200 });
+    const down = addStep(b, { title: 'Down', x: 400, y: 200 });
+    const e1 = connect(b, { source: a, target: up });
+    const e2 = connect(b, { source: a, target: down });
+    expect(arrowRoutes(b, new Map()).get(e1)!.points[0]).toEqual({ x: 185.5, y: 36 });
+    for (const e of b.edges) e.separate = true;
+    const routes = arrowRoutes(b, new Map());
+    expect(routes.get(e1)!.points[0]).toEqual({ x: 185.5, y: 24 });
+    expect(routes.get(e2)!.points[0]).toEqual({ x: 185.5, y: 48 });
+  });
+
+  it('moves a separate arrow off a line it would share, and only that arrow', () => {
+    const b = createBoard('B');
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'C', x: 400, y: 300 });
+    const e = addStep(b, { title: 'E', x: 0, y: 200 });
+    const f = addStep(b, { title: 'F', x: 400, y: 500 });
+    const shared = connect(b, { source: a, target: c });
+    const apart = connect(b, { source: e, target: f });
+    const before = arrowRoutes(b, new Map());
+    b.edges[1].separate = true;
+    const after = arrowRoutes(b, new Map());
+    expect(after.get(shared)!.points).toEqual(before.get(shared)!.points);
+    expect(after.get(apart)!.points).toEqual([{ x: 185.5, y: 236 }, { x: 300, y: 236 }, { x: 300, y: 536 }, { x: 394.5, y: 536 }]);
+  });
+
+  it('keeps the same route object for a separate arrow whose shifted route did not change', () => {
+    const { b, d, ac } = row();
+    b.edges[0].separate = true;
+    const cache: RouteCache = new Map();
+    const first = arrowRoutes(b, cache).get(ac);
+    const next = runOp(b, (draft) => setPositions(draft, { [d]: { x: 400, y: 340 } })).board;
+    expect(arrowRoutes(next, cache).get(ac)).toBe(first);
+  });
 });
