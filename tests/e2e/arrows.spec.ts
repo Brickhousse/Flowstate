@@ -537,8 +537,6 @@ async function menusAfterSettling(page: Page): Promise<number> {
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
   return page.getByRole('menu').count();
 }
-// fs-fade animates transform, so a new arrow toolbar sweeps in from the board origin for 100ms and can take a click.
-const toolbarSettled = (page: Page) => page.locator('.fs-edge-toolbar').evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
 const pickList = (page: Page) => page.getByRole('menu', { name: 'Arrows here' });
 
 async function clickBoard(page: Page, edgeId: string, p: XY, shift = false): Promise<void> {
@@ -564,7 +562,6 @@ test('clicking where two arrows share a line selects the top one and lists both 
   expect(await edgeSelection(page)).toEqual(['e4']);
   await expect(pickList(page)).toHaveCount(0);
 
-  await toolbarSettled(page);
   await clickBoard(page, 'e4', { x: 230, y: 36 });
   await expect(pickList(page)).toBeVisible();
   await page.keyboard.press('ArrowDown');
@@ -572,7 +569,6 @@ test('clicking where two arrows share a line selects the top one and lists both 
   expect(await edgeSelection(page)).toEqual(['e4']);
   await expect(pickList(page)).toHaveCount(0);
 
-  await toolbarSettled(page);
   await clickBoard(page, 'e4', { x: 230, y: 36 });
   await page.keyboard.press('Escape');
   await expect(pickList(page)).toHaveCount(0);
@@ -721,6 +717,25 @@ test('a click in the arrow toolbar never opens the arrow list', async ({ page, r
   expect(await menusAfterSettling(page)).toBe(0);
   await expect(label).toBeFocused();
   expect(await edgeSelection(page)).toEqual(['e5']);
+});
+
+test('a new arrow toolbar never slides in, so a click at once where it would have swept reaches the step under it', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'B', x: 400, y: 300 });
+    const d = addStep(b, { title: 'C', x: 800, y: 300 });
+    connect(b, { source: c, target: d });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e4');
+  // Holding the entry animation on its first frame stands in for a click that lands before it ends.
+  await page.locator('.fs-edge-toolbar').evaluate((el) => el.getAnimations().forEach((a) => ((a.currentTime = 0), a.pause())));
+  const a = await centerOf(node(page, 's1'));
+  expect(await page.evaluate((q) => document.elementFromPoint(q.x, q.y)?.closest('.fs-edge-toolbar') ?? null, a)).toBeNull();
+  await page.mouse.click(a.x, a.y);
+  expect(await nodeSelection(page)).toEqual(['s1']);
+  expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
 });
 
 const strokeOf = (page: Page, edgeId: string) => pathOf(page, edgeId).evaluate((el) => getComputedStyle(el).stroke);

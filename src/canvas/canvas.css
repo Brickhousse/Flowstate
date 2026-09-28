@@ -346,8 +346,9 @@
   stroke: currentColor;
   stroke-width: 1.4;
 }
+/* Opacity only: both toolbars place themselves with an inline transform that an animated transform would replace. */
 @keyframes fs-fade {
-  from { opacity: 0; transform: translateY(3px); }
+  from { opacity: 0; }
 }
 .fs-toolbar {
   animation: fs-fade 0.1s ease-out;
