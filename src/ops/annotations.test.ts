@@ -136,6 +136,13 @@ describe('clipboard', () => {
     expect(copies[0].flags[0].id).not.toBe(byTitle(b, 'A').flags[0].id);
   });
 
+  it("keeps an arrow's colour on paste", () => {
+    const { b, ids } = chain(['A', 'B']);
+    b.edges[0].color = 'rose';
+    pasteSubgraph(b, copySubgraph(b, ids), 40, 40);
+    expect(b.edges.map((e) => e.color)).toEqual(['rose', 'rose']);
+  });
+
   it('ignores the clip when nothing is selected', () => {
     const { b } = chain(['A']);
     expect(pasteSubgraph(b, copySubgraph(b, []), 10, 10)).toEqual([]);

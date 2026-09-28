@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isColor } from './color';
 import { ACTORS, EDGE_TYPES, FLAG_KINDS, SCHEMA_VERSION, SHAPES, SIDES, STATUSES, type Project } from './types';
 
 export class ProjectFormatError extends Error {}
@@ -14,7 +15,7 @@ function mapEdges(raw: Record<string, unknown>, fn: (edge: Record<string, unknow
 }
 
 const MIGRATIONS: Record<number, Migration> = {
-  1: (raw) => mapEdges(raw, (e) => ({ ...e, separate: false, bends: [] })),
+  1: (raw) => mapEdges(raw, (e) => ({ ...e, separate: false, bends: [], color: null })),
 };
 
 const Flag = z.object({ id: z.string(), kind: z.enum(FLAG_KINDS), text: z.string(), resolved: z.boolean() });
@@ -51,6 +52,7 @@ const Edge = z.object({
   flags: z.array(Flag),
   separate: z.boolean(),
   bends: z.array(z.object({ x: z.number(), y: z.number() })),
+  color: z.string().refine(isColor, 'Expected a tint name or a #rrggbb colour').nullable(),
 });
 
 const Lane = z.object({ id: z.string(), name: z.string(), order: z.number(), height: z.number() });

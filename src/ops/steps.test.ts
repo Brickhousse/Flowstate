@@ -156,6 +156,22 @@ describe('arrows', () => {
     deleteEdges(b, [id]);
     expect(b.edges).toEqual([]);
   });
+
+  it('colours an arrow with a tint or hex, clears it, and rejects anything else', () => {
+    const { b } = chain(['A', 'B']);
+    const id = b.edges[0].id;
+    expect(b.edges[0].color).toBeNull();
+    updateEdge(b, id, { color: 'amber' });
+    expect(b.edges[0].color).toBe('amber');
+    updateEdge(b, id, { color: '#12ab34' });
+    expect(b.edges[0].color).toBe('#12ab34');
+    expect(() => updateEdge(b, id, { color: 'red' })).toThrow(OpError);
+    expect(b.edges[0].color).toBe('#12ab34');
+    updateEdge(b, id, { label: 'x' });
+    expect(b.edges[0].color).toBe('#12ab34');
+    updateEdge(b, id, { color: null });
+    expect(b.edges[0].color).toBeNull();
+  });
 });
 
 describe('geometry ops', () => {

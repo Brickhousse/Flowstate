@@ -1,10 +1,9 @@
 import { makeNode, SHAPE_SIZE } from '../model/factory';
-import { isColor, TINTS } from '../model/color';
 import type { Actor, Board, EdgeType, Shape, Status, XY } from '../model/types';
 import { fitGroup, nudgeFree, placeInLane, positionAfter, positionAtEnd, positionBefore, type Rect } from '../layout/place';
 import { shiftBends } from './arrowPath';
+import { assertColor } from './color';
 import { connect } from './edges';
-import { OpError } from './errors';
 import { addToGroup } from './groups';
 import { assertLane, syncLane } from './lanes';
 import { findEdge, flowPreds, flowSuccs, getNode } from './query';
@@ -38,9 +37,7 @@ export function cleanFields(fields: StepFields): StepFields {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(fields)) {
     if (value === undefined) continue;
-    if (key === 'color' && typeof value === 'string' && !isColor(value)) {
-      throw new OpError(`Unknown colour "${value}". Use ${TINTS.join(', ')}, a #rrggbb value, or null.`);
-    }
+    if (key === 'color' && typeof value === 'string') assertColor(value);
     out[key] = typeof value === 'string' && key !== 'color' ? value.trim() : value;
   }
   return out as StepFields;

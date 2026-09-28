@@ -60,6 +60,7 @@ export interface BoardEdge {
   flags: Flag[];
   separate: boolean;
   bends: XY[];
+  color: string | null;
 }
 
 export interface Lane {

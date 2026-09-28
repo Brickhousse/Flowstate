@@ -71,7 +71,7 @@ test('C toggles the critical path and L tidies', async ({ page, request }) => {
   const p = await seed(request, (b) => {
     const a = addStep(b, { title: 'A', x: 500, y: 300 });
     addStep(b, { title: 'B', x: 0, y: 0 });
-    b.edges.push({ id: 'e9', source: a, target: 's2', sourceSide: null, targetSide: null, type: 'flow', label: '', flags: [], separate: false, bends: [] });
+    b.edges.push({ id: 'e9', source: a, target: 's2', sourceSide: null, targetSide: null, type: 'flow', label: '', flags: [], separate: false, bends: [], color: null });
     b.nextId = 10;
   });
   await open(page, p);

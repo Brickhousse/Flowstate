@@ -71,6 +71,9 @@ describe('migrateProject', () => {
     ['node kind', (p) => ((p.boards[0].nodes[0] as { kind: string }).kind = 'blob')],
     ['edge type', (p) => ((p.boards[0].edges[0] as { type: string }).type = 'wire')],
     ['edge side', (p) => ((p.boards[0].edges[0] as { sourceSide: string }).sourceSide = 'middle')],
+    ['edge colour', (p) => ((p.boards[0].edges[0] as { color: string }).color = 'red')],
+    ['edge hex colour', (p) => ((p.boards[0].edges[0] as { color: string }).color = '#12ab3')],
+    ['missing edge colour', (p) => delete (p.boards[0].edges[0] as { color?: unknown }).color],
     ['flag kind', (p) => ((p.boards[0].nodes[0].flags[0] as { kind: string }).kind = 'note')],
     ['board direction', (p) => ((p.boards[0] as { direction: string }).direction = 'RL')],
     ['node position', (p) => ((p.boards[0].nodes[0] as { x: unknown }).x = '12')],
@@ -98,6 +101,24 @@ describe('migrateProject', () => {
       [false, []],
       [false, []],
     ]);
+  });
+
+  it('upgrades a version 1 file so every arrow has the default colour', () => {
+    const raw = JSON.parse(JSON.stringify(fullProject()));
+    raw.schemaVersion = 1;
+    for (const e of raw.boards[0].edges) {
+      delete e.separate;
+      delete e.bends;
+      delete e.color;
+    }
+    expect(migrateProject(raw).boards[0].edges.map((e) => e.color)).toEqual([null, null]);
+  });
+
+  it('keeps tint and hex arrow colours', () => {
+    const raw = JSON.parse(JSON.stringify(fullProject()));
+    raw.boards[0].edges[0].color = 'violet';
+    raw.boards[0].edges[1].color = '#12AB34';
+    expect(migrateProject(raw).boards[0].edges.map((e) => e.color)).toEqual(['violet', '#12AB34']);
   });
 
   it('refuses a version 1 file with a malformed arrow instead of crashing', () => {

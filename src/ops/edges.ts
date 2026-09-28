@@ -1,5 +1,6 @@
 import { allocId } from '../model/factory';
 import type { Board, BoardNode, EdgeType, Side } from '../model/types';
+import { assertColor } from './color';
 import { OpError } from './errors';
 import { findEdge, getEdge, getNode } from './query';
 
@@ -41,6 +42,7 @@ export function connect(b: Board, args: ConnectArgs): string {
     flags: [],
     separate: false,
     bends: [],
+    color: null,
   });
   return id;
 }
@@ -59,8 +61,10 @@ export function deleteEdges(b: Board, ids: string[]): void {
   b.edges = b.edges.filter((e) => !doomed.has(e.id));
 }
 
-export function updateEdge(b: Board, id: string, patch: { type?: EdgeType; label?: string }): void {
+export function updateEdge(b: Board, id: string, patch: { type?: EdgeType; label?: string; color?: string | null }): void {
   const e = getEdge(b, id);
+  if (patch.color) assertColor(patch.color);
   if (patch.type) e.type = patch.type;
   if (patch.label !== undefined) e.label = patch.label.trim();
+  if (patch.color !== undefined) e.color = patch.color;
 }
