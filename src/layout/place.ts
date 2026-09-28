@@ -77,6 +77,10 @@ export function shiftDownstream(board: Board, rootId: string, delta: number, exc
     if (n.groupId) groups.add(n.groupId);
   }
   for (const g of groups) fitGroup(board, g);
+  for (const e of board.edges) {
+    if (!e.bends.length || !seen.has(e.source) || !seen.has(e.target)) continue;
+    e.bends = e.bends.map((p) => (ax.main === 'x' ? { x: p.x + delta, y: p.y } : { x: p.x, y: p.y + delta }));
+  }
 }
 
 export function ensureGap(board: Board, fromId: string, toId: string, exclude: Set<string> = new Set([fromId])): void {

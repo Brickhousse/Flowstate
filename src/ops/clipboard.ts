@@ -32,7 +32,8 @@ export function pasteSubgraph(b: Board, clip: Clip, dx: number, dy: number): str
   for (const copy of created) copy.groupId = copy.groupId ? (idMap.get(copy.groupId) ?? null) : null;
   b.nodes.push(...created);
   for (const e of clip.edges) {
-    b.edges.push({ ...e, id: allocId(b, 'e'), source: idMap.get(e.source)!, target: idMap.get(e.target)!, flags: freshFlags(e.flags) });
+    const bends = e.bends.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+    b.edges.push({ ...e, id: allocId(b, 'e'), source: idMap.get(e.source)!, target: idMap.get(e.target)!, flags: freshFlags(e.flags), bends });
   }
   return created.map((n) => n.id);
 }

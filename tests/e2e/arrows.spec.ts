@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { Board, XY } from '../../src/model/types';
 import { connect } from '../../src/ops/edges';
 import { addStep } from '../../src/ops/steps';
-import { node, open, seed } from './fixtures';
+import { board, node, open, seed } from './fixtures';
 
 test.use({ viewport: { width: 1600, height: 900 } });
 
@@ -19,6 +19,16 @@ async function centerOf(locator: Locator): Promise<XY> {
 
 async function resetZoom(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Reset zoom to 100%' }).click();
+}
+
+async function drag(page: Page, target: Locator, dx: number, dy: number): Promise<void> {
+  const c = await centerOf(target);
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  // React Flow starts the drag on the first move past its 1px threshold and measures from there.
+  await page.mouse.move(c.x + 2, c.y);
+  await page.mouse.move(c.x + 2 + dx, c.y + dy, { steps: 10 });
+  await page.mouse.up();
 }
 
 const pathOf = (page: Page, edgeId: string) => page.locator(`[data-testid="rf__edge-${edgeId}"] .react-flow__edge-path`);
@@ -74,4 +84,33 @@ test('a hand-shaped arrow runs through its bends with its label halfway along', 
   const expected = await toScreen(page, 'e3', { x: 300, y: 176 });
   expect(Math.abs(label.x - expected.x)).toBeLessThan(1);
   expect(Math.abs(label.y - expected.y)).toBeLessThan(1);
+});
+
+test('dragging both ends together carries the bends, dragging one end leaves them', async ({ page, request }) => {
+  const p = await seed(request, shapedPair());
+  await open(page, p);
+  await resetZoom(page);
+  await node(page, 's1').click();
+  await node(page, 's2').click({ modifiers: ['Shift'] });
+  await drag(page, node(page, 's1'), 100, 40);
+  let b = await board(page);
+  const moved = b.nodes.find((n) => n.id === 's1')!;
+  expect(moved.x).not.toBe(0);
+  expect(b.edges[0].bends).toEqual(BENDS.map((q) => ({ x: q.x + moved.x, y: q.y + moved.y })));
+  const carried = b.edges[0].bends;
+  await page.locator('.react-flow__pane').click({ position: { x: 5, y: 5 } });
+  await drag(page, node(page, 's2'), 80, 0);
+  b = await board(page);
+  expect(b.edges[0].bends).toEqual(carried);
+  expect(await page.evaluate(() => window.__flowstate!.getState().past.length)).toBe(2);
+});
+
+test('Tidy clears the bends and one undo brings them back', async ({ page, request }) => {
+  const p = await seed(request, shapedPair());
+  await open(page, p);
+  await page.locator('.react-flow__pane').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('l');
+  await expect.poll(async () => (await board(page)).edges[0].bends).toEqual([]);
+  await page.keyboard.press('Control+z');
+  expect((await board(page)).edges[0].bends).toEqual(BENDS);
 });

@@ -23,4 +23,5 @@ export function applyTidy(b: Board, result: TidyResult): void {
     if (h) lane.height = h;
   }
   for (const g of b.nodes) if (g.kind === 'group') fitGroup(b, g.id);
+  for (const e of b.edges) if (e.bends.length) e.bends = [];
 }

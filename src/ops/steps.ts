@@ -1,7 +1,8 @@
 import { makeNode, SHAPE_SIZE } from '../model/factory';
 import { isColor, TINTS } from '../model/color';
-import type { Actor, Board, EdgeType, Shape, Status } from '../model/types';
+import type { Actor, Board, EdgeType, Shape, Status, XY } from '../model/types';
 import { fitGroup, nudgeFree, placeInLane, positionAfter, positionAtEnd, positionBefore, type Rect } from '../layout/place';
+import { shiftBends } from './arrowPath';
 import { connect } from './edges';
 import { OpError } from './errors';
 import { addToGroup } from './groups';
@@ -149,17 +150,20 @@ export function withGroupMembers(b: Board, positions: Record<string, { x: number
   return out;
 }
 
-export function setPositions(b: Board, positions: Record<string, { x: number; y: number }>): void {
+export function setPositions(b: Board, positions: Record<string, XY>): void {
   const groups = new Set<string>();
+  const moved = new Map<string, XY>();
   for (const n of b.nodes) {
     const p = positions[n.id];
     if (!p) continue;
+    moved.set(n.id, { x: p.x - n.x, y: p.y - n.y });
     n.x = p.x;
     n.y = p.y;
     syncLane(b, n);
     if (n.groupId) groups.add(n.groupId);
   }
   for (const g of groups) if (!positions[g]) fitGroup(b, g);
+  shiftBends(b, moved);
 }
 
 export function resizeNode(b: Board, id: string, rect: Rect): void {

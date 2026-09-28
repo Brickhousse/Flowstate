@@ -80,6 +80,19 @@ describe('placement', () => {
     expect([a.x, c.x, d.x]).toEqual([0, 400, 700]);
   });
 
+  it('carries the bends of an arrow whose two ends are both pushed', () => {
+    const b = createBoard('B');
+    const a = add(b, { x: 0 });
+    const c = add(b, { x: 300 });
+    const d = add(b, { x: 600 });
+    link(b, a.id, c.id);
+    link(b, c.id, d.id);
+    b.edges[0].bends = [{ x: 250, y: 36 }];
+    b.edges[1].bends = [{ x: 550, y: 36 }];
+    shiftDownstream(b, c.id, 100);
+    expect(b.edges.map((e) => e.bends)).toEqual([[{ x: 250, y: 36 }], [{ x: 650, y: 36 }]]);
+  });
+
   it('ensureGap pushes the target only when too close', () => {
     const b = createBoard('B');
     const a = add(b, { x: 0 });
