@@ -4,9 +4,10 @@ import type { BoardEdge } from '../model/types';
 import { useFlow } from '../store/store';
 import { EdgeOptions } from './EdgeOptions';
 import { PickPanelOpen } from './pick/pickPanelOpen';
+import { soleEdge } from './selection';
 
 export function EdgeToolbar({ edge, x, y }: { edge: BoardEdge; x: number; y: number }) {
-  const selectedAlone = useFlow((s) => s.edgeSelection.length === 1 && s.edgeSelection[0] === edge.id && s.selection.length === 0);
+  const selectedAlone = useFlow((s) => soleEdge(s.edgeSelection, s.selection) === edge.id);
   const inPanel = useContext(PickPanelOpen);
   if (!selectedAlone || inPanel) return null;
   return (

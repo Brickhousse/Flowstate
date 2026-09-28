@@ -3,7 +3,7 @@ import { edgeSides } from '../layout/route/ports';
 import type { Board, Side, XY } from '../model/types';
 import { assertLinkable } from './edges';
 import { OpError } from './errors';
-import { getEdge, getNode } from './query';
+import { findEdge, getEdge, getNode } from './query';
 
 export type ArrowEnd = 'source' | 'target';
 
@@ -16,7 +16,7 @@ export function reattach(b: Board, id: string, end: ArrowEnd, nodeId: string, si
     const source = end === 'source' ? node : getNode(b, e.source);
     const target = end === 'target' ? node : getNode(b, e.target);
     assertLinkable(source, target);
-    if (b.edges.some((x) => x.id !== e.id && x.source === source.id && x.target === target.id && x.type === e.type)) {
+    if (findEdge(b, source.id, target.id, e.type)) {
       throw new OpError(`${source.id} already has a ${e.type} arrow to ${target.id}.`);
     }
     e.bends = [];

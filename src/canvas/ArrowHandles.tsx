@@ -4,6 +4,7 @@ import { innerSegments, segmentAxis, simplify, splitStubs } from '../layout/rout
 import type { BoardEdge } from '../model/types';
 import { useFlow } from '../store/store';
 import type { Route } from './arrowRoutes';
+import { soleEdge } from './selection';
 import { useArrowDrag } from './useArrowDrag';
 
 const HANDLE = 8;
@@ -15,7 +16,7 @@ const BAR_SHORT = 6;
 const swallow = (e: ReactMouseEvent) => e.stopPropagation();
 
 export function ArrowHandles({ edge, route }: { edge: BoardEdge; route: Route }) {
-  const only = useFlow((s) => s.edgeSelection.length === 1 && s.edgeSelection[0] === edge.id && s.selection.length === 0);
+  const only = useFlow((s) => soleEdge(s.edgeSelection, s.selection) === edge.id);
   const scale = useStore((s) => Math.max(1 / s.transform[2], 1));
   const points = useMemo(() => splitStubs(simplify(route.points)), [route]);
   const drag = useArrowDrag(edge, points);

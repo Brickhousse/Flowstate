@@ -1,6 +1,6 @@
 import { MarkerType, type Edge, type Node } from '@xyflow/react';
 import { axes, boundsOf, laneBands } from '../layout/place';
-import { autoSides } from '../layout/route/ports';
+import { edgeSides } from '../layout/route/ports';
 import { fillOf, type Tint } from '../model/color';
 import type { Board, BoardEdge, BoardNode, Direction, Lane } from '../model/types';
 import type { Route } from './arrowRoutes';
@@ -92,7 +92,6 @@ function lineColor(color: string | null, tintLines: Record<Tint, string>): strin
 }
 
 export function toFlowEdges(board: Board, view: FlowView, cache: RenderCache<FlowEdgeType>, routes: ReadonlyMap<string, Route>): FlowEdgeType[] {
-  const sides = autoSides(board.direction);
   return board.edges.map((e) => {
     const selected = view.edgeSelection.has(e.id);
     const critical = !!view.criticalEdges?.has(e.id);
@@ -100,12 +99,13 @@ export function toFlowEdges(board: Board, view: FlowView, cache: RenderCache<Flo
     const own = lineColor(e.color, view.tintLines);
     const color = critical ? view.criticalColor : selected ? view.accentColor : (own ?? view.edgeColor);
     const route = routes.get(e.id);
+    const sides = edgeSides(board.direction, e);
     return cached(cache, e.id, [e, route, selected, critical, dimmed, view.editable, color, own, board.direction], () => ({
       id: e.id,
       source: e.source,
       target: e.target,
-      sourceHandle: e.sourceSide ?? sides.source,
-      targetHandle: e.targetSide ?? sides.target,
+      sourceHandle: sides.source,
+      targetHandle: sides.target,
       type: 'flow' as const,
       selected,
       data: { edge: e, route, critical, dimmed, editable: view.editable, color, labelColor: own },
