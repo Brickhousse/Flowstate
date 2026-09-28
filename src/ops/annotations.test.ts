@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeNode } from '../model/factory';
 import { copySubgraph, pasteSubgraph } from './clipboard';
+import { connect } from './edges';
 import { addFlag, openFlags, removeFlag, setFlagResolved, updateFlagText } from './flags';
 import { groupSteps, ungroup } from './groups';
 import { renameLane, resizeLane, setLanes } from './lanes';
@@ -44,6 +45,28 @@ describe('lanes', () => {
     renameLane(b, id, 'Finance');
     resizeLane(b, id, 50);
     expect(b.lanes[0]).toMatchObject({ name: 'Finance', height: 120 });
+  });
+
+  it('carries the bends of an arrow inside a lane pushed down by a new lane above', () => {
+    const { b } = chain([]);
+    const [, eng] = setLanes(b, ['Ops', 'Eng']);
+    const a = addStep(b, { title: 'A', laneId: eng });
+    const c = addStep(b, { title: 'C', laneId: eng });
+    connect(b, { source: a, target: c });
+    b.edges[0].bends = [{ x: 300, y: 300 }, { x: 500, y: 300 }];
+    setLanes(b, ['New', 'Ops', 'Eng']);
+    expect(b.edges[0].bends).toEqual([{ x: 300, y: 540 }, { x: 500, y: 540 }]);
+  });
+
+  it('carries the bends of an arrow inside a lane below a resized one', () => {
+    const { b } = chain([]);
+    const [x, y] = setLanes(b, ['X', 'Y']);
+    const a = addStep(b, { title: 'A', laneId: y });
+    const c = addStep(b, { title: 'C', laneId: y });
+    connect(b, { source: a, target: c });
+    b.edges[0].bends = [{ x: 300, y: 300 }, { x: 500, y: 300 }];
+    resizeLane(b, x, 400);
+    expect(b.edges[0].bends).toEqual([{ x: 300, y: 460 }, { x: 500, y: 460 }]);
   });
 });
 

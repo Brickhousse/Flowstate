@@ -1,6 +1,7 @@
 import { axes, laneAt, laneBands } from '../layout/place';
 import { allocId, LANE_SIZE } from '../model/factory';
-import type { Board, BoardNode } from '../model/types';
+import type { Board, BoardNode, XY } from '../model/types';
+import { shiftBends } from './arrowPath';
 import { OpError } from './errors';
 
 export function assertLane(b: Board, laneId: string): void {
@@ -28,13 +29,19 @@ export function setLanes(b: Board, names: string[]): string[] {
     return found ? { id: found.id, name, order, height: found.height } : { id: allocId(b, 'l'), name, order, height: LANE_SIZE };
   });
   const newStart = new Map(laneBands(b).map((band) => [band.id, band.start]));
+  const moved = new Map<string, XY>();
   for (const n of b.nodes) {
     if (!n.laneId) continue;
     const before = oldStart.get(n.laneId);
     const after = newStart.get(n.laneId);
-    if (after === undefined || before === undefined) n.laneId = null;
-    else n[ax.cross] += after - before;
+    if (after === undefined || before === undefined) {
+      n.laneId = null;
+      continue;
+    }
+    n[ax.cross] += after - before;
+    moved.set(n.id, crossDelta(ax.cross, after - before));
   }
+  shiftBends(b, moved);
   return b.lanes.map((l) => l.id);
 }
 
@@ -50,5 +57,15 @@ export function resizeLane(b: Board, id: string, height: number): void {
   const delta = Math.max(120, height) - lane.height;
   const below = new Set(b.lanes.filter((l) => l.order > lane.order).map((l) => l.id));
   lane.height += delta;
-  for (const n of b.nodes) if (n.laneId && below.has(n.laneId)) n[ax.cross] += delta;
+  const moved = new Map<string, XY>();
+  for (const n of b.nodes) {
+    if (!n.laneId || !below.has(n.laneId)) continue;
+    n[ax.cross] += delta;
+    moved.set(n.id, crossDelta(ax.cross, delta));
+  }
+  shiftBends(b, moved);
+}
+
+function crossDelta(cross: 'x' | 'y', delta: number): XY {
+  return cross === 'x' ? { x: delta, y: 0 } : { x: 0, y: delta };
 }
