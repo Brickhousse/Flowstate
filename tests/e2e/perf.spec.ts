@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
-import type { Board } from '../../src/model/types';
-import { connect } from '../../src/ops/edges';
+import type { Board, Project } from '../../src/model/types';
 import { addStep } from '../../src/ops/steps';
 import { board, open, seed } from './fixtures';
+import { crossRowBoard, routingBoard, separateCrossings, separateSkips } from './routingBoards';
 
 function sampleFrames(page: Page, count = 240): Promise<number[]> {
   return page.evaluate(
@@ -86,15 +86,6 @@ function median(values: number[]): number {
   return sorted[Math.floor(sorted.length / 2)];
 }
 
-function routingBoard(b: Board): void {
-  for (let row = 0; row < 10; row++) {
-    const ids = [addStep(b, { title: `R${row} C0`, x: 0, y: row * 200 })];
-    for (let col = 1; col < 20; col++) ids.push(addStep(b, { title: `R${row} C${col}`, after: ids[col - 1] }));
-    const skip = connect(b, { source: ids[5], target: ids[7] });
-    for (const e of b.edges) if (e.id === skip || (e.source === ids[5] && e.target === ids[6])) e.separate = true;
-  }
-}
-
 async function recordFrames(page: Page, action: () => Promise<void>): Promise<number[]> {
   const state = await page.evaluateHandle(() => {
     const s = { times: [] as number[], on: true };
@@ -114,11 +105,9 @@ async function recordFrames(page: Page, action: () => Promise<void>): Promise<nu
   }, state);
 }
 
-test('drags a step on a 200-arrow board within the routing budget', async ({ page, request }) => {
-  test.setTimeout(120_000);
-  const p = await seed(request, routingBoard, 'Perf routing');
-  await open(page, p);
-  const id = (await board(page)).nodes.find((n) => n.title === 'R0 C5')!.id;
+async function dragRuns(page: Page, project: Project, title: string): Promise<number[]> {
+  await open(page, project);
+  const id = (await board(page)).nodes.find((n) => n.title === title)!.id;
   const runs: number[] = [];
   for (let run = 0; run < 3; run++) {
     const c = (await page.getByTestId(`node-${id}`).boundingBox())!;
@@ -131,22 +120,58 @@ test('drags a step on a 200-arrow board within the routing budget', async ({ pag
     });
     runs.push(p95(times));
   }
-  const worst = median(runs);
-  console.log(`routing drag p95 per run ${runs.map((r) => r.toFixed(1)).join(', ')}ms, median ${worst.toFixed(1)}ms`);
-  if (ENFORCE_BUDGET) expect(worst).toBeLessThanOrEqual(BASELINE.dragP95Ms + 2);
-});
+  return runs;
+}
 
-test('opens a 200-arrow board within the routing budget', async ({ page, request }) => {
-  test.setTimeout(120_000);
-  const p = await seed(request, routingBoard, 'Perf open');
+async function openRuns(page: Page, project: Project): Promise<number[]> {
   const runs: number[] = [];
   for (let run = 0; run < 4; run++) {
-    await page.goto(`/?project=${p.id}`);
+    await page.goto(`/?project=${project.id}`);
     await page.locator('.react-flow__edge-path').first().waitFor({ state: 'attached' });
     const at = await page.evaluate(() => new Promise<number>((resolve) => requestAnimationFrame(() => resolve(performance.now()))));
     if (run > 0) runs.push(at);
   }
+  return runs;
+}
+
+function withinDragBudget(name: string, runs: number[]): void {
+  const worst = median(runs);
+  console.log(`${name} drag p95 per run ${runs.map((r) => r.toFixed(1)).join(', ')}ms, median ${worst.toFixed(1)}ms`);
+  if (ENFORCE_BUDGET) expect(worst).toBeLessThanOrEqual(BASELINE.dragP95Ms + 2);
+}
+
+function withinOpenBudget(name: string, runs: number[]): void {
   const typical = median(runs);
-  console.log(`routing open per run ${runs.map((r) => r.toFixed(0)).join(', ')}ms, median ${typical.toFixed(0)}ms`);
+  console.log(`${name} open per run ${runs.map((r) => r.toFixed(0)).join(', ')}ms, median ${typical.toFixed(0)}ms`);
   if (ENFORCE_BUDGET) expect(typical).toBeLessThanOrEqual(BASELINE.openMs * 1.1);
+}
+
+function skipsSeparate(b: Board): void {
+  routingBoard(b);
+  separateSkips(b);
+}
+
+function crossingsSeparate(b: Board): void {
+  crossRowBoard(b);
+  separateCrossings(b);
+}
+
+test('drags a step on a 200-arrow board within the routing budget', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  withinDragBudget('routing', await dragRuns(page, await seed(request, skipsSeparate, 'Perf routing'), 'R0 C5'));
+});
+
+test('opens a 200-arrow board within the routing budget', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  withinOpenBudget('routing', await openRuns(page, await seed(request, skipsSeparate, 'Perf open')));
+});
+
+test('drags a step on a 200-arrow board with shifted arrows within the routing budget', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  withinDragBudget('shifted', await dragRuns(page, await seed(request, crossingsSeparate, 'Perf shifted'), 'R0 C8'));
+});
+
+test('opens a 200-arrow board with shifted arrows within the routing budget', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  withinOpenBudget('shifted', await openRuns(page, await seed(request, crossingsSeparate, 'Perf shifted open')));
 });
