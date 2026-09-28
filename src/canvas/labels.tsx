@@ -26,3 +26,13 @@ export function FlagIcon({ kind, size = 11 }: { kind: FlagKind; size?: number })
   const Icon = kind === 'blocker' ? OctagonX : kind === 'warning' ? TriangleAlert : CircleQuestionMark;
   return <Icon size={size} strokeWidth={2.4} />;
 }
+
+export function EdgeTypeIcon({ type }: { type: EdgeType }) {
+  const dash = type === 'dependency' ? '4 3' : type === 'handoff' ? '1 3' : undefined;
+  return (
+    <svg width="20" height="10" viewBox="0 0 20 10" aria-hidden>
+      <path d="M1 5 H15" stroke="currentColor" strokeWidth="1.6" strokeDasharray={dash} strokeLinecap="round" />
+      <path d="M14 1.5 L19 5 L14 8.5 Z" fill="currentColor" />
+    </svg>
+  );
+}

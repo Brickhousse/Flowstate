@@ -1,23 +1,13 @@
 import { EdgeLabelRenderer } from '@xyflow/react';
 import { RouteOff, Trash } from 'lucide-react';
-import { EDGE_TYPES, FLAG_KINDS, type BoardEdge, type EdgeType } from '../model/types';
+import { EDGE_TYPES, FLAG_KINDS, type BoardEdge } from '../model/types';
 import { resetPath } from '../ops/arrowPath';
 import { deleteEdges, updateEdge } from '../ops/edges';
 import { useFlow } from '../store/store';
 import { Divider, FieldInput, ToolButton } from '../ui/controls';
 import { addFlagAndFocus, editBoard } from './boardChange';
 import { FlagList } from './FlagList';
-import { EDGE_LABEL, FLAG_KEY, FLAG_LABEL, FlagIcon } from './labels';
-
-function EdgeTypeIcon({ type }: { type: EdgeType }) {
-  const dash = type === 'dependency' ? '4 3' : type === 'handoff' ? '1 3' : undefined;
-  return (
-    <svg width="20" height="10" viewBox="0 0 20 10" aria-hidden>
-      <path d="M1 5 H15" stroke="currentColor" strokeWidth="1.6" strokeDasharray={dash} strokeLinecap="round" />
-      <path d="M14 1.5 L19 5 L14 8.5 Z" fill="currentColor" />
-    </svg>
-  );
-}
+import { EDGE_LABEL, EdgeTypeIcon, FLAG_KEY, FLAG_LABEL, FlagIcon } from './labels';
 
 export function EdgeToolbar({ edge, x, y }: { edge: BoardEdge; x: number; y: number }) {
   const visible = useFlow((s) => s.edgeSelection.length === 1 && s.edgeSelection[0] === edge.id && s.selection.length === 0);
