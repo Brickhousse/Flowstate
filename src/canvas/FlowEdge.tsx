@@ -1,18 +1,18 @@
-import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, type EdgeProps } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, type EdgeProps } from '@xyflow/react';
+import { roundedPath } from '../layout/route/path';
 import { EdgeToolbar } from './EdgeToolbar';
 import { FlagBadges } from './FlagBadges';
 import type { FlowEdgeType } from './toFlow';
 
-export function FlowEdge(props: EdgeProps<FlowEdgeType>) {
-  const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, selected, markerEnd } = props;
-  const [path, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 14, offset: 22 });
-  if (!data) return null;
-  const { edge, critical, dimmed } = data;
+export function FlowEdge({ id, data, selected, markerEnd }: EdgeProps<FlowEdgeType>) {
+  if (!data?.route) return null;
+  const { edge, route, critical, dimmed } = data;
+  const { x: labelX, y: labelY } = route.label;
   const className = ['fs-edge', `type-${edge.type}`, critical && 'is-critical', dimmed && 'is-dimmed', selected && 'is-selected'].filter(Boolean).join(' ');
   const openFlags = edge.flags.filter((f) => !f.resolved);
   return (
     <>
-      <BaseEdge id={id} path={path} markerEnd={markerEnd} className={className} interactionWidth={18} />
+      <BaseEdge id={id} path={roundedPath(route.points)} markerEnd={markerEnd} className={className} interactionWidth={18} />
       {(edge.label || openFlags.length > 0) && (
         <EdgeLabelRenderer>
           <div className={`fs-edge-label nodrag nopan ${dimmed ? 'is-dimmed' : ''}`} style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}>

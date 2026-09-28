@@ -21,6 +21,7 @@ import { copySubgraph, pasteSubgraph } from '../ops/clipboard';
 import { connect } from '../ops/edges';
 import { addStep, resizeNode, setPositions, withGroupMembers } from '../ops/steps';
 import { flowStore, useFlow } from '../store/store';
+import { arrowRoutes, type RouteCache } from './arrowRoutes';
 import { GuidesOverlay } from './assist/GuidesOverlay';
 import { useDragAssist } from './assist/useDragAssist';
 import { cursor } from './cursor';
@@ -102,6 +103,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const menu = useCanvasMenu(boardId, editable);
   const nodeCache = useRef<RenderCache<FlowNode>>(new Map());
   const edgeCache = useRef<RenderCache<FlowEdgeType>>(new Map());
+  const routeCache = useRef<RouteCache>(new Map());
   const measured = useRef(new Map<string, { width: number; height: number }>());
   const assist = useDragAssist(boardId, editable, measured.current);
   const [measureTick, setMeasureTick] = useState(0);
@@ -126,7 +128,8 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   );
   // React Flow drops handle bounds for nodes without `measured`, which hides their edges for a frame on every change.
   const nodes = useMemo(() => (board ? toFlowNodes(board, view, nodeCache.current, measured.current) : []), [board, view, measureTick]);
-  const edges = useMemo(() => (board ? toFlowEdges(board, view, edgeCache.current) : []), [board, view]);
+  const routes = useMemo(() => (board ? arrowRoutes(board, routeCache.current) : null), [board]);
+  const edges = useMemo(() => (board && routes ? toFlowEdges(board, view, edgeCache.current, routes) : []), [board, view, routes]);
 
   useEffect(() => (editable ? setRevealer((ids) => revealIds(rf, ids)) : undefined), [rf, editable]);
   useEffect(

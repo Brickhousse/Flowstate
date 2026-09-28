@@ -3,6 +3,7 @@ import { setLanes } from '../ops/lanes';
 import { chain } from '../ops/testkit';
 import { updateSteps } from '../ops/steps';
 import { runOp } from '../ops/run';
+import { arrowRoutes } from './arrowRoutes';
 import { toFlowEdges, toFlowNodes, type FlowEdgeType, type FlowNode, type FlowView, type RenderCache } from './toFlow';
 
 const view = (over: Partial<FlowView> = {}): FlowView => ({
@@ -57,11 +58,21 @@ describe('toFlowEdges', () => {
   it('uses automatic sides by direction and explicit sides when set', () => {
     const { b } = chain(['A', 'B']);
     const cache: RenderCache<FlowEdgeType> = new Map();
-    expect(toFlowEdges(b, view(), cache)[0]).toMatchObject({ sourceHandle: 'right', targetHandle: 'left', type: 'flow' });
+    expect(toFlowEdges(b, view(), cache, arrowRoutes(b, new Map()))[0]).toMatchObject({ sourceHandle: 'right', targetHandle: 'left', type: 'flow' });
     b.direction = 'TB';
     b.edges[0] = { ...b.edges[0] };
-    expect(toFlowEdges(b, view(), cache)[0]).toMatchObject({ sourceHandle: 'bottom', targetHandle: 'top' });
+    expect(toFlowEdges(b, view(), cache, arrowRoutes(b, new Map()))[0]).toMatchObject({ sourceHandle: 'bottom', targetHandle: 'top' });
     b.edges[0] = { ...b.edges[0], sourceSide: 'left' };
-    expect(toFlowEdges(b, view(), cache)[0].sourceHandle).toBe('left');
+    expect(toFlowEdges(b, view(), cache, arrowRoutes(b, new Map()))[0].sourceHandle).toBe('left');
+  });
+
+  it('carries each route and rebuilds the edge when its route changes', () => {
+    const { b } = chain(['A', 'B']);
+    const cache: RenderCache<FlowEdgeType> = new Map();
+    const routes = arrowRoutes(b, new Map());
+    const first = toFlowEdges(b, view(), cache, routes)[0];
+    expect(first.data!.route).toBe(routes.get(b.edges[0].id));
+    expect(toFlowEdges(b, view(), cache, routes)[0]).toBe(first);
+    expect(toFlowEdges(b, view(), cache, arrowRoutes(b, new Map()))[0]).not.toBe(first);
   });
 });

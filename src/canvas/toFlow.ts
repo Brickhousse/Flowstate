@@ -1,10 +1,12 @@
 import { MarkerType, type Edge, type Node } from '@xyflow/react';
 import { axes, boundsOf, laneBands } from '../layout/place';
-import type { Board, BoardEdge, BoardNode, Direction, Lane, Side } from '../model/types';
+import { autoSides } from '../layout/route/ports';
+import type { Board, BoardEdge, BoardNode, Direction, Lane } from '../model/types';
+import type { Route } from './arrowRoutes';
 
 export type NodeViewData = { node: BoardNode; critical: boolean; dimmed: boolean; glowing: boolean; editable: boolean };
 export type LaneViewData = { lane: Lane; alt: boolean; direction: Direction; editable: boolean };
-export type EdgeViewData = { edge: BoardEdge; critical: boolean; dimmed: boolean; editable: boolean };
+export type EdgeViewData = { edge: BoardEdge; route: Route | undefined; critical: boolean; dimmed: boolean; editable: boolean };
 
 export type StepFlowNode = Node<NodeViewData, 'step'>;
 export type TextFlowNode = Node<NodeViewData, 'text'>;
@@ -35,10 +37,6 @@ function cached<T>(cache: RenderCache<T>, id: string, deps: unknown[], make: () 
   const value = make();
   cache.set(id, { deps, value });
   return value;
-}
-
-export function autoSides(direction: Direction): { source: Side; target: Side } {
-  return direction === 'LR' ? { source: 'right', target: 'left' } : { source: 'bottom', target: 'top' };
 }
 
 export function laneNodes(board: Board, editable: boolean): LaneFlowNode[] {
@@ -94,14 +92,15 @@ export function toFlowNodes(board: Board, view: FlowView, cache: RenderCache<Flo
   return out;
 }
 
-export function toFlowEdges(board: Board, view: FlowView, cache: RenderCache<FlowEdgeType>): FlowEdgeType[] {
+export function toFlowEdges(board: Board, view: FlowView, cache: RenderCache<FlowEdgeType>, routes: ReadonlyMap<string, Route>): FlowEdgeType[] {
   const sides = autoSides(board.direction);
   return board.edges.map((e) => {
     const selected = view.edgeSelection.has(e.id);
     const critical = !!view.criticalEdges?.has(e.id);
     const dimmed = !!view.criticalEdges && !critical;
     const color = critical ? view.criticalColor : selected ? view.accentColor : view.edgeColor;
-    return cached(cache, e.id, [e, selected, critical, dimmed, view.editable, color, board.direction], () => ({
+    const route = routes.get(e.id);
+    return cached(cache, e.id, [e, route, selected, critical, dimmed, view.editable, color, board.direction], () => ({
       id: e.id,
       source: e.source,
       target: e.target,
@@ -109,7 +108,7 @@ export function toFlowEdges(board: Board, view: FlowView, cache: RenderCache<Flo
       targetHandle: e.targetSide ?? sides.target,
       type: 'flow' as const,
       selected,
-      data: { edge: e, critical, dimmed, editable: view.editable },
+      data: { edge: e, route, critical, dimmed, editable: view.editable },
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color },
       zIndex: critical ? 1 : 0,
     }));
