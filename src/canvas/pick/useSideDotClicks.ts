@@ -1,6 +1,7 @@
 import { useStoreApi } from '@xyflow/react';
 import { useEffect } from 'react';
 import type { XY } from '../../model/types';
+import { isOnSideDot } from '../sideDots';
 
 // onDotClick returns true when it consumed the click, so React Flow never sees it.
 export function useSideDotClicks(editable: boolean, onDotClick: (at: XY, detail: number) => boolean): void {
@@ -8,7 +9,7 @@ export function useSideDotClicks(editable: boolean, onDotClick: (at: XY, detail:
   useEffect(() => {
     if (!editable) return;
     let down: XY | null = null;
-    const onDot = (t: EventTarget | null) => t instanceof Element && !!t.closest('.react-flow__handle') && !!rfStore.getState().domNode?.contains(t);
+    const onDot = (t: EventTarget | null) => isOnSideDot(t) && !!rfStore.getState().domNode?.contains(t);
     const onDown = (e: PointerEvent) => {
       down = e.button === 0 && onDot(e.target) ? { x: e.clientX, y: e.clientY } : null;
     };

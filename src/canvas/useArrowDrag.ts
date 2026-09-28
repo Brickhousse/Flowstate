@@ -2,7 +2,7 @@ import { useReactFlow } from '@xyflow/react';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
-import { SIDES, type Board, type BoardEdge, type Side, type XY } from '../model/types';
+import type { Board, BoardEdge, XY } from '../model/types';
 import { reattach, setBends, type ArrowEnd } from '../ops/arrowPath';
 import { layoutPrefs } from '../store/layoutPrefs';
 import { flowStore } from '../store/store';
@@ -10,6 +10,7 @@ import { mods } from './assist/modifiers';
 import { GRID } from './assist/snap';
 import { bendReshape, reshapedBends, segmentReshape, type Reshape } from './reshape';
 import { runSafely } from './safe';
+import { dotAt } from './sideDots';
 
 const DRAG_SLOP = 3;
 
@@ -34,16 +35,6 @@ export interface ArrowDrag {
 
 function snap(v: number): number {
   return layoutPrefs.getState().prefs.gridSnap && !mods.alt ? Math.round(v / GRID) * GRID : v;
-}
-
-function dotAt(x: number, y: number): { nodeId: string; side: Side } | null {
-  for (const el of document.elementsFromPoint(x, y)) {
-    if (!el.classList.contains('react-flow__handle')) continue;
-    const nodeId = el.getAttribute('data-nodeid');
-    const side = SIDES.find((s) => s === el.getAttribute('data-handleid'));
-    if (nodeId && side) return { nodeId, side };
-  }
-  return null;
 }
 
 export function useArrowDrag(edge: BoardEdge, points: XY[]): ArrowDrag {

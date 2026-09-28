@@ -16,7 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { criticalPath } from '../analysis/criticalPath';
 import { SHAPE_SIZE } from '../model/factory';
-import { SHAPES, SIDES, type Shape, type Side } from '../model/types';
+import { SHAPES, type Shape } from '../model/types';
 import { copySubgraph, pasteSubgraph } from '../ops/clipboard';
 import { connect } from '../ops/edges';
 import { addStep, resizeNode, setPositions, withGroupMembers } from '../ops/steps';
@@ -35,6 +35,7 @@ import { useArrowPicker } from './pick/useArrowPicker';
 import type { RenderCache } from './renderCache';
 import { setRevealer } from './reveal';
 import { runSafely } from './safe';
+import { asSide } from './sideDots';
 import { StepNode } from './StepNode';
 import { TextNode } from './TextNode';
 import { toFlowEdges, toFlowNodes, type FlowEdgeType, type FlowNode, type FlowView } from './toFlow';
@@ -50,10 +51,6 @@ const nodeTypes = { step: StepNode, text: TextNode, group: GroupNode, lane: Lane
 const edgeTypes = { flow: FlowEdge };
 const EMPTY: string[] = [];
 const viewports = new Map<string, Viewport>();
-
-function asSide(value: string | null | undefined): Side | null {
-  return SIDES.find((s) => s === value) ?? null;
-}
 
 function minimapColor(type: string | undefined, actor: string | null | undefined, colors: ThemeColors): string {
   if (type === 'lane' || type === 'group' || type === 'text') return 'transparent';
