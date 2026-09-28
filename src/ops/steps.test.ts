@@ -166,6 +166,7 @@ describe('arrows', () => {
     updateEdge(b, id, { color: '#12ab34' });
     expect(b.edges[0].color).toBe('#12ab34');
     expect(() => updateEdge(b, id, { color: 'red' })).toThrow(OpError);
+    expect(() => updateEdge(b, id, { color: '' })).toThrow(OpError);
     expect(b.edges[0].color).toBe('#12ab34');
     updateEdge(b, id, { label: 'x' });
     expect(b.edges[0].color).toBe('#12ab34');

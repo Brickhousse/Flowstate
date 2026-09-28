@@ -63,7 +63,7 @@ export function deleteEdges(b: Board, ids: string[]): void {
 
 export function updateEdge(b: Board, id: string, patch: { type?: EdgeType; label?: string; color?: string | null }): void {
   const e = getEdge(b, id);
-  if (patch.color) assertColor(patch.color);
+  if (typeof patch.color === 'string') assertColor(patch.color);
   if (patch.type) e.type = patch.type;
   if (patch.label !== undefined) e.label = patch.label.trim();
   if (patch.color !== undefined) e.color = patch.color;

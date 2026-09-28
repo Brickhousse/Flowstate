@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { isColor } from './color';
 import { ACTORS, EDGE_TYPES, FLAG_KINDS, SCHEMA_VERSION, SHAPES, SIDES, STATUSES, type Project } from './types';
 
 export class ProjectFormatError extends Error {}
@@ -52,7 +51,7 @@ const Edge = z.object({
   flags: z.array(Flag),
   separate: z.boolean(),
   bends: z.array(z.object({ x: z.number(), y: z.number() })),
-  color: z.string().refine(isColor, 'Expected a tint name or a #rrggbb colour').nullable(),
+  color: z.string().nullable(),
 });
 
 const Lane = z.object({ id: z.string(), name: z.string(), order: z.number(), height: z.number() });

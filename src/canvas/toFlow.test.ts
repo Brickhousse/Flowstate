@@ -107,6 +107,15 @@ describe('arrow colour', () => {
     ]);
   });
 
+  it('draws an arrow whose colour is not a tint or #rrggbb exactly like one with no colour', () => {
+    const { b } = chain(['A', 'B', 'C', 'D']);
+    b.edges[0].color = 'red';
+    b.edges[1].color = '#12ab3';
+    const [bad, short, plain] = colors(toFlowEdges(b, view(), new Map(), arrowRoutes(b, new Map())));
+    expect(bad).toEqual(plain);
+    expect(short).toEqual(plain);
+  });
+
   it('rebuilds only the recoloured arrow, and every tinted arrow when the theme changes', () => {
     const { b } = chain(['A', 'B', 'C']);
     b.edges[1].color = 'blue';

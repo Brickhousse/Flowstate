@@ -1,7 +1,7 @@
 import { MarkerType, type Edge, type Node } from '@xyflow/react';
 import { axes, boundsOf, laneBands } from '../layout/place';
 import { autoSides } from '../layout/route/ports';
-import { isTint, type Tint } from '../model/color';
+import { fillOf, type Tint } from '../model/color';
 import type { Board, BoardEdge, BoardNode, Direction, Lane } from '../model/types';
 import type { Route } from './arrowRoutes';
 import { cached, type RenderCache } from './renderCache';
@@ -86,8 +86,9 @@ export function toFlowNodes(board: Board, view: FlowView, cache: RenderCache<Flo
 }
 
 function lineColor(color: string | null, tintLines: Record<Tint, string>): string | null {
-  if (!color) return null;
-  return isTint(color) ? tintLines[color] : color;
+  const fill = fillOf(color);
+  if (!fill) return null;
+  return fill.kind === 'tint' ? tintLines[fill.tint] : fill.hex;
 }
 
 export function toFlowEdges(board: Board, view: FlowView, cache: RenderCache<FlowEdgeType>, routes: ReadonlyMap<string, Route>): FlowEdgeType[] {
