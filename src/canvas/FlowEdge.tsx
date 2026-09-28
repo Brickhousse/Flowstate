@@ -3,6 +3,7 @@ import { roundedPath } from '../layout/route/path';
 import { ArrowHandles } from './ArrowHandles';
 import { EdgeToolbar } from './EdgeToolbar';
 import { FlagBadges } from './FlagBadges';
+import { ARROW_HIT_WIDTH } from './pick/arrowsAt';
 import type { FlowEdgeType } from './toFlow';
 
 export function FlowEdge({ id, data, selected, markerEnd }: EdgeProps<FlowEdgeType>) {
@@ -13,7 +14,7 @@ export function FlowEdge({ id, data, selected, markerEnd }: EdgeProps<FlowEdgeTy
   const openFlags = edge.flags.filter((f) => !f.resolved);
   return (
     <>
-      <BaseEdge id={id} path={roundedPath(route.points)} markerEnd={markerEnd} className={className} interactionWidth={18} />
+      <BaseEdge id={id} path={roundedPath(route.points)} markerEnd={markerEnd} className={className} interactionWidth={ARROW_HIT_WIDTH} />
       {(edge.label || openFlags.length > 0) && (
         <EdgeLabelRenderer>
           <div className={`fs-edge-label nodrag nopan ${dimmed ? 'is-dimmed' : ''}`} style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}>
