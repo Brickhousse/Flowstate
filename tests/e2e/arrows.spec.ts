@@ -146,7 +146,7 @@ test('dragging a segment slides it on the grid, Alt drags it freely, each one un
   await open(page, p);
   await resetZoom(page);
   await selectArrow(page, 'e3');
-  const bar = page.locator('.fs-arrow-bar[data-segment="1"]');
+  const bar = page.locator('.fs-arrow-bar[data-segment="2"]');
   const c = await centerOf(bar);
   await dragTo(page, bar, { x: c.x + 100, y: c.y });
   expect((await board(page)).edges[0].bends).toEqual([{ x: 400, y: 36 }, { x: 400, y: 336 }]);
@@ -191,7 +191,7 @@ test('a segment dragged onto its neighbour line keeps dragging and ends as one u
   await open(page, p);
   await resetZoom(page);
   await selectArrow(page, 'e3');
-  const c = await centerOf(page.locator('.fs-arrow-bar[data-segment="2"]'));
+  const c = await centerOf(page.locator('.fs-arrow-bar[data-segment="3"]'));
   await page.mouse.move(c.x, c.y);
   await page.keyboard.down('Alt');
   await page.mouse.down();
@@ -235,7 +235,7 @@ test('zoomed out, handles stay grabbable and a segment moves by the pointer dist
   const zoom = await page.locator('.react-flow__viewport').evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a);
   await selectArrow(page, 'e3');
   expect((await boxOf(page.locator('.fs-arrow-bend[data-bend="0"]'))).width).toBeGreaterThanOrEqual(7.5);
-  const bar = page.locator('.fs-arrow-bar[data-segment="1"]');
+  const bar = page.locator('.fs-arrow-bar[data-segment="2"]');
   const c = await centerOf(bar);
   await dragTo(page, bar, { x: c.x + 50, y: c.y }, { alt: true });
   const [first] = (await board(page)).edges[0].bends;
@@ -401,4 +401,68 @@ test('a press on a bend square that moves 2px leaves an off-grid bend where it w
   await press(page, page.locator('.fs-arrow-bend[data-bend="0"]'), 0, 2);
   expect((await board(page)).edges[0].bends).toEqual(BENDS);
   expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
+});
+
+test('a straight arrow shows one bar, and dragging it keeps the ports and records one undo step', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'B', x: 400, y: 0 });
+    connect(b, { source: a, target: c });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await expect(pathOf(page, 'e3')).toHaveAttribute('d', /^M185\.5 36(L[\d.]+ 36)+$/);
+  await selectArrow(page, 'e3');
+  const bar = page.locator('.fs-arrow-bar');
+  await expect(bar).toHaveCount(1);
+  const c = await centerOf(bar);
+  await dragTo(page, bar, { x: c.x, y: c.y + 60 });
+  expect((await board(page)).edges[0]).toMatchObject({ bends: [{ x: 207.5, y: 100 }, { x: 372.5, y: 100 }], source: 's1', target: 's2' });
+  const d = await pathOf(page, 'e3').getAttribute('d');
+  expect(d?.startsWith('M185.5 36')).toBe(true);
+  expect(d?.endsWith('394.5 36')).toBe(true);
+  expect(await historyShape(page)).toEqual({ past: 1, future: 0, tx: false });
+  await page.keyboard.press('Control+z');
+  expect((await board(page)).edges[0].bends).toEqual([]);
+});
+
+test('an L-shaped arrow shows two bars', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'B', x: 400, y: 300 });
+    connect(b, { source: a, target: c });
+    b.edges[0].targetSide = 'top';
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e3');
+  await expect(page.locator('.fs-arrow-bar.is-horizontal')).toHaveCount(1);
+  await expect(page.locator('.fs-arrow-bar.is-vertical')).toHaveCount(1);
+});
+
+test("a hand-shaped arrow's end runs get bars, and dragging one keeps its stub at the box", async ({ page, request }) => {
+  const p = await seed(request, shapedPair());
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e3');
+  await expect(page.locator('.fs-arrow-bar')).toHaveCount(3);
+  const bar = page.locator('.fs-arrow-bar[data-segment="1"]');
+  const c = await centerOf(bar);
+  await dragTo(page, bar, { x: c.x, y: c.y + 60 });
+  expect((await board(page)).edges[0].bends).toEqual([{ x: 207.5, y: 100 }, { x: 300, y: 100 }, { x: 300, y: 336 }]);
+  await expect(pathOf(page, 'e3')).toHaveAttribute('d', /^M185\.5 36L [\d.]+,36Q 207\.5,36 207\.5,/);
+  expect(await historyShape(page)).toEqual({ past: 1, future: 0, tx: false });
+});
+
+test('double-clicking a segment bar opens the label editor', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'B', x: 400, y: 0 });
+    connect(b, { source: a, target: c });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e3');
+  await page.locator('.fs-arrow-bar').dblclick();
+  await expect(page.locator('.fs-edge-toolbar').getByLabel('Arrow label')).toBeFocused();
 });

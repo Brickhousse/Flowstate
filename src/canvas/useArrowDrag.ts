@@ -54,7 +54,7 @@ function dotAt(x: number, y: number): { nodeId: string; side: Side } | null {
   return null;
 }
 
-export function useArrowDrag(edge: BoardEdge, corners: XY[]): ArrowDrag {
+export function useArrowDrag(edge: BoardEdge, points: XY[]): ArrowDrag {
   const rf = useReactFlow();
   const [ghost, setGhost] = useState<ArrowDrag['ghost']>(null);
   const stop = useRef<(() => void) | null>(null);
@@ -116,8 +116,8 @@ export function useArrowDrag(edge: BoardEdge, corners: XY[]): ArrowDrag {
     end: (end) => ({ onPointerDown: (e) => track(e, { kind: 'end', end }) }),
     segment: (index) => ({
       onPointerDown: (e) => {
-        const across = segmentAxis(corners[index], corners[index + 1]) === 'x' ? 'y' : 'x';
-        track(e, { kind: 'segment', points: corners, index, across, offset: corners[index][across] - toFlow(e)[across] });
+        const across = segmentAxis(points[index], points[index + 1]) === 'x' ? 'y' : 'x';
+        track(e, { kind: 'segment', points, index, across, offset: points[index][across] - toFlow(e)[across] });
       },
     }),
     bend: (index) => ({
