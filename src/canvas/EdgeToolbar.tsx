@@ -1,6 +1,7 @@
 import { EdgeLabelRenderer } from '@xyflow/react';
-import { Trash } from 'lucide-react';
+import { RouteOff, Trash } from 'lucide-react';
 import { EDGE_TYPES, FLAG_KINDS, type BoardEdge, type EdgeType } from '../model/types';
+import { resetPath } from '../ops/arrowPath';
 import { deleteEdges, updateEdge } from '../ops/edges';
 import { useFlow } from '../store/store';
 import { Divider, FieldInput, ToolButton } from '../ui/controls';
@@ -45,6 +46,11 @@ export function EdgeToolbar({ edge, x, y }: { edge: BoardEdge; x: number; y: num
               <FlagIcon kind={k} size={14} />
             </ToolButton>
           ))}
+          {edge.bends.length > 0 && (
+            <ToolButton title="Reset path" onClick={() => editBoard((b) => resetPath(b, [edge.id]))}>
+              <RouteOff size={14} />
+            </ToolButton>
+          )}
           <ToolButton title="Delete arrow (Del)" onClick={() => editBoard((b) => deleteEdges(b, [edge.id]))}>
             <Trash size={14} />
           </ToolButton>

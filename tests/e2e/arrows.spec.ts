@@ -360,3 +360,13 @@ test('dropping an end on its own dot records nothing, and deleting the arrow mid
   expect((await board(page)).edges).toEqual([]);
   expect(await history(page)).toBe(1);
 });
+
+test('Reset path in the toolbar returns a hand-shaped arrow to its automatic route', async ({ page, request }) => {
+  const p = await seed(request, shapedPair());
+  await open(page, p);
+  await selectArrow(page, 'e3');
+  await page.getByRole('button', { name: 'Reset path' }).click();
+  expect((await board(page)).edges[0].bends).toEqual([]);
+  expect(await history(page)).toBe(1);
+  await expect(page.getByRole('button', { name: 'Reset path' })).toHaveCount(0);
+});
