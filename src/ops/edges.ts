@@ -35,6 +35,8 @@ export function connect(b: Board, args: ConnectArgs): string {
     type,
     label: (args.label ?? '').trim(),
     flags: [],
+    separate: false,
+    bends: [],
   });
   return id;
 }

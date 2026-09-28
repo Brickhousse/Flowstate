@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const SHAPES = ['process', 'decision', 'terminal', 'data', 'document', 'database', 'preparation', 'connector', 'sticky'] as const;
 export const ACTORS = ['person', 'system', 'agent'] as const;
@@ -15,6 +15,11 @@ export type FlagKind = (typeof FLAG_KINDS)[number];
 export type Side = (typeof SIDES)[number];
 export type NodeKind = 'step' | 'text' | 'group';
 export type Direction = 'LR' | 'TB';
+
+export interface XY {
+  x: number;
+  y: number;
+}
 
 export interface Flag {
   id: string;
@@ -53,6 +58,8 @@ export interface BoardEdge {
   type: EdgeType;
   label: string;
   flags: Flag[];
+  separate: boolean;
+  bends: XY[];
 }
 
 export interface Lane {

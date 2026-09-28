@@ -1,13 +1,13 @@
 import { tidyBoard } from '../../layout/tidyBoard';
 import { TINTS } from '../../model/color';
-import type { Board } from '../../model/types';
+import type { Board, XY } from '../../model/types';
 import { ALIGN_EDGES, alignNodes, distributeNodes, matchSize, reorder, type AlignEdge, type DistributeAxis, type MatchDims, type OrderMove } from '../../ops/arrange';
 import { updateSteps } from '../../ops/steps';
 import { LAYOUT_PREFS, layoutPrefs, PREF_LABEL } from '../../store/layoutPrefs';
 import { flowStore } from '../../store/store';
 import { ColorInput } from '../../ui/controls';
 import { notify } from '../../ui/toast';
-import { arrangeSelection, copySelection, cutSelection, duplicateSelection, pasteClipboard, removeSelection, run, type XY } from '../commands';
+import { arrangeSelection, copySelection, cutSelection, duplicateSelection, pasteClipboard, removeSelection, run } from '../commands';
 import type { MenuEntry } from './ContextMenu';
 
 export function editEntries(boardId: string, at: XY): MenuEntry[] {

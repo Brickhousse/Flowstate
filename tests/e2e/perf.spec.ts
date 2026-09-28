@@ -90,7 +90,8 @@ function routingBoard(b: Board): void {
   for (let row = 0; row < 10; row++) {
     const ids = [addStep(b, { title: `R${row} C0`, x: 0, y: row * 200 })];
     for (let col = 1; col < 20; col++) ids.push(addStep(b, { title: `R${row} C${col}`, after: ids[col - 1] }));
-    connect(b, { source: ids[5], target: ids[7] });
+    const skip = connect(b, { source: ids[5], target: ids[7] });
+    for (const e of b.edges) if (e.id === skip || (e.source === ids[5] && e.target === ids[6])) e.separate = true;
   }
 }
 

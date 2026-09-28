@@ -4,7 +4,18 @@ import { ACTORS, EDGE_TYPES, FLAG_KINDS, SCHEMA_VERSION, SHAPES, SIDES, STATUSES
 export class ProjectFormatError extends Error {}
 
 type Migration = (raw: Record<string, unknown>) => Record<string, unknown>;
-const MIGRATIONS: Record<number, Migration> = {};
+
+const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+
+function mapEdges(raw: Record<string, unknown>, fn: (edge: Record<string, unknown>) => Record<string, unknown>): Record<string, unknown> {
+  if (!Array.isArray(raw.boards)) return raw;
+  const boards = raw.boards.map((b: unknown) => (isRecord(b) && Array.isArray(b.edges) ? { ...b, edges: b.edges.map((e: unknown) => (isRecord(e) ? fn(e) : e)) } : b));
+  return { ...raw, boards };
+}
+
+const MIGRATIONS: Record<number, Migration> = {
+  1: (raw) => mapEdges(raw, (e) => ({ ...e, separate: false, bends: [] })),
+};
 
 const Flag = z.object({ id: z.string(), kind: z.enum(FLAG_KINDS), text: z.string(), resolved: z.boolean() });
 
@@ -38,6 +49,8 @@ const Edge = z.object({
   type: z.enum(EDGE_TYPES),
   label: z.string(),
   flags: z.array(Flag),
+  separate: z.boolean(),
+  bends: z.array(z.object({ x: z.number(), y: z.number() })),
 });
 
 const Lane = z.object({ id: z.string(), name: z.string(), order: z.number(), height: z.number() });

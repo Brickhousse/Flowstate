@@ -1,7 +1,7 @@
 import { useStoreApi } from '@xyflow/react';
 import { useEffect, useMemo, useRef } from 'react';
 import { boundsOf, type Rect } from '../../layout/geometry';
-import type { Board } from '../../model/types';
+import type { Board, XY } from '../../model/types';
 import { layoutPrefs } from '../../store/layoutPrefs';
 import { flowStore } from '../../store/store';
 import { buildCandidates, rectOf, type SizeOf } from './candidates';
@@ -9,7 +9,6 @@ import { mods, watchModifiers } from './modifiers';
 import { assistOverlay, clearOverlay } from './overlay';
 import { lockAxis, RESIZE_MIN, snapMove, snapResize, type Axis, type Candidates } from './snap';
 
-export type XY = { x: number; y: number };
 export type Size = { width: number; height: number };
 
 interface Session {

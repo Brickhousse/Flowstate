@@ -85,6 +85,34 @@ describe('migrateProject', () => {
     expect(() => migrateProject(invalid(mutate))).toThrow(ProjectFormatError);
   });
 
+  it('upgrades a version 1 file so every arrow shares lines and has no bends', () => {
+    const raw = JSON.parse(JSON.stringify(fullProject()));
+    raw.schemaVersion = 1;
+    for (const e of raw.boards[0].edges) {
+      delete e.separate;
+      delete e.bends;
+    }
+    const out = migrateProject(raw);
+    expect(out.schemaVersion).toBe(2);
+    expect(out.boards[0].edges.map((e) => [e.separate, e.bends])).toEqual([
+      [false, []],
+      [false, []],
+    ]);
+  });
+
+  it('refuses a version 1 file with a malformed arrow instead of crashing', () => {
+    const raw = JSON.parse(JSON.stringify(fullProject()));
+    raw.schemaVersion = 1;
+    raw.boards[0].edges[0] = 'e1';
+    expect(() => migrateProject(raw)).toThrow(/boards\[0\]\.edges\[0\]/);
+  });
+
+  it('rejects a bend that is not a point', () => {
+    const raw = JSON.parse(JSON.stringify(fullProject()));
+    raw.boards[0].edges[0].bends = [{ x: '1', y: 2 }];
+    expect(() => migrateProject(raw)).toThrow(/boards\[0\]\.edges\[0\]\.bends\[0\]\.x/);
+  });
+
   it('describes the first problem readably', () => {
     const raw = invalid((p) => ((p.boards[0].nodes[0] as { shape: string }).shape = 'blob'));
     expect(() => migrateProject(raw)).toThrow(/^Project file is invalid at boards\[0\]\.nodes\[0\]\.shape: /);

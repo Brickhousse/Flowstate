@@ -5,7 +5,7 @@ describe('factory', () => {
   it('creates a project with one empty board', () => {
     const p = createProject('Claims');
     expect(p.name).toBe('Claims');
-    expect(p.schemaVersion).toBe(1);
+    expect(p.schemaVersion).toBe(2);
     expect(p.boards).toHaveLength(1);
     expect(p.boards[0].nodes).toEqual([]);
     expect(p.id).toMatch(/^[A-Za-z0-9_-]{10}$/);

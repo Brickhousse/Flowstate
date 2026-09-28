@@ -1,6 +1,6 @@
 import { boundsOf, overlaps } from '../layout/geometry';
 import { fitGroup } from '../layout/place';
-import type { Board, BoardNode } from '../model/types';
+import type { Board, BoardNode, XY } from '../model/types';
 import { OpError } from './errors';
 import { getNode } from './query';
 import { resizeNode, setPositions, withGroupMembers } from './steps';
@@ -10,8 +10,6 @@ export type AlignEdge = (typeof ALIGN_EDGES)[number];
 export type DistributeAxis = 'horizontal' | 'vertical';
 export type MatchDims = 'width' | 'height' | 'both';
 export type OrderMove = 'front' | 'forward' | 'backward' | 'back';
-
-type XY = { x: number; y: number };
 
 function topLevel(b: Board, ids: string[], min: number, action: string): BoardNode[] {
   const picked = new Set(ids);

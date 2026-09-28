@@ -1,12 +1,10 @@
 import { boundsOf } from '../layout/geometry';
-import type { Board } from '../model/types';
+import type { Board, XY } from '../model/types';
 import { copySubgraph, pasteSubgraph, type Clip } from '../ops/clipboard';
 import { deleteEdges } from '../ops/edges';
 import { deleteSteps, setPositions, withGroupMembers } from '../ops/steps';
 import { flowStore } from '../store/store';
 import { runSafely } from './safe';
-
-export type XY = { x: number; y: number };
 
 let pasteCount = 0;
 

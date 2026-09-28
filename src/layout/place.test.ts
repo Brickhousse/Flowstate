@@ -10,7 +10,7 @@ function add(b: Board, init: Partial<BoardNode>): BoardNode {
 }
 
 function link(b: Board, source: string, target: string) {
-  b.edges.push({ id: `e${b.nextId++}`, source, target, sourceSide: null, targetSide: null, type: 'flow', label: '', flags: [] });
+  b.edges.push({ id: `e${b.nextId++}`, source, target, sourceSide: null, targetSide: null, type: 'flow', label: '', flags: [], separate: false, bends: [] });
 }
 
 describe('placement', () => {
