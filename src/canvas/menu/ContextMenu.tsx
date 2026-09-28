@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { isTyping } from '../useKeyboard';
 
 export type MenuEntry =
-  | { kind: 'item'; label: string; shortcut?: string; disabled?: boolean; checked?: boolean; icon?: ReactNode; run: () => void }
+  | { kind: 'item'; label: string; shortcut?: string; disabled?: boolean; checked?: boolean; icon?: ReactNode; preview?: () => void; run: () => void }
   | { kind: 'submenu'; label: string; disabled?: boolean; entries: MenuEntry[] }
   | { kind: 'custom'; id: string; render: (close: () => void) => ReactNode }
   | { kind: 'sep' };
@@ -28,7 +28,7 @@ function actionable(e: MenuEntry | undefined): e is Actionable {
   return !!e && (e.kind === 'item' || e.kind === 'submenu') && !e.disabled;
 }
 
-function MenuList({ entries, close, onBack }: { entries: MenuEntry[]; close: () => void; onBack?: () => void }) {
+function MenuList({ entries, close, onBack, label }: { entries: MenuEntry[]; close: () => void; onBack?: () => void; label?: string }) {
   const [active, setActive] = useState(() => entries.findIndex(actionable));
   const [open, setOpen] = useState<number | null>(null);
   const [flip, setFlip] = useState({ x: false, y: false });
@@ -40,10 +40,15 @@ function MenuList({ entries, close, onBack }: { entries: MenuEntry[]; close: () 
     ref.current?.focus();
   }, []);
 
+  const highlight = (i: number) => {
+    setActive(i);
+    const e = entries[i];
+    if (e?.kind === 'item') e.preview?.();
+  };
   const move = (dir: 1 | -1) => {
     for (let i = 1; i <= entries.length; i++) {
       const j = (active + dir * i + entries.length) % entries.length;
-      if (actionable(entries[j])) return setActive(j);
+      if (actionable(entries[j])) return highlight(j);
     }
   };
   const activate = (i: number) => {
@@ -95,17 +100,17 @@ function MenuList({ entries, close, onBack }: { entries: MenuEntry[]; close: () 
   };
 
   return (
-    <div ref={ref} role="menu" tabIndex={-1} className={`menu-panel fs-menu${flip.x ? ' flip-x' : ''}${flip.y ? ' flip-y' : ''}`} onKeyDown={onKeyDown}>
+    <div ref={ref} role="menu" aria-label={label} tabIndex={-1} className={`menu-panel fs-menu${flip.x ? ' flip-x' : ''}${flip.y ? ' flip-y' : ''}`} onKeyDown={onKeyDown}>
       {entries.map((e, i) => {
         if (e.kind === 'sep') return <div key={`sep${i}`} className="menu-sep" role="separator" />;
         if (e.kind === 'custom') return <div key={e.id}>{e.render(close)}</div>;
         const isOpen = e.kind === 'submenu' && open === i;
         return (
           <div
-            key={e.label}
+            key={`${i}${e.label}`}
             className="fs-menu-row"
             onMouseEnter={() => {
-              setActive(i);
+              highlight(i);
               setOpen(e.kind === 'submenu' && !e.disabled ? i : null);
               if (e.kind !== 'submenu') ref.current?.focus();
             }}
@@ -140,7 +145,7 @@ function MenuList({ entries, close, onBack }: { entries: MenuEntry[]; close: () 
   );
 }
 
-export function ContextMenu({ at, entries, onClose }: { at: MenuAnchor; entries: MenuEntry[]; onClose: () => void }) {
+export function ContextMenu({ at, entries, label, onClose }: { at: MenuAnchor; entries: MenuEntry[]; label?: string; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState(at);
 
@@ -173,7 +178,7 @@ export function ContextMenu({ at, entries, onClose }: { at: MenuAnchor; entries:
 
   return createPortal(
     <div ref={ref} className="fs-context-menu" style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>
-      <MenuList entries={entries} close={onClose} />
+      <MenuList entries={entries} close={onClose} label={label} />
     </div>,
     document.body,
   );
