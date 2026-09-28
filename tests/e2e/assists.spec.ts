@@ -521,6 +521,18 @@ test('right-click opens the pane menu, right-drag pans without one', async ({ pa
   await expect(menu(page)).toHaveCount(0);
 });
 
+test('a wheel over the open menu closes it', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'A', x: 0, y: 0 });
+  });
+  await open(page, p);
+  const pane = (await page.locator('.react-flow__pane').boundingBox())!;
+  await page.mouse.click(pane.x + 30, pane.y + 30, { button: 'right' });
+  await menu(page).getByRole('menuitem').first().hover();
+  await page.mouse.wheel(0, 100);
+  await expect(menu(page)).toHaveCount(0);
+});
+
 test('the menu works from the keyboard and toggles a layout switch', async ({ page, request }) => {
   const p = await seed(request, (b) => {
     addStep(b, { title: 'A', x: 0, y: 0 });

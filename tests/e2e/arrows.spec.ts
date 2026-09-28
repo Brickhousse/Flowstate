@@ -782,6 +782,41 @@ test("the panel's Delete button deletes the selected arrow and closes the panel,
   expect((await board(page)).edges.map((e) => e.id)).toEqual(['e4', 'e5']);
 });
 
+test('moving from a picked row down to the options leaves no glow on a row the pointer crossed', async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  const rows = pickList(page).getByRole('menuitemradio');
+  await rows.first().click();
+  const from = await centerOf(rows.first());
+  const to = await centerOf(pickOptions(page).getByLabel('Arrow label'));
+  await page.mouse.move(to.x, to.y, { steps: 12 });
+  expect(from.y).toBeLessThan((await centerOf(rows.last())).y);
+  expect((await centerOf(rows.last())).y).toBeLessThan(to.y);
+  const glow = page.locator('.fs-pick-glow path');
+  const drawn = (await glow.count()) ? await glow.getAttribute('d') : null;
+  expect([null, await pathOf(page, 'e5').getAttribute('d')]).toContain(drawn);
+});
+
+test('a pointer passing over the list while a label is typed leaves the typing in the field', async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  const rows = pickList(page).getByRole('menuitemradio');
+  await rows.last().click();
+  const label = pickOptions(page).getByLabel('Arrow label');
+  await label.click();
+  await page.keyboard.type('x');
+  await rows.first().hover();
+  await page.keyboard.type('b');
+  await expect(label).toBeFocused();
+  await expect(label).toHaveValue('xb');
+  await expect(pickPanel(page)).toHaveCount(1);
+  expect((await board(page)).edges.map((e) => e.flags.length)).toEqual([0, 0]);
+});
+
 test('a long arrow list scrolls inside the panel and keeps the options on screen', async ({ page, request }) => {
   const p = await seed(request, (b) => {
     const a = addStep(b, { title: 'A', x: 0, y: 500 });

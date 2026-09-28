@@ -35,12 +35,13 @@ type ListProps = {
   close: () => void;
   onBack?: () => void;
   onTab?: (back: boolean) => void;
+  onLeave?: () => void;
   label?: string;
   passKeys?: boolean;
   listRef?: RefObject<HTMLDivElement | null>;
 };
 
-function MenuList({ entries, close, onBack, onTab, label, passKeys, listRef }: ListProps) {
+function MenuList({ entries, close, onBack, onTab, onLeave, label, passKeys, listRef }: ListProps) {
   const [active, setActive] = useState(() => entries.findIndex(actionable));
   const [open, setOpen] = useState<number | null>(null);
   const [flip, setFlip] = useState({ x: false, y: false });
@@ -126,7 +127,7 @@ function MenuList({ entries, close, onBack, onTab, label, passKeys, listRef }: L
   };
 
   return (
-    <div ref={ref} role="menu" aria-label={label} tabIndex={-1} className={`menu-panel fs-menu${flip.x ? ' flip-x' : ''}${flip.y ? ' flip-y' : ''}`} onKeyDown={onKeyDown}>
+    <div ref={ref} role="menu" aria-label={label} tabIndex={-1} className={`menu-panel fs-menu${flip.x ? ' flip-x' : ''}${flip.y ? ' flip-y' : ''}`} onKeyDown={onKeyDown} onMouseLeave={onLeave}>
       {entries.map((e, i) => {
         if (e.kind === 'sep') return <div key={`sep${i}`} className="menu-sep" role="separator" />;
         if (e.kind === 'custom') return <div key={e.id}>{e.render(close)}</div>;
@@ -171,11 +172,11 @@ function MenuList({ entries, close, onBack, onTab, label, passKeys, listRef }: L
   );
 }
 
-type MenuProps = { at: MenuAnchor; entries: MenuEntry[]; label?: string; passKeys?: boolean; footer?: ReactNode; onClose: () => void };
+type MenuProps = { at: MenuAnchor; entries: MenuEntry[]; label?: string; passKeys?: boolean; footer?: ReactNode; onListLeave?: () => void; onClose: () => void };
 
 // passKeys: keys other than Up, Down, Enter and Escape close the menu and carry on to the canvas shortcuts.
 // footer: a section below the list that Tab reaches; it grows the menu into one panel.
-export function ContextMenu({ at, entries, label, passKeys, footer, onClose }: MenuProps) {
+export function ContextMenu({ at, entries, label, passKeys, footer, onListLeave, onClose }: MenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const foot = useRef<HTMLDivElement>(null);
@@ -196,6 +197,7 @@ export function ContextMenu({ at, entries, label, passKeys, footer, onClose }: M
     return () => resized.disconnect();
   }, [at]);
 
+  const scrolls = !!footer;
   useEffect(() => {
     const outside = (e: PointerEvent | WheelEvent) => {
       if (!ref.current?.contains(e.target as Node)) onClose();
@@ -206,21 +208,23 @@ export function ContextMenu({ at, entries, label, passKeys, footer, onClose }: M
       if (!(a instanceof HTMLInputElement && a.type === 'color' && ref.current?.contains(a))) onClose();
     };
     window.addEventListener('pointerdown', outside, true);
-    window.addEventListener('wheel', outside, true);
+    // Only the footer panel caps its list height, so only there does a wheel inside it scroll instead of closing.
+    const onWheel = scrolls ? outside : onClose;
+    window.addEventListener('wheel', onWheel, true);
     window.addEventListener('blur', onBlur);
     window.addEventListener('resize', onClose);
     return () => {
       window.removeEventListener('pointerdown', outside, true);
-      window.removeEventListener('wheel', outside, true);
+      window.removeEventListener('wheel', onWheel, true);
       window.removeEventListener('blur', onBlur);
       window.removeEventListener('resize', onClose);
     };
-  }, [onClose]);
+  }, [onClose, scrolls]);
 
   const toFooter = (back: boolean) => focusStops(foot.current).at(back ? -1 : 0)?.focus();
   return createPortal(
     <div ref={ref} className={`fs-context-menu${footer ? ' has-footer' : ''}`} style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>
-      <MenuList entries={entries} close={onClose} label={label} passKeys={passKeys} listRef={list} onTab={footer ? toFooter : undefined} />
+      <MenuList entries={entries} close={onClose} label={label} passKeys={passKeys} listRef={list} onTab={footer ? toFooter : undefined} onLeave={onListLeave} />
       {footer && (
         <MenuFooter ref={foot} list={list} onClose={onClose}>
           {footer}

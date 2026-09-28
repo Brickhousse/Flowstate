@@ -53,6 +53,7 @@ export function ArrowPickPanel({ at, ids, arrow, board, routes, onClose }: Props
         label="Arrows here"
         passKeys
         onClose={onClose}
+        onListLeave={() => setPreviewed(null)}
         footer={
           <div role="group" aria-label="Arrow options" className="fs-edge-options">
             <EdgeOptions key={arrow.id} edge={arrow} />
