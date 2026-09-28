@@ -1,5 +1,5 @@
 import type { Side, XY } from '../../model/types';
-import { sideAxis, stubEnd, type Axis } from './ports';
+import { sideAxis, STUB, stubEnd, type Axis } from './ports';
 
 const same = (a: XY, b: XY) => a.x === b.x && a.y === b.y;
 const inLine = (a: XY, b: XY, c: XY) => (a.x === b.x && b.x === c.x) || (a.y === b.y && b.y === c.y);
@@ -32,6 +32,17 @@ export function innerSegments(points: XY[]): number[] {
   const out: number[] = [];
   for (let i = 1; i < points.length - 2; i++) out.push(i);
   return out;
+}
+
+function stubPoint(port: XY, next: XY): XY[] {
+  if (Math.abs(next.x - port.x) + Math.abs(next.y - port.y) <= STUB) return [];
+  return [{ x: port.x + Math.sign(next.x - port.x) * STUB, y: port.y + Math.sign(next.y - port.y) * STUB }];
+}
+
+export function splitStubs(points: XY[]): XY[] {
+  if (points.length < 2) return points;
+  const last = points.length - 1;
+  return [points[0], ...stubPoint(points[0], points[1]), ...points.slice(1, last), ...stubPoint(points[last], points[last - 1]), points[last]];
 }
 
 export function segmentAxis(a: XY, b: XY): Axis {
