@@ -297,14 +297,13 @@
   pointer-events: none;
 }
 .react-flow .fs-edge {
-  stroke: var(--edge);
   stroke-width: 1.6;
   fill: none;
 }
 .react-flow .fs-edge.type-dependency { stroke-dasharray: 6 5; }
 .react-flow .fs-edge.type-handoff { stroke-dasharray: 1.5 5; stroke-linecap: round; }
-.react-flow .fs-edge.is-selected { stroke: var(--accent); stroke-width: 2.2; }
-.react-flow .fs-edge.is-critical { stroke: var(--critical); stroke-width: 2.6; }
+.react-flow .fs-edge.is-selected { stroke-width: 2.2; }
+.react-flow .fs-edge.is-critical { stroke-width: 2.6; }
 .react-flow .fs-edge.is-dimmed { opacity: 0.25; }
 .fs-edge-label {
   position: absolute;
@@ -434,6 +433,13 @@
 .swatch-rose { background: var(--tint-rose); }
 .swatch-violet { background: var(--tint-violet); }
 .swatch-slate { background: var(--tint-slate); }
+.fs-swatch.is-line.swatch-none { background: var(--edge); }
+.fs-swatch.is-line.swatch-blue { background: var(--tint-blue-line); }
+.fs-swatch.is-line.swatch-green { background: var(--tint-green-line); }
+.fs-swatch.is-line.swatch-amber { background: var(--tint-amber-line); }
+.fs-swatch.is-line.swatch-rose { background: var(--tint-rose-line); }
+.fs-swatch.is-line.swatch-violet { background: var(--tint-violet-line); }
+.fs-swatch.is-line.swatch-slate { background: var(--tint-slate-line); }
 .fs-flaglist {
   display: flex;
   flex-direction: column;

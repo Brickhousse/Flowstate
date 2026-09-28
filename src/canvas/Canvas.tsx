@@ -127,6 +127,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       edgeColor: colors.edge,
       criticalColor: colors.critical,
       accentColor: colors.accent,
+      tintLines: colors.tintLines,
     }),
     [selection, edgeSelection, cp, glow, editable, colors],
   );

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import type { Tint } from '../model/color';
 
 function read() {
   const style = getComputedStyle(document.documentElement);
   const v = (name: string) => style.getPropertyValue(name).trim();
+  const line = (t: Tint) => v(`--tint-${t}-line`);
   return {
     edge: v('--edge'),
     critical: v('--critical'),
@@ -13,6 +15,7 @@ function read() {
     system: v('--system'),
     agent: v('--agent'),
     stepStroke: v('--step-stroke'),
+    tintLines: { blue: line('blue'), green: line('green'), amber: line('amber'), rose: line('rose'), violet: line('violet'), slate: line('slate') },
   };
 }
 

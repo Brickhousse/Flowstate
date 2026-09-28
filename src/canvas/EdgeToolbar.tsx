@@ -1,16 +1,19 @@
 import { EdgeLabelRenderer } from '@xyflow/react';
 import { RouteOff, Trash } from 'lucide-react';
+import { useState } from 'react';
 import { EDGE_TYPES, FLAG_KINDS, type BoardEdge } from '../model/types';
 import { resetPath } from '../ops/arrowPath';
 import { deleteEdges, updateEdge } from '../ops/edges';
 import { useFlow } from '../store/store';
 import { Divider, FieldInput, ToolButton } from '../ui/controls';
 import { addFlagAndFocus, editBoard } from './boardChange';
+import { ColorRow, ColorSwatch } from './ColorPicker';
 import { FlagList } from './FlagList';
 import { EDGE_LABEL, EdgeTypeIcon, FLAG_KEY, FLAG_LABEL, FlagIcon } from './labels';
 
 export function EdgeToolbar({ edge, x, y }: { edge: BoardEdge; x: number; y: number }) {
   const visible = useFlow((s) => s.edgeSelection.length === 1 && s.edgeSelection[0] === edge.id && s.selection.length === 0);
+  const [colorOpen, setColorOpen] = useState(false);
   if (!visible) return null;
   return (
     <EdgeLabelRenderer>
@@ -36,6 +39,9 @@ export function EdgeToolbar({ edge, x, y }: { edge: BoardEdge; x: number; y: num
               <FlagIcon kind={k} size={14} />
             </ToolButton>
           ))}
+          <ToolButton title="Colour" active={colorOpen} onClick={() => setColorOpen(!colorOpen)}>
+            <ColorSwatch color={edge.color} line />
+          </ToolButton>
           {edge.bends.length > 0 && (
             <ToolButton title="Reset path" onClick={() => editBoard((b) => resetPath(b, [edge.id]))}>
               <RouteOff size={14} />
@@ -45,6 +51,7 @@ export function EdgeToolbar({ edge, x, y }: { edge: BoardEdge; x: number; y: num
             <Trash size={14} />
           </ToolButton>
         </div>
+        {colorOpen && <ColorRow value={edge.color} line onPick={(color) => editBoard((b) => updateEdge(b, edge.id, { color }))} />}
         {edge.flags.length > 0 && <FlagList flags={edge.flags} />}
       </div>
     </EdgeLabelRenderer>

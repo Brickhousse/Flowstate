@@ -722,3 +722,57 @@ test('a click in the arrow toolbar never opens the arrow list', async ({ page, r
   await expect(label).toBeFocused();
   expect(await edgeSelection(page)).toEqual(['e5']);
 });
+
+const strokeOf = (page: Page, edgeId: string) => pathOf(page, edgeId).evaluate((el) => getComputedStyle(el).stroke);
+const headOf = (page: Page, edgeId: string) =>
+  pathOf(page, edgeId).evaluate((el) => {
+    const id = /url\('?#(.+?)'?\)/.exec(el.getAttribute('marker-end') ?? '')?.[1];
+    const head = id ? document.getElementById(id)?.querySelector('polyline') : null;
+    if (!head) throw new Error('arrow has no head');
+    return getComputedStyle(head).stroke;
+  });
+const cssColor = (page: Page, value: string) =>
+  page.evaluate((v) => {
+    const probe = document.createElement('div');
+    probe.style.color = v;
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  }, value);
+
+test('a tint from the arrow toolbar colours the line, head and label in one undo step, under the selected and critical colours', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0, durationMin: 30 });
+    const c = addStep(b, { title: 'B', x: 400, y: 0, durationMin: 30 });
+    connect(b, { source: a, target: c, label: 'next' });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  const [violet, accent, plain, critical] = await Promise.all(['--tint-violet-line', '--accent', '--edge', '--critical'].map((v) => cssColor(page, `var(${v})`)));
+  const looks = async () => [await strokeOf(page, 'e3'), await headOf(page, 'e3')];
+  const label = page.locator('.fs-edge-label');
+
+  await selectArrow(page, 'e3');
+  const bar = page.locator('.fs-edge-toolbar');
+  await bar.getByTitle('Colour', { exact: true }).click();
+  await bar.getByTitle('violet', { exact: true }).click();
+  expect((await board(page)).edges[0].color).toBe('violet');
+  expect(await historyShape(page)).toEqual({ past: 1, future: 0, tx: false });
+  await expect.poll(looks).toEqual([accent, accent]);
+  await expect(label).toHaveCSS('color', violet);
+
+  await page.locator('.react-flow__pane').click({ position: { x: 5, y: 5 } });
+  await expect.poll(looks).toEqual([violet, violet]);
+
+  await page.keyboard.press('Control+z');
+  expect((await board(page)).edges[0].color).toBeNull();
+  await expect.poll(looks).toEqual([plain, plain]);
+  await page.keyboard.press('Control+Shift+z');
+  expect((await board(page)).edges[0].color).toBe('violet');
+  await expect.poll(looks).toEqual([violet, violet]);
+
+  await page.getByRole('button', { name: /Critical path/ }).click();
+  await expect.poll(looks).toEqual([critical, critical]);
+  await expect(label).toHaveCSS('color', violet);
+});

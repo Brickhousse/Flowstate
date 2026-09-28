@@ -8,16 +8,16 @@ import type { FlowEdgeType } from './toFlow';
 
 export function FlowEdge({ id, data, selected, markerEnd }: EdgeProps<FlowEdgeType>) {
   if (!data?.route) return null;
-  const { edge, route, critical, dimmed } = data;
+  const { edge, route, critical, dimmed, color, labelColor } = data;
   const { x: labelX, y: labelY } = route.label;
   const className = ['fs-edge', `type-${edge.type}`, critical && 'is-critical', dimmed && 'is-dimmed', selected && 'is-selected'].filter(Boolean).join(' ');
   const openFlags = edge.flags.filter((f) => !f.resolved);
   return (
     <>
-      <BaseEdge id={id} path={roundedPath(route.points)} markerEnd={markerEnd} className={className} interactionWidth={ARROW_HIT_WIDTH} />
+      <BaseEdge id={id} path={roundedPath(route.points)} markerEnd={markerEnd} className={className} style={{ stroke: color }} interactionWidth={ARROW_HIT_WIDTH} />
       {(edge.label || openFlags.length > 0) && (
         <EdgeLabelRenderer>
-          <div className={`fs-edge-label nodrag nopan ${dimmed ? 'is-dimmed' : ''}`} style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}>
+          <div className={`fs-edge-label nodrag nopan ${dimmed ? 'is-dimmed' : ''}`} style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, color: labelColor ?? undefined }}>
             {edge.label && <span>{edge.label}</span>}
             <FlagBadges flags={openFlags} />
           </div>
