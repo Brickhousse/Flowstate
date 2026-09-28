@@ -11,6 +11,8 @@ import { mods } from './assist/modifiers';
 import { GRID } from './assist/snap';
 import { runSafely } from './safe';
 
+const DRAG_SLOP = 3;
+
 const arrowDrag = createStore<{ reattaching: boolean }>()(() => ({ reattaching: false }));
 
 export function useReattaching(): boolean {
@@ -72,12 +74,20 @@ export function useArrowDrag(edge: BoardEdge, corners: XY[]): ArrowDrag {
           if (b.edges.some((x) => x.id === edge.id)) fn(b);
         }, boardId),
       );
+    const pressed = { x: e.clientX, y: e.clientY };
+    let moving = false;
     if (s.kind === 'end') arrowDrag.setState({ reattaching: true });
-    else flowStore.getState().begin();
     const onMove = (ev: PointerEvent) => {
-      const at = toFlow(ev);
-      if (s.kind === 'end') setGhost({ end: s.end, at });
-      else change((b) => setBends(b, edge.id, bendsFor(s, at)));
+      if (s.kind === 'end') {
+        setGhost({ end: s.end, at: toFlow(ev) });
+        return;
+      }
+      if (!moving) {
+        if (Math.hypot(ev.clientX - pressed.x, ev.clientY - pressed.y) < DRAG_SLOP) return;
+        moving = true;
+        flowStore.getState().begin();
+      }
+      change((b) => setBends(b, edge.id, bendsFor(s, toFlow(ev))));
     };
     const finish = (drop: PointerEvent | null) => {
       window.removeEventListener('pointermove', onMove);
@@ -85,7 +95,7 @@ export function useArrowDrag(edge: BoardEdge, corners: XY[]): ArrowDrag {
       window.removeEventListener('pointercancel', onCancel);
       stop.current = null;
       if (s.kind !== 'end') {
-        flowStore.getState().commit();
+        if (moving) flowStore.getState().commit();
         return;
       }
       arrowDrag.setState({ reattaching: false });

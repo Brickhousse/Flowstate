@@ -370,3 +370,35 @@ test('Reset path in the toolbar returns a hand-shaped arrow to its automatic rou
   expect(await history(page)).toBe(1);
   await expect(page.getByRole('button', { name: 'Reset path' })).toHaveCount(0);
 });
+
+async function press(page: Page, target: Locator, dx: number, dy: number): Promise<void> {
+  const c = await centerOf(target);
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.move(c.x + dx, c.y + dy, { steps: 2 });
+  await page.mouse.up();
+}
+
+test('a press on a bar of an automatic arrow that moves 2px changes nothing and records no undo step', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'B', x: 400, y: 300 });
+    connect(b, { source: a, target: c });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e3');
+  await press(page, page.locator('.fs-arrow-bar.is-vertical'), 2, 0);
+  expect((await board(page)).edges[0].bends).toEqual([]);
+  expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
+});
+
+test('a press on a bend square that moves 2px leaves an off-grid bend where it was', async ({ page, request }) => {
+  const p = await seed(request, shapedPair());
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e3');
+  await press(page, page.locator('.fs-arrow-bend[data-bend="0"]'), 0, 2);
+  expect((await board(page)).edges[0].bends).toEqual(BENDS);
+  expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
+});
