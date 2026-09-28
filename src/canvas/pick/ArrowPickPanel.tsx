@@ -1,12 +1,14 @@
 import { ViewportPortal } from '@xyflow/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { roundedPath } from '../../layout/route/path';
 import type { Board, BoardEdge } from '../../model/types';
 import { flowStore } from '../../store/store';
 import type { Route } from '../arrowRoutes';
 import { EdgeOptions } from '../EdgeOptions';
 import { EdgeTypeIcon } from '../labels';
-import { ContextMenu, type MenuAnchor, type MenuEntry } from '../menu/ContextMenu';
+import { focusStops, MenuFooter } from '../menu/MenuFooter';
+import { MenuList, type MenuEntry } from '../menu/MenuList';
+import { Popup, type MenuAnchor } from '../menu/Popup';
 
 function nameOf(board: Board, edge: BoardEdge): string {
   if (edge.label) return edge.label;
@@ -28,6 +30,8 @@ type Props = { at: MenuAnchor; ids: string[]; arrow: BoardEdge; board: Board; ro
 
 export function ArrowPickPanel({ at, ids, arrow, board, routes, onClose }: Props) {
   const [previewed, setPreviewed] = useState<string | null>(null);
+  const list = useRef<HTMLDivElement>(null);
+  const foot = useRef<HTMLDivElement>(null);
   const entries: MenuEntry[] = [];
   for (const id of ids) {
     const edge = board.edges.find((e) => e.id === id);
@@ -44,22 +48,18 @@ export function ArrowPickPanel({ at, ids, arrow, board, routes, onClose }: Props
     });
   }
   const glow = previewed ? routes.get(previewed) : undefined;
+  const toFooter = (back: boolean) => focusStops(foot.current).at(back ? -1 : 0)?.focus();
   return (
     <>
       {glow && <Glow route={glow} />}
-      <ContextMenu
-        at={at}
-        entries={entries}
-        label="Arrows here"
-        passKeys
-        onClose={onClose}
-        onListLeave={() => setPreviewed(null)}
-        footer={
+      <Popup at={at} onClose={onClose} wheelInside="scroll" className="has-footer">
+        <MenuList entries={entries} close={onClose} label="Arrows here" passKeys listRef={list} onTab={toFooter} onLeave={() => setPreviewed(null)} />
+        <MenuFooter ref={foot} list={list} onClose={onClose}>
           <div role="group" aria-label="Arrow options" className="fs-edge-options">
             <EdgeOptions key={arrow.id} edge={arrow} />
           </div>
-        }
-      />
+        </MenuFooter>
+      </Popup>
     </>
   );
 }

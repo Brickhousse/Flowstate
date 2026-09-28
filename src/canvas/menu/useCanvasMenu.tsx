@@ -3,7 +3,9 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { boundsOf } from '../../layout/geometry';
 import { flowStore } from '../../store/store';
 import { isTyping } from '../useKeyboard';
-import { ContextMenu, type MenuAnchor, type MenuEntry } from './ContextMenu';
+import { ContextMenu } from './ContextMenu';
+import type { MenuEntry } from './MenuList';
+import type { MenuAnchor } from './Popup';
 import { nodeEntries, paneEntries } from './entries';
 
 const CLICK_SLOP = 4;

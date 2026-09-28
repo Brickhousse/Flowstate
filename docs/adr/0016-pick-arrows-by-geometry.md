@@ -24,4 +24,4 @@ Rejected:
 Playtest: the list could cover the arrow's toolbar. When two or more arrows are in reach, the list and the selected arrow's options (`EdgeOptions`, the toolbar's controls) now open as one panel at the pointer, and the toolbar at the arrow's middle is hidden while it is open.
 - Picking a row selects that arrow and keeps the panel open, so overlapping arrows can be edited in turn.
 - It closes on Escape, a click outside, a pan or zoom, a board switch, or once its arrow is no longer the one selected (`src/canvas/pick/panelArrow.ts`). Edits keep it open.
-- It is `ContextMenu` with a `footer`. Keys in the list still close it and reach the canvas. Keys in the options act as in the toolbar, so only Escape, or a canvas key that removes the arrow such as Delete, closes it from there. Tab moves between the two.
+- It is the right-click menu's `Popup` and `MenuList` with a `MenuFooter` below the list (`src/canvas/pick/ArrowPickPanel.tsx`). Keys in the list still close it and reach the canvas. Keys in the options act as in the toolbar, so only Escape, or a canvas key that removes the arrow such as Delete, closes it from there. Tab moves between the two.

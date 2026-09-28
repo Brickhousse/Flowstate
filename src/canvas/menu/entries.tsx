@@ -8,7 +8,7 @@ import { flowStore } from '../../store/store';
 import { ColorInput } from '../../ui/controls';
 import { notify } from '../../ui/toast';
 import { arrangeSelection, copySelection, cutSelection, duplicateSelection, pasteClipboard, removeSelection, run } from '../commands';
-import type { MenuEntry } from './ContextMenu';
+import type { MenuEntry } from './MenuList';
 
 export function editEntries(boardId: string, at: XY): MenuEntry[] {
   const clip = flowStore.getState().clipboard;

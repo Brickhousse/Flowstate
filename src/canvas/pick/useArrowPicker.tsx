@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouse
 import type { Board, XY } from '../../model/types';
 import { flowStore, useFlow } from '../../store/store';
 import type { Route } from '../arrowRoutes';
-import type { MenuAnchor } from '../menu/ContextMenu';
+import type { MenuAnchor } from '../menu/Popup';
 import type { FlowEdgeType } from '../toFlow';
 import { ArrowPickPanel } from './ArrowPickPanel';
 import { arrowsAt, pickTolerance, stackOrder } from './arrowsAt';

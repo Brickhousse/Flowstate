@@ -838,6 +838,33 @@ test('a long arrow list scrolls inside the panel and keeps the options on screen
   await expect(pickPanel(page)).toHaveCount(1);
 });
 
+test('a panel opened near the bottom edge moves up to stay on screen when its colour row opens', async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await zoomSettled(page);
+  const line = await toScreen(page, 'e4', { x: 230, y: 36 });
+  const pane = await boxOf(page.locator('.react-flow__pane'));
+  const grab = { x: pane.x + 20, y: pane.y + 20 };
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down({ button: 'middle' });
+  await page.mouse.move(grab.x, grab.y + 820 - line.y, { steps: 8 });
+  await page.mouse.up({ button: 'middle' });
+  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  await expect(pickList(page)).toBeVisible();
+  const opened = await boxOf(pickPanel(page));
+  expect(opened.y + opened.height).toBeLessThanOrEqual(896);
+  expect(opened.y).toBeLessThan(820);
+  await pickOptions(page).getByTitle('Colour', { exact: true }).click();
+  await expect(pickOptions(page).getByTitle('violet', { exact: true })).toBeVisible();
+  await expect.poll(async () => (await boxOf(pickPanel(page))).height).toBeGreaterThan(opened.height);
+  await expect.poll(async () => {
+    const grown = await boxOf(pickPanel(page));
+    return grown.y + grown.height;
+  }).toBeLessThanOrEqual(896);
+  expect((await boxOf(pickPanel(page))).y).toBeLessThan(opened.y);
+});
+
 test('a click on the inside of a rounded corner keeps the clicked arrow first in the list', async ({ page, request }) => {
   const p = await seed(request, (b) => {
     const a = addStep(b, { title: 'A', x: 0, y: 0 });
