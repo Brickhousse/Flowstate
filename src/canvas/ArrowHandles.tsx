@@ -1,6 +1,6 @@
 import { useStore, ViewportPortal } from '@xyflow/react';
 import { useMemo, type MouseEvent as ReactMouseEvent } from 'react';
-import { innerSegments, segmentAxis, simplify, splitStubs } from '../layout/route/through';
+import { innerSegments, segmentAxis, simplify, splitStubs } from '../layout/route/polyline';
 import type { BoardEdge } from '../model/types';
 import { useFlow } from '../store/store';
 import type { Route } from './arrowRoutes';

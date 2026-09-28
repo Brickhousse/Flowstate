@@ -1,7 +1,7 @@
 import type { Side, XY } from '../../model/types';
 import { overlaps, type Rect } from '../geometry';
 import { sideAxis, type Axis } from './ports';
-import { innerSegments, moveSegment, segmentAxis } from './through';
+import { innerSegments, moveSegment, segmentAxis } from './polyline';
 
 export const SHIFT_STEP = 10;
 export const SHIFT_TRIES = 5;

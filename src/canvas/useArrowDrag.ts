@@ -2,9 +2,9 @@ import { useReactFlow } from '@xyflow/react';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
-import { moveSegment, segmentAxis, simplify } from '../layout/route/through';
+import { moveSegment, samePoints, segmentAxis, simplify } from '../layout/route/polyline';
 import { SIDES, type Board, type BoardEdge, type Side, type XY } from '../model/types';
-import { reattach, samePath, setBends, type ArrowEnd } from '../ops/arrowPath';
+import { reattach, setBends, type ArrowEnd } from '../ops/arrowPath';
 import { layoutPrefs } from '../store/layoutPrefs';
 import { flowStore } from '../store/store';
 import { mods } from './assist/modifiers';
@@ -43,7 +43,7 @@ function bendsFor(s: Shape, at: XY): XY[] {
   if (s.kind === 'segment') {
     const moved = simplify(moveSegment(s.points, s.index, snap(at[s.across] + s.offset)));
     // why: storing an unchanged route's corners would silently turn an automatic arrow hand-shaped.
-    return samePath(moved, simplify(s.points)) ? s.bends : moved.slice(1, -1);
+    return samePoints(moved, simplify(s.points)) ? s.bends : moved.slice(1, -1);
   }
   return s.bends.map((p, i) => (i === s.index ? { x: snap(at.x + s.offset.x), y: snap(at.y + s.offset.y) } : p));
 }

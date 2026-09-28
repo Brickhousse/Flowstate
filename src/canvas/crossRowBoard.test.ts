@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { crossRowBoard, routingBoard, separateCrossings, separateSkips } from '../../tests/e2e/routingBoards';
-import { simplify } from '../layout/route/through';
+import { simplify } from '../layout/route/polyline';
 import { createBoard } from '../model/factory';
 import type { Board, XY } from '../model/types';
 import { arrowRoutes, type RouteCache } from './arrowRoutes';

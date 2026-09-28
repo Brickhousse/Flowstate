@@ -1,5 +1,5 @@
+import { simplify, samePoints } from '../layout/route/polyline';
 import { edgeSides } from '../layout/route/ports';
-import { simplify } from '../layout/route/through';
 import type { Board, Side, XY } from '../model/types';
 import { assertLinkable } from './edges';
 import { OpError } from './errors';
@@ -39,12 +39,10 @@ export function reattach(b: Board, id: string, end: ArrowEnd, nodeId: string, si
   else e.targetSide = side;
 }
 
-export const samePath = (a: XY[], b: XY[]) => a.length === b.length && a.every((p, i) => p.x === b[i].x && p.y === b[i].y);
-
 export function setBends(b: Board, id: string, bends: XY[]): void {
   const e = getEdge(b, id);
   const next = simplify(bends);
-  if (!samePath(next, e.bends)) e.bends = next;
+  if (!samePoints(next, e.bends)) e.bends = next;
 }
 
 export function resetPath(b: Board, ids: string[]): void {

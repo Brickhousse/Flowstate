@@ -2,7 +2,8 @@ import { shiftLines, spreadPorts, type ArrowEnds } from '../layout/route/apart';
 import { elbow } from '../layout/route/elbow';
 import { halfway } from '../layout/route/path';
 import { edgeSides, portAt } from '../layout/route/ports';
-import { simplify, through } from '../layout/route/through';
+import { samePoints, simplify } from '../layout/route/polyline';
+import { through } from '../layout/route/through';
 import type { Board, BoardEdge, BoardNode, Direction, XY } from '../model/types';
 import { cached, type RenderCache } from './renderCache';
 
@@ -40,8 +41,6 @@ function ends({ e, s, t }: Link, direction: Direction): ArrowEnds {
   const sides = edgeSides(direction, e);
   return { id: e.id, separate: e.separate, source: { node: s.id, side: sides.source, box: s }, target: { node: t.id, side: sides.target, box: t } };
 }
-
-const samePoints = (a: XY[], b: XY[]) => a.length === b.length && a.every((p, i) => p.x === b[i].x && p.y === b[i].y);
 
 export function arrowRoutes(board: Board, cache: RouteCache): Map<string, Route> {
   const links = linksOf(board);

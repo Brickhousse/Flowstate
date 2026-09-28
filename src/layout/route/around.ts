@@ -1,7 +1,7 @@
 import type { Side, XY } from '../../model/types';
 import { overlaps, type Rect } from '../geometry';
 import { SIDE_DIR, sideAxis, stubEnd } from './ports';
-import { simplify } from './through';
+import { simplify } from './polyline';
 
 export const AROUND_PAD = 16;
 export const AROUND_LIMIT_MS = 50;
