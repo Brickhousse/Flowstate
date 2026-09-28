@@ -4,7 +4,8 @@ import { chain } from '../ops/testkit';
 import { updateSteps } from '../ops/steps';
 import { runOp } from '../ops/run';
 import { arrowRoutes } from './arrowRoutes';
-import { toFlowEdges, toFlowNodes, type FlowEdgeType, type FlowNode, type FlowView, type RenderCache } from './toFlow';
+import type { RenderCache } from './renderCache';
+import { toFlowEdges, toFlowNodes, type FlowEdgeType, type FlowNode, type FlowView } from './toFlow';
 
 const view = (over: Partial<FlowView> = {}): FlowView => ({
   selection: new Set(),

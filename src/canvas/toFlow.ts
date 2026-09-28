@@ -3,6 +3,7 @@ import { axes, boundsOf, laneBands } from '../layout/place';
 import { autoSides } from '../layout/route/ports';
 import type { Board, BoardEdge, BoardNode, Direction, Lane } from '../model/types';
 import type { Route } from './arrowRoutes';
+import { cached, type RenderCache } from './renderCache';
 
 export type NodeViewData = { node: BoardNode; critical: boolean; dimmed: boolean; glowing: boolean; editable: boolean };
 export type LaneViewData = { lane: Lane; alt: boolean; direction: Direction; editable: boolean };
@@ -27,17 +28,7 @@ export interface FlowView {
   accentColor: string;
 }
 
-export type RenderCache<T> = Map<string, { deps: unknown[]; value: T }>;
-
 const LANE_MARGIN = 320;
-
-function cached<T>(cache: RenderCache<T>, id: string, deps: unknown[], make: () => T): T {
-  const hit = cache.get(id);
-  if (hit && hit.deps.length === deps.length && hit.deps.every((d, i) => d === deps[i])) return hit.value;
-  const value = make();
-  cache.set(id, { deps, value });
-  return value;
-}
 
 export function laneNodes(board: Board, editable: boolean): LaneFlowNode[] {
   if (board.lanes.length === 0) return [];

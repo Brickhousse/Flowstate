@@ -3,13 +3,14 @@ import { halfway } from '../layout/route/path';
 import { edgeSides, portAt } from '../layout/route/ports';
 import { through } from '../layout/route/through';
 import type { Board, BoardEdge, BoardNode, Direction, XY } from '../model/types';
+import { cached, type RenderCache } from './renderCache';
 
 export interface Route {
   points: XY[];
   label: XY;
 }
 
-export type RouteCache = Map<string, { deps: unknown[]; route: Route }>;
+export type RouteCache = RenderCache<Route>;
 
 type Link = { e: BoardEdge; s: BoardNode; t: BoardNode };
 
@@ -21,14 +22,6 @@ function draw({ e, s, t }: Link, direction: Direction, at: { source: number; tar
   const to = portAt(t, sides.target, at.target);
   const points = e.bends.length ? through(from, sides.source, e.bends, to, sides.target) : elbow(from, sides.source, to, sides.target);
   return { points, label: halfway(points) };
-}
-
-function remember(cache: RouteCache, key: string, deps: unknown[], make: () => Route): Route {
-  const hit = cache.get(key);
-  if (hit && hit.deps.length === deps.length && hit.deps.every((d, i) => d === deps[i])) return hit.route;
-  const route = make();
-  cache.set(key, { deps, route });
-  return route;
 }
 
 function linksOf(board: Board): Link[] {
@@ -45,7 +38,7 @@ function linksOf(board: Board): Link[] {
 export function arrowRoutes(board: Board, cache: RouteCache): Map<string, Route> {
   const out = new Map<string, Route>();
   for (const link of linksOf(board)) {
-    out.set(link.e.id, remember(cache, link.e.id, [link.e, link.s, link.t, board.direction], () => draw(link, board.direction, MIDDLE)));
+    out.set(link.e.id, cached(cache, link.e.id, [link.e, link.s, link.t, board.direction], () => draw(link, board.direction, MIDDLE)));
   }
   return out;
 }
