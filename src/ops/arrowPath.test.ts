@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createBoard } from '../model/factory';
-import { reattach, resetPath, setBends } from './arrowPath';
+import { addBend, reattach, removeBend, resetPath, routeAround, setBends, setSeparate } from './arrowPath';
 import { applyTidy } from './board';
 import { copySubgraph, pasteSubgraph } from './clipboard';
 import { connect } from './edges';
@@ -125,5 +125,64 @@ describe('setBends and resetPath', () => {
     resetPath(b, [e]);
     expect(b.edges[0].bends).toEqual([]);
     expect(runOp(b, (d) => resetPath(d, [e])).board).toBe(b);
+  });
+});
+
+describe('menu edits', () => {
+  const drawn = [{ x: 185.5, y: 36 }, { x: 290, y: 36 }, { x: 290, y: 236 }, { x: 394.5, y: 236 }];
+
+  it('adds a bend on the nearest segment and keeps every corner as a bend', () => {
+    const { b, e } = shaped();
+    b.edges[0].bends = [];
+    addBend(b, e, { x: 296, y: 120 }, drawn);
+    expect(b.edges[0].bends).toEqual([{ x: 290, y: 36 }, { x: 290, y: 120 }, { x: 290, y: 236 }]);
+  });
+
+  it('removes a bend and tidies what is left', () => {
+    const { b, e } = shaped();
+    b.edges[0].bends = [{ x: 300, y: 36 }, { x: 300, y: 120 }, { x: 300, y: 236 }];
+    removeBend(b, e, 0);
+    expect(b.edges[0].bends).toEqual([{ x: 300, y: 120 }, { x: 300, y: 236 }]);
+    expect(() => removeBend(b, e, 5)).toThrow(OpError);
+  });
+
+  it('marks several arrows separate at once', () => {
+    const { b, e, a } = shaped();
+    const d = addStep(b, { title: 'D', x: 400, y: 500 });
+    const other = connect(b, { source: a, target: d });
+    setSeparate(b, [e, other], true);
+    expect(b.edges.map((x) => x.separate)).toEqual([true, true]);
+  });
+
+  it('routes around a box in the way and saves the route as bends', () => {
+    const b = createBoard('B');
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'In the way', x: 300, y: 0 });
+    const c = addStep(b, { title: 'C', x: 600, y: 0 });
+    const e = connect(b, { source: a, target: c });
+    expect(routeAround(b, e)).toBe(true);
+    const bends = b.edges[0].bends;
+    expect(bends.length).toBeGreaterThan(1);
+    expect(bends.every((p) => p.x <= 300 - 16 || p.x >= 480 + 16 || p.y <= -16 || p.y >= 72 + 16)).toBe(true);
+  });
+
+  it('leaves the arrow unchanged when the search runs out of time', () => {
+    const b = createBoard('B');
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'In the way', x: 300, y: 0 });
+    const c = addStep(b, { title: 'C', x: 600, y: 0 });
+    const e = connect(b, { source: a, target: c });
+    let t = 0;
+    expect(routeAround(b, e, { now: () => (t += 100) })).toBe(false);
+    expect(b.edges[0].bends).toEqual([]);
+  });
+
+  it('leaves the arrow unchanged for a same-port loop', () => {
+    const { b, a, e } = shaped();
+    b.edges[0].target = a;
+    b.edges[0].sourceSide = 'right';
+    b.edges[0].targetSide = 'right';
+    expect(routeAround(b, e)).toBe(false);
+    expect(b.edges[0].bends).toEqual(BENDS);
   });
 });
