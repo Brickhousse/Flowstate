@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { createBoard } from '../../src/model/factory';
 import type { Board, XY } from '../../src/model/types';
 import { connect } from '../../src/ops/edges';
 import { addStep } from '../../src/ops/steps';
@@ -113,4 +114,123 @@ test('Tidy clears the bends and one undo brings them back', async ({ page, reque
   await expect.poll(async () => (await board(page)).edges[0].bends).toEqual([]);
   await page.keyboard.press('Control+z');
   expect((await board(page)).edges[0].bends).toEqual(BENDS);
+});
+
+const selectArrow = (page: Page, edgeId: string) => page.evaluate((id) => window.__flowstate!.getState().select([], [id]), edgeId);
+const history = (page: Page) => page.evaluate(() => window.__flowstate!.getState().past.length);
+const openTx = (page: Page) => page.evaluate(() => window.__flowstate!.getState().tx !== null);
+
+async function dragTo(page: Page, from: Locator, to: XY, opts: { alt?: boolean } = {}): Promise<void> {
+  const c = await centerOf(from);
+  await page.mouse.move(c.x, c.y);
+  if (opts.alt) await page.keyboard.down('Alt');
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 8 });
+  await page.mouse.up();
+  if (opts.alt) await page.keyboard.up('Alt');
+}
+
+test('dragging a segment slides it on the grid, Alt drags it freely, each one undo step', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'B', x: 400, y: 300 });
+    connect(b, { source: a, target: c });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e3');
+  const bar = page.locator('.fs-arrow-bar[data-segment="1"]');
+  const c = await centerOf(bar);
+  await dragTo(page, bar, { x: c.x + 100, y: c.y });
+  expect((await board(page)).edges[0].bends).toEqual([{ x: 400, y: 36 }, { x: 400, y: 336 }]);
+  expect(await history(page)).toBe(1);
+  await page.keyboard.press('Control+z');
+  expect((await board(page)).edges[0].bends).toEqual([]);
+  await dragTo(page, bar, { x: c.x + 100, y: c.y }, { alt: true });
+  expect((await board(page)).edges[0].bends).toEqual([{ x: 390, y: 36 }, { x: 390, y: 336 }]);
+});
+
+test('dragging a bend square moves the bend on the grid in one undo step', async ({ page, request }) => {
+  const p = await seed(request, shapedPair());
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e3');
+  const square = page.locator('.fs-arrow-bend[data-bend="0"]');
+  const c = await centerOf(square);
+  await dragTo(page, square, { x: c.x + 47, y: c.y - 23 });
+  expect((await board(page)).edges[0].bends).toEqual([{ x: 340, y: 20 }, { x: 300, y: 336 }]);
+  expect(await history(page)).toBe(1);
+});
+
+test('the reference view shows no arrow handles', async ({ page, request }) => {
+  const p = await seed(request, (b, project) => {
+    shapedPair()(b);
+    const other = createBoard('Reference');
+    shapedPair()(other);
+    project.boards.push(other);
+  });
+  await open(page, p);
+  await page.getByRole('button', { name: 'Reference', exact: true }).click({ modifiers: ['Shift'] });
+  await selectArrow(page, 'e3');
+  await expect(page.locator('.fs-canvas-main .fs-arrow-handles')).toHaveCount(1);
+  await expect(page.locator('.canvas-pane.is-reference .fs-arrow-handles')).toHaveCount(0);
+});
+
+test('a segment dragged onto its neighbour line keeps dragging and ends as one undo step', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    shapedPair()(b);
+    b.edges[0].bends = [{ x: 300, y: 36 }, { x: 300, y: 150 }, { x: 350, y: 150 }, { x: 350, y: 336 }];
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e3');
+  const c = await centerOf(page.locator('.fs-arrow-bar[data-segment="2"]'));
+  await page.mouse.move(c.x, c.y);
+  await page.keyboard.down('Alt');
+  await page.mouse.down();
+  await page.mouse.move(c.x, c.y - 114, { steps: 6 });
+  await page.mouse.move(c.x, c.y - 50, { steps: 6 });
+  await page.mouse.up();
+  await page.keyboard.up('Alt');
+  expect(await openTx(page)).toBe(false);
+  expect(await history(page)).toBe(1);
+  expect((await board(page)).edges[0].bends).toEqual([{ x: 300, y: 36 }, { x: 300, y: 100 }, { x: 350, y: 100 }, { x: 350, y: 336 }]);
+});
+
+test('deleting the arrow in the middle of a bend drag closes the drag, and one undo brings it back', async ({ page, request }) => {
+  const p = await seed(request, shapedPair());
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e3');
+  const c = await centerOf(page.locator('.fs-arrow-bend[data-bend="0"]'));
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.move(c.x + 60, c.y + 40, { steps: 5 });
+  await page.keyboard.press('Delete');
+  await page.mouse.move(c.x + 90, c.y + 40, { steps: 3 });
+  await page.mouse.up();
+  expect((await board(page)).edges).toEqual([]);
+  expect(await openTx(page)).toBe(false);
+  await page.keyboard.press('Control+z');
+  expect((await board(page)).edges[0].bends).toEqual(BENDS);
+});
+
+test('zoomed out, handles stay grabbable and a segment moves by the pointer distance in board units', async ({ page, request }) => {
+  const p = await seed(request, shapedPair());
+  await open(page, p);
+  await resetZoom(page);
+  const pct = page.getByRole('button', { name: 'Reset zoom to 100%' });
+  await expect(pct).toHaveText('100%');
+  for (const step of ['83%', '69%', '58%', '48%']) {
+    await page.getByRole('button', { name: 'Zoom out' }).click();
+    await expect(pct).toHaveText(step);
+  }
+  const zoom = await page.locator('.react-flow__viewport').evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a);
+  await selectArrow(page, 'e3');
+  expect((await boxOf(page.locator('.fs-arrow-bend[data-bend="0"]'))).width).toBeGreaterThanOrEqual(7.5);
+  const bar = page.locator('.fs-arrow-bar[data-segment="1"]');
+  const c = await centerOf(bar);
+  await dragTo(page, bar, { x: c.x + 50, y: c.y }, { alt: true });
+  const [first] = (await board(page)).edges[0].bends;
+  expect(first.x).toBeCloseTo(300 + 50 / zoom, 0);
 });

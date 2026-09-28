@@ -1,5 +1,6 @@
 import { BaseEdge, EdgeLabelRenderer, type EdgeProps } from '@xyflow/react';
 import { roundedPath } from '../layout/route/path';
+import { ArrowHandles } from './ArrowHandles';
 import { EdgeToolbar } from './EdgeToolbar';
 import { FlagBadges } from './FlagBadges';
 import type { FlowEdgeType } from './toFlow';
@@ -22,6 +23,7 @@ export function FlowEdge({ id, data, selected, markerEnd }: EdgeProps<FlowEdgeTy
         </EdgeLabelRenderer>
       )}
       {data.editable && selected && <EdgeToolbar edge={edge} x={labelX} y={labelY} />}
+      {data.editable && selected && <ArrowHandles edge={edge} route={route} />}
     </>
   );
 }

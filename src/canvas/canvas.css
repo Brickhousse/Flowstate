@@ -587,3 +587,21 @@
 .fs-menu .menu-item:disabled {
   background: transparent;
 }
+.fs-arrow-handles {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1001;
+}
+.fs-arrow-handles > * {
+  pointer-events: all;
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.fs-arrow-bar.is-horizontal { cursor: ns-resize; }
+.fs-arrow-bar.is-vertical { cursor: ew-resize; }
+.fs-arrow-bend { cursor: move; }
