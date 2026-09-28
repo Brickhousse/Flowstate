@@ -234,3 +234,76 @@ test('zoomed out, handles stay grabbable and a segment moves by the pointer dist
   const [first] = (await board(page)).edges[0].bends;
   expect(first.x).toBeCloseTo(300 + 50 / zoom, 0);
 });
+
+const historyShape = (page: Page) =>
+  page.evaluate(() => {
+    const s = window.__flowstate!.getState();
+    return { past: s.past.length, future: s.future.length, tx: s.tx !== null };
+  });
+
+test('a few pixels of jitter on an on-grid bend records no undo step and keeps the redo stack', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    shapedPair()(b);
+    b.edges[0].bends = [{ x: 300, y: 40 }, { x: 300, y: 340 }];
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await page.evaluate(() => {
+    const s = window.__flowstate!.getState();
+    s.changeBoard((b) => {
+      b.nodes[0].title = 'Renamed';
+    });
+    s.undo();
+  });
+  expect(await historyShape(page)).toEqual({ past: 0, future: 1, tx: false });
+  await selectArrow(page, 'e3');
+  const square = page.locator('.fs-arrow-bend[data-bend="0"]');
+  const c = await centerOf(square);
+  await dragTo(page, square, { x: c.x + 3, y: c.y + 3 });
+  expect(await historyShape(page)).toEqual({ past: 0, future: 1, tx: false });
+  expect((await board(page)).edges[0].bends).toEqual([{ x: 300, y: 40 }, { x: 300, y: 340 }]);
+});
+
+test('double-clicking a bend square opens no label editor and a Shift release keeps the arrow selected', async ({ page, request }) => {
+  const p = await seed(request, shapedPair());
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e3');
+  const square = page.locator('.fs-arrow-bend[data-bend="0"]');
+  await square.dblclick();
+  const label = page.locator('.fs-edge-toolbar').getByLabel('Arrow label');
+  await expect(label).toBeVisible();
+  await expect(label).not.toBeFocused();
+  await square.click({ modifiers: ['Shift'] });
+  await expect(page.locator('.fs-arrow-handles')).toHaveCount(1);
+});
+
+test("a board switch mid-drag leaves the other board's same-id arrow alone", async ({ page, request }) => {
+  const p = await seed(request, (b, project) => {
+    shapedPair()(b);
+    const other = createBoard('Other');
+    shapedPair()(other);
+    project.boards.push(other);
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e3');
+  const c = await centerOf(page.locator('.fs-arrow-bend[data-bend="0"]'));
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.move(c.x + 60, c.y + 40, { steps: 5 });
+  // The move lands in the same task as the switch, before React can unmount the handles.
+  await page.evaluate(
+    (at) => {
+      const s = window.__flowstate!.getState();
+      s.setActiveBoard(s.project.boards[1].id);
+      window.dispatchEvent(new PointerEvent('pointermove', { clientX: at.x, clientY: at.y, bubbles: true }));
+    },
+    { x: c.x + 100, y: c.y + 80 },
+  );
+  await page.mouse.up();
+  const boards = await page.evaluate(() => JSON.parse(JSON.stringify(window.__flowstate!.getState().project.boards)) as Board[]);
+  expect(boards[1].edges[0].bends).toEqual(BENDS);
+  expect(boards[0].edges[0].bends).toEqual([{ x: 400, y: 120 }, { x: 300, y: 336 }]);
+  expect(await openTx(page)).toBe(false);
+});

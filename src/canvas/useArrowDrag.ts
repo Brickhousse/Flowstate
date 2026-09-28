@@ -43,13 +43,14 @@ export function useArrowDrag(edge: BoardEdge, corners: XY[]): ArrowDrag {
     if (e.button !== 0 || stop.current) return;
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
+    const boardId = flowStore.getState().activeBoardId;
     flowStore.getState().begin();
     const onMove = (ev: PointerEvent) => {
       const bends = bendsFor(s, toFlow(ev));
       runSafely(() =>
         flowStore.getState().changeBoard((b) => {
           if (b.edges.some((x) => x.id === edge.id)) setBends(b, edge.id, bends);
-        }),
+        }, boardId),
       );
     };
     const finish = () => {

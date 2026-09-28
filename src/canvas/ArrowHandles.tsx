@@ -1,6 +1,6 @@
 import { useStore, ViewportPortal } from '@xyflow/react';
-import { useMemo } from 'react';
-import { innerSegments, simplify } from '../layout/route/through';
+import { useMemo, type MouseEvent as ReactMouseEvent } from 'react';
+import { innerSegments, segmentAxis, simplify } from '../layout/route/through';
 import type { BoardEdge } from '../model/types';
 import { useFlow } from '../store/store';
 import type { Route } from './arrowRoutes';
@@ -9,6 +9,9 @@ import { useArrowDrag } from './useArrowDrag';
 const HANDLE = 8;
 const BAR_LONG = 16;
 const BAR_SHORT = 6;
+
+// why: clicks bubble through the portal to React Flow's edge wrapper, which would open the label editor or Shift-deselect.
+const swallow = (e: ReactMouseEvent) => e.stopPropagation();
 
 export function ArrowHandles({ edge, route }: { edge: BoardEdge; route: Route }) {
   const only = useFlow((s) => s.edgeSelection.length === 1 && s.edgeSelection[0] === edge.id && s.selection.length === 0);
@@ -20,11 +23,11 @@ export function ArrowHandles({ edge, route }: { edge: BoardEdge; route: Route })
   // why: handles next to a box would sit under the node layer, so they draw in a portal above it.
   return (
     <ViewportPortal>
-      <svg className="fs-arrow-handles" width={1} height={1}>
+      <svg className="fs-arrow-handles" width={1} height={1} onClick={swallow} onDoubleClick={swallow}>
         {innerSegments(corners).map((i) => {
           const a = corners[i];
           const b = corners[i + 1];
-          const horizontal = a.y === b.y;
+          const horizontal = segmentAxis(a, b) === 'x';
           const w = (horizontal ? BAR_LONG : BAR_SHORT) * scale;
           const h = (horizontal ? BAR_SHORT : BAR_LONG) * scale;
           return (

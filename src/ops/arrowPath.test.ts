@@ -115,6 +115,11 @@ describe('setBends and resetPath', () => {
     expect(b.edges[0].bends).toEqual(BENDS);
   });
 
+  it('leaves the arrow untouched when the simplified bends match the stored ones', () => {
+    const { b, e } = shaped();
+    expect(runOp(b, (d) => setBends(d, e, [{ x: 300, y: 36 }, { x: 300, y: 100 }, { x: 300, y: 236 }])).board).toBe(b);
+  });
+
   it('drops the bends, and leaves an automatic arrow untouched', () => {
     const { b, e } = shaped();
     resetPath(b, [e]);

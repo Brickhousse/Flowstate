@@ -39,8 +39,12 @@ export function reattach(b: Board, id: string, end: ArrowEnd, nodeId: string, si
   else e.targetSide = side;
 }
 
+const samePath = (a: XY[], b: XY[]) => a.length === b.length && a.every((p, i) => p.x === b[i].x && p.y === b[i].y);
+
 export function setBends(b: Board, id: string, bends: XY[]): void {
-  getEdge(b, id).bends = simplify(bends);
+  const e = getEdge(b, id);
+  const next = simplify(bends);
+  if (!samePath(next, e.bends)) e.bends = next;
 }
 
 export function resetPath(b: Board, ids: string[]): void {
