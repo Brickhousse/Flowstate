@@ -30,6 +30,7 @@ import { requestFocus } from './focusKey';
 import { GroupNode } from './GroupNode';
 import { LaneNode } from './LaneNode';
 import { useCanvasMenu } from './menu/useCanvasMenu';
+import { PickPanelOpen } from './pick/pickPanelOpen';
 import { useArrowPicker } from './pick/useArrowPicker';
 import type { RenderCache } from './renderCache';
 import { setRevealer } from './reveal';
@@ -290,93 +291,95 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   if (!board) return null;
   const saved = viewports.get(boardId);
   return (
-    <ReactFlow<FlowNode, FlowEdgeType>
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onConnect={onConnect}
-      onConnectStart={() => setConnecting(true)}
-      onConnectEnd={onConnectEnd}
-      connectionRadius={20}
-      connectOnClick={false}
-      elevateNodesOnSelect={false}
-      onNodeDragStart={(event, node, dragged) => {
-        dragging.current = [node.id];
-        flowStore.getState().begin();
-        const ids = dragged.map((n) => n.id);
-        if (event.shiftKey) keepSelected(rf, ids);
-        assist.start(ids);
-      }}
-      onSelectionDragStart={(_, dragged) => {
-        dragging.current = dragged.map((n) => n.id);
-      }}
-      onNodeDragStop={(event) => {
-        // The copy lands before endDrag commits so it shares the drag's undo entry; see ADR 0011.
-        const copy = assist.finish(event);
-        if (copy) {
-          const ids = runSafely(() =>
-            flowStore.getState().changeBoard((b) => {
-              setPositions(b, copy.start);
-              return pasteSubgraph(b, copySubgraph(b, copy.ids), copy.delta.x, copy.delta.y);
-            }, boardId),
-          );
-          if (ids) flowStore.getState().select(ids);
-        }
-        endDrag(dragging);
-      }}
-      onNodeDoubleClick={(_, node) => editable && node.type !== 'lane' && startEditing(node.id)}
-      onEdgeClick={picker.onEdgeClick}
-      onEdgeDoubleClick={(_, edge) => {
-        if (!editable) return;
-        requestFocus(`label:${edge.id}`);
-        flowStore.getState().select([], [edge.id]);
-      }}
-      onPaneClick={onPaneClick}
-      onPaneMouseMove={(e) => {
-        cursor.flow = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      }}
-      onMoveEnd={(_, vp) => viewports.set(boardId, vp)}
-      onDragOver={(e) => {
-        if (e.dataTransfer.types.includes(SHAPE_MIME)) e.preventDefault();
-      }}
-      onDrop={onDrop}
-      defaultViewport={saved}
-      fitView={!saved}
-      fitViewOptions={FIT_VIEW}
-      connectionMode={ConnectionMode.Loose}
-      minZoom={0.05}
-      maxZoom={4}
-      panOnDrag={[1, 2]}
-      selectionOnDrag={editable}
-      selectionKeyCode={null}
-      selectionMode={SelectionMode.Partial}
-      panActivationKeyCode="Space"
-      zoomOnDoubleClick={false}
-      deleteKeyCode={null}
-      multiSelectionKeyCode="Shift"
-      nodesDraggable={editable}
-      nodesConnectable={editable}
-      elementsSelectable={editable}
-      onlyRenderVisibleElements={!exporting}
-      disableKeyboardA11y
-      className={['fs-flow', !editable && 'is-reference', (connecting || (editable && reattaching)) && 'is-connecting'].filter(Boolean).join(' ')}
-    >
-      {editable && <GuidesOverlay />}
-      {menu}
-      {picker.list}
-      <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color={colors.dot} />
-      {editable && (
-        <MiniMap
-          pannable
-          zoomable
-          nodeStrokeWidth={0}
-          maskColor={colors.mask}
-          nodeColor={(n) => minimapColor(n.type, n.type === 'lane' ? null : (n.data as { node?: { actor: string | null } }).node?.actor, colors)}
-        />
-      )}
-    </ReactFlow>
+    <PickPanelOpen value={picker.open}>
+      <ReactFlow<FlowNode, FlowEdgeType>
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onConnectStart={() => setConnecting(true)}
+        onConnectEnd={onConnectEnd}
+        connectionRadius={20}
+        connectOnClick={false}
+        elevateNodesOnSelect={false}
+        onNodeDragStart={(event, node, dragged) => {
+          dragging.current = [node.id];
+          flowStore.getState().begin();
+          const ids = dragged.map((n) => n.id);
+          if (event.shiftKey) keepSelected(rf, ids);
+          assist.start(ids);
+        }}
+        onSelectionDragStart={(_, dragged) => {
+          dragging.current = dragged.map((n) => n.id);
+        }}
+        onNodeDragStop={(event) => {
+          // The copy lands before endDrag commits so it shares the drag's undo entry; see ADR 0011.
+          const copy = assist.finish(event);
+          if (copy) {
+            const ids = runSafely(() =>
+              flowStore.getState().changeBoard((b) => {
+                setPositions(b, copy.start);
+                return pasteSubgraph(b, copySubgraph(b, copy.ids), copy.delta.x, copy.delta.y);
+              }, boardId),
+            );
+            if (ids) flowStore.getState().select(ids);
+          }
+          endDrag(dragging);
+        }}
+        onNodeDoubleClick={(_, node) => editable && node.type !== 'lane' && startEditing(node.id)}
+        onEdgeClick={picker.onEdgeClick}
+        onEdgeDoubleClick={(_, edge) => {
+          if (!editable) return;
+          requestFocus(`label:${edge.id}`);
+          flowStore.getState().select([], [edge.id]);
+        }}
+        onPaneClick={onPaneClick}
+        onPaneMouseMove={(e) => {
+          cursor.flow = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+        }}
+        onMoveEnd={(_, vp) => viewports.set(boardId, vp)}
+        onDragOver={(e) => {
+          if (e.dataTransfer.types.includes(SHAPE_MIME)) e.preventDefault();
+        }}
+        onDrop={onDrop}
+        defaultViewport={saved}
+        fitView={!saved}
+        fitViewOptions={FIT_VIEW}
+        connectionMode={ConnectionMode.Loose}
+        minZoom={0.05}
+        maxZoom={4}
+        panOnDrag={[1, 2]}
+        selectionOnDrag={editable}
+        selectionKeyCode={null}
+        selectionMode={SelectionMode.Partial}
+        panActivationKeyCode="Space"
+        zoomOnDoubleClick={false}
+        deleteKeyCode={null}
+        multiSelectionKeyCode="Shift"
+        nodesDraggable={editable}
+        nodesConnectable={editable}
+        elementsSelectable={editable}
+        onlyRenderVisibleElements={!exporting}
+        disableKeyboardA11y
+        className={['fs-flow', !editable && 'is-reference', (connecting || (editable && reattaching)) && 'is-connecting'].filter(Boolean).join(' ')}
+      >
+        {editable && <GuidesOverlay />}
+        {menu}
+        {picker.panel}
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color={colors.dot} />
+        {editable && (
+          <MiniMap
+            pannable
+            zoomable
+            nodeStrokeWidth={0}
+            maskColor={colors.mask}
+            nodeColor={(n) => minimapColor(n.type, n.type === 'lane' ? null : (n.data as { node?: { actor: string | null } }).node?.actor, colors)}
+          />
+        )}
+      </ReactFlow>
+    </PickPanelOpen>
   );
 }

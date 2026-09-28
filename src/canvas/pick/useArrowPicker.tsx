@@ -1,16 +1,17 @@
 import { useReactFlow, useStoreApi } from '@xyflow/react';
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import type { Board, XY } from '../../model/types';
-import { flowStore } from '../../store/store';
+import { flowStore, useFlow } from '../../store/store';
 import type { Route } from '../arrowRoutes';
 import type { MenuAnchor } from '../menu/ContextMenu';
 import type { FlowEdgeType } from '../toFlow';
-import { ArrowPickList } from './ArrowPickList';
+import { ArrowPickPanel } from './ArrowPickPanel';
 import { arrowsAt, pickTolerance, stackOrder } from './arrowsAt';
+import { panelArrow } from './panelArrow';
 
 type PickState = { at: MenuAnchor; ids: string[]; n: number };
 
-type Picker = { onEdgeClick: (event: ReactMouseEvent, edge: { id: string }) => void; list: ReactNode };
+type Picker = { onEdgeClick: (event: ReactMouseEvent, edge: { id: string }) => void; panel: ReactNode; open: boolean };
 
 export function useArrowPicker(boardId: string, editable: boolean, board: Board | undefined, routes: ReadonlyMap<string, Route> | null, edges: readonly FlowEdgeType[]): Picker {
   const rf = useReactFlow();
@@ -24,7 +25,13 @@ export function useArrowPicker(boardId: string, editable: boolean, board: Board 
   }, [routes, edges]);
   const close = useCallback(() => setPick(null), []);
 
-  useEffect(() => setPick(null), [board, boardId]);
+  useEffect(() => setPick(null), [boardId]);
+
+  const arrowId = useFlow((s) => (pick ? panelArrow(pick.ids, s.edgeSelection, s.selection) : null));
+  const arrow = arrowId ? board?.edges.find((e) => e.id === arrowId) : undefined;
+  useEffect(() => {
+    if (pick && !arrow) setPick(null);
+  }, [pick, arrow]);
 
   useEffect(() => {
     if (!pick) return;
@@ -88,6 +95,7 @@ export function useArrowPicker(boardId: string, editable: boolean, board: Board 
     [editable, hitsAt, choose],
   );
 
-  const list = pick && board && routes ? <ArrowPickList key={pick.n} at={pick.at} ids={pick.ids} board={board} routes={routes} onClose={close} /> : null;
-  return { onEdgeClick, list };
+  const open = !!(pick && arrow && board && routes);
+  const panel = open ? <ArrowPickPanel key={pick.n} at={pick.at} ids={pick.ids} arrow={arrow} board={board} routes={routes} onClose={close} /> : null;
+  return { onEdgeClick, panel, open };
 }

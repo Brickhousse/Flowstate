@@ -594,6 +594,35 @@
 .fs-menu .menu-item:disabled {
   background: transparent;
 }
+.fs-context-menu.has-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+}
+.fs-context-menu.has-footer > .fs-menu {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: none;
+  max-height: min(40vh, 264px);
+  overflow-y: auto;
+}
+.fs-menu-footer {
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+.fs-edge-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text);
+}
 .fs-pick-glow {
   position: absolute;
   left: 0;

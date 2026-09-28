@@ -538,6 +538,10 @@ async function menusAfterSettling(page: Page): Promise<number> {
   return page.getByRole('menu').count();
 }
 const pickList = (page: Page) => page.getByRole('menu', { name: 'Arrows here' });
+// A click during the reset zoom animation would close the list as a zoom.
+async function zoomSettled(page: Page): Promise<void> {
+  await expect.poll(() => page.locator('.react-flow__viewport').evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a)).toBe(1);
+}
 
 async function clickBoard(page: Page, edgeId: string, p: XY, shift = false): Promise<void> {
   const at = await toScreen(page, edgeId, p);
@@ -560,16 +564,13 @@ test('clicking where two arrows share a line selects the top one and lists both 
   await expect(page.locator('.fs-pick-glow path')).toHaveAttribute('d', (await pathOf(page, 'e4').getAttribute('d'))!);
   await rows.last().click();
   expect(await edgeSelection(page)).toEqual(['e4']);
-  await expect(pickList(page)).toHaveCount(0);
-
-  await clickBoard(page, 'e4', { x: 230, y: 36 });
   await expect(pickList(page)).toBeVisible();
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-  expect(await edgeSelection(page)).toEqual(['e4']);
-  await expect(pickList(page)).toHaveCount(0);
 
-  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Enter');
+  expect(await edgeSelection(page)).toEqual(['e5']);
+  await expect(pickList(page)).toBeVisible();
+
   await page.keyboard.press('Escape');
   await expect(pickList(page)).toHaveCount(0);
   expect(await edgeSelection(page)).toEqual(['e5']);
@@ -580,7 +581,7 @@ test('clicking where two arrows share a line selects the top one and lists both 
   expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
 });
 
-test('the arrow list closes on a click elsewhere, a wheel, a board change and a toolbar zoom', async ({ page, request }) => {
+test('the arrow list closes on a click elsewhere, a wheel, a board switch and a toolbar zoom, but not on an edit', async ({ page, request }) => {
   const p = await seed(request, fork);
   await open(page, p);
   await resetZoom(page);
@@ -592,13 +593,23 @@ test('the arrow list closes on a click elsewhere, a wheel, a board change and a 
   await page.locator('.react-flow__pane').click({ position: { x: 5, y: 5 } });
   await expect(pickList(page)).toHaveCount(0);
   await reopen();
+  const at = await toScreen(page, 'e4', { x: 230, y: 36 });
+  await page.mouse.move(at.x - 40, at.y - 20);
   await page.mouse.wheel(0, 100);
   await expect(pickList(page)).toHaveCount(0);
   await resetZoom(page);
+  await zoomSettled(page);
   await reopen();
   await page.evaluate(() => window.__flowstate!.getState().changeBoard((b) => b.nodes[0].x = 20));
+  await expect(pickList(page)).toBeVisible();
+  await page.evaluate(() => window.__flowstate!.getState().addBoard('Other'));
   await expect(pickList(page)).toHaveCount(0);
-  await page.keyboard.press('Control+z');
+  await page.evaluate(() => {
+    const s = window.__flowstate!.getState();
+    s.setActiveBoard(s.project.boards[0].id);
+    s.changeBoard((b) => b.nodes[0].x = 0);
+  });
+  await resetZoom(page);
   await reopen();
   await page.getByRole('button', { name: 'Zoom out' }).focus();
   await page.keyboard.press('Enter');
@@ -670,6 +681,126 @@ test('keys the arrow list does not handle close it and reach the canvas', async 
   expect((await board(page)).edges.map((e) => e.id)).toEqual(['e4']);
   await page.keyboard.press('Control+z');
   expect((await board(page)).edges.map((e) => e.id)).toEqual(['e4', 'e5']);
+});
+
+const pickPanel = (page: Page) => page.locator('.fs-context-menu').filter({ has: pickList(page) });
+const pickOptions = (page: Page) => pickPanel(page).getByRole('group', { name: 'Arrow options' });
+
+test('clicking a shared line opens one panel with the arrow list and the options, and no midpoint toolbar', async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  await expect(pickPanel(page)).toHaveCount(1);
+  await expect(pickList(page).getByRole('menuitemradio')).toHaveText(['overflow', 'A → B']);
+  await expect(pickOptions(page).getByLabel('Arrow label')).toHaveValue('overflow');
+  await expect(pickOptions(page).getByTitle('Delete arrow (Del)')).toBeVisible();
+  expect(await menusAfterSettling(page)).toBe(1);
+  await expect(page.locator('.fs-edge-toolbar')).toHaveCount(0);
+});
+
+test('picking the second row keeps the panel open, and a colour picked there goes to that arrow alone in one undo step', async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  const rows = pickList(page).getByRole('menuitemradio');
+  await rows.last().click();
+  expect(await edgeSelection(page)).toEqual(['e4']);
+  await expect(pickPanel(page)).toHaveCount(1);
+  await expect(rows.last()).toHaveAttribute('aria-checked', 'true');
+  await expect(pickOptions(page).getByLabel('Arrow label')).toHaveValue('');
+  await expect(page.locator('.fs-edge-toolbar')).toHaveCount(0);
+  await pickOptions(page).getByTitle('Colour', { exact: true }).click();
+  await pickOptions(page).getByTitle('violet', { exact: true }).click();
+  expect((await board(page)).edges.map((e) => [e.id, e.color])).toEqual([['e4', 'violet'], ['e5', null]]);
+  expect(await historyShape(page)).toEqual({ past: 1, future: 0, tx: false });
+  await expect(pickPanel(page)).toHaveCount(1);
+});
+
+test("typing in the panel's label field keeps the panel open and names the arrow and its row", async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  await pickList(page).getByRole('menuitemradio').last().click();
+  const label = pickOptions(page).getByLabel('Arrow label');
+  await label.click();
+  // b, w and q add flags and z undoes on the canvas, so each must stay in the field.
+  await page.keyboard.type('backup queue wz');
+  await expect(pickPanel(page)).toHaveCount(1);
+  await page.keyboard.press('Enter');
+  await expect(pickList(page).getByRole('menuitemradio')).toHaveText(['overflow', 'backup queue wz']);
+  await expect(page.locator('.fs-edge-label', { hasText: 'backup queue wz' })).toBeVisible();
+  const edges = (await board(page)).edges;
+  expect(edges.map((e) => [e.label, e.flags.length])).toEqual([['backup queue wz', 0], ['overflow', 0]]);
+  expect(await historyShape(page)).toEqual({ past: 1, future: 0, tx: false });
+  await expect(pickPanel(page)).toHaveCount(1);
+});
+
+test('Escape closes the panel from either part and the midpoint toolbar returns, and Tab moves between the parts', async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  await expect(pickList(page)).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(pickPanel(page)).toHaveCount(0);
+  expect(await edgeSelection(page)).toEqual(['e5']);
+  await expect(page.locator('.fs-edge-toolbar').getByLabel('Arrow label')).toHaveValue('overflow');
+
+  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  await expect(pickPanel(page)).toHaveCount(1);
+  const options = pickOptions(page).getByRole('button');
+  await page.keyboard.press('Tab');
+  await expect(options.first()).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(pickList(page)).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(options.last()).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(pickList(page)).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(options.first()).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(pickPanel(page)).toHaveCount(0);
+  expect(await edgeSelection(page)).toEqual(['e5']);
+  await expect(page.locator('.fs-edge-toolbar')).toBeVisible();
+  expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
+});
+
+test("the panel's Delete button deletes the selected arrow and closes the panel, and one undo restores it", async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  await pickOptions(page).getByTitle('Delete arrow (Del)').click();
+  expect((await board(page)).edges.map((e) => e.id)).toEqual(['e4']);
+  await expect(pickPanel(page)).toHaveCount(0);
+  expect(await historyShape(page)).toEqual({ past: 1, future: 0, tx: false });
+  await page.keyboard.press('Control+z');
+  expect((await board(page)).edges.map((e) => e.id)).toEqual(['e4', 'e5']);
+});
+
+test('a long arrow list scrolls inside the panel and keeps the options on screen', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 500 });
+    for (let i = 0; i < 16; i++) connect(b, { source: a, target: addStep(b, { title: `T${i}`, x: 400, y: i * 100 }), sourceSide: 'right' });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await zoomSettled(page);
+  const last = (await board(page)).edges.at(-1)!.id;
+  await clickBoard(page, last, { x: 230, y: 536 });
+  await expect(pickList(page).getByRole('menuitemradio')).toHaveCount(16);
+  const list = pickList(page);
+  expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  const del = await boxOf(pickOptions(page).getByTitle('Delete arrow (Del)'));
+  expect(del.y + del.height).toBeLessThanOrEqual(900);
+  await list.hover();
+  await page.mouse.wheel(0, 200);
+  await expect.poll(() => list.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await expect(pickPanel(page)).toHaveCount(1);
 });
 
 test('a click on the inside of a rounded corner keeps the clicked arrow first in the list', async ({ page, request }) => {

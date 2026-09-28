@@ -2,8 +2,9 @@ import { ViewportPortal } from '@xyflow/react';
 import { useState } from 'react';
 import { roundedPath } from '../../layout/route/path';
 import type { Board, BoardEdge } from '../../model/types';
-import { flowStore, useFlow } from '../../store/store';
+import { flowStore } from '../../store/store';
 import type { Route } from '../arrowRoutes';
+import { EdgeOptions } from '../EdgeOptions';
 import { EdgeTypeIcon } from '../labels';
 import { ContextMenu, type MenuAnchor, type MenuEntry } from '../menu/ContextMenu';
 
@@ -23,10 +24,9 @@ function Glow({ route }: { route: Route }) {
   );
 }
 
-type Props = { at: MenuAnchor; ids: string[]; board: Board; routes: ReadonlyMap<string, Route>; onClose: () => void };
+type Props = { at: MenuAnchor; ids: string[]; arrow: BoardEdge; board: Board; routes: ReadonlyMap<string, Route>; onClose: () => void };
 
-export function ArrowPickList({ at, ids, board, routes, onClose }: Props) {
-  const selected = useFlow((s) => s.edgeSelection);
+export function ArrowPickPanel({ at, ids, arrow, board, routes, onClose }: Props) {
   const [previewed, setPreviewed] = useState<string | null>(null);
   const entries: MenuEntry[] = [];
   for (const id of ids) {
@@ -36,8 +36,9 @@ export function ArrowPickList({ at, ids, board, routes, onClose }: Props) {
       kind: 'item',
       label: nameOf(board, edge),
       icon: <EdgeTypeIcon type={edge.type} />,
-      checked: selected.includes(id),
+      checked: id === arrow.id,
       radio: true,
+      keepOpen: true,
       preview: () => setPreviewed(id),
       run: () => flowStore.getState().select([], [id]),
     });
@@ -46,7 +47,18 @@ export function ArrowPickList({ at, ids, board, routes, onClose }: Props) {
   return (
     <>
       {glow && <Glow route={glow} />}
-      <ContextMenu at={at} entries={entries} label="Arrows here" passKeys onClose={onClose} />
+      <ContextMenu
+        at={at}
+        entries={entries}
+        label="Arrows here"
+        passKeys
+        onClose={onClose}
+        footer={
+          <div role="group" aria-label="Arrow options" className="fs-edge-options">
+            <EdgeOptions key={arrow.id} edge={arrow} />
+          </div>
+        }
+      />
     </>
   );
 }
