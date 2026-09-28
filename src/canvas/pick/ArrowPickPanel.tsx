@@ -1,14 +1,14 @@
 import { ViewportPortal } from '@xyflow/react';
 import { useRef, useState } from 'react';
 import { roundedPath } from '../../layout/route/path';
-import type { Board, BoardEdge } from '../../model/types';
+import type { Board, BoardEdge, XY } from '../../model/types';
 import { flowStore } from '../../store/store';
 import type { Route } from '../arrowRoutes';
 import { EdgeOptions } from '../EdgeOptions';
 import { EdgeTypeIcon } from '../labels';
 import { focusStops, MenuFooter } from '../menu/MenuFooter';
 import { MenuList, type MenuEntry } from '../menu/MenuList';
-import { Popup, type MenuAnchor } from '../menu/Popup';
+import { Popup } from '../menu/Popup';
 
 function nameOf(board: Board, edge: BoardEdge): string {
   if (edge.label) return edge.label;
@@ -26,7 +26,7 @@ function Glow({ route }: { route: Route }) {
   );
 }
 
-type Props = { at: MenuAnchor; ids: string[]; arrow: BoardEdge; board: Board; routes: ReadonlyMap<string, Route>; onClose: () => void };
+type Props = { at: XY; ids: string[]; arrow: BoardEdge; board: Board; routes: ReadonlyMap<string, Route>; onClose: () => void };
 
 export function ArrowPickPanel({ at, ids, arrow, board, routes, onClose }: Props) {
   const [previewed, setPreviewed] = useState<string | null>(null);

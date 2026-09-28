@@ -1,7 +1,8 @@
+import type { XY } from '../../model/types';
 import { MenuList, type MenuEntry } from './MenuList';
-import { Popup, type MenuAnchor } from './Popup';
+import { Popup } from './Popup';
 
-type Props = { at: MenuAnchor; entries: MenuEntry[]; label?: string; onClose: () => void };
+type Props = { at: XY; entries: MenuEntry[]; label?: string; onClose: () => void };
 
 export function ContextMenu({ at, entries, label, onClose }: Props) {
   return (

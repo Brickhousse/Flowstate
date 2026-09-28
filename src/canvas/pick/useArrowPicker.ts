@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, type MouseEvent as ReactMouseEvent, typ
 import type { Board, XY } from '../../model/types';
 import { flowStore } from '../../store/store';
 import type { Route } from '../arrowRoutes';
-import type { MenuAnchor } from '../menu/Popup';
 import type { FlowEdgeType } from '../toFlow';
 import { arrowsAt, pickTolerance, stackOrder } from './arrowsAt';
 import { usePickPanel } from './usePickPanel';
@@ -31,7 +30,7 @@ export function useArrowPicker(boardId: string, editable: boolean, board: Board 
   );
 
   const choose = useCallback(
-    (ids: string[], at: MenuAnchor) => {
+    (ids: string[], at: XY) => {
       flowStore.getState().select([], [ids[0]]);
       if (ids.length > 1) openPanel(ids, at);
     },

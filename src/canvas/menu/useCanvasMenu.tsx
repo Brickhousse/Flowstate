@@ -1,11 +1,11 @@
 import { useReactFlow, useStoreApi } from '@xyflow/react';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { boundsOf } from '../../layout/geometry';
+import type { XY } from '../../model/types';
 import { flowStore } from '../../store/store';
 import { isTyping } from '../useKeyboard';
 import { ContextMenu } from './ContextMenu';
 import type { MenuEntry } from './MenuList';
-import type { MenuAnchor } from './Popup';
 import { nodeEntries, paneEntries } from './entries';
 
 const CLICK_SLOP = 4;
@@ -22,7 +22,7 @@ function topSelectedAt(x: number, y: number, selection: string[]): string | null
 export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
   const rf = useReactFlow();
   const rfStore = useStoreApi();
-  const [menu, setMenu] = useState<{ at: MenuAnchor; entries: MenuEntry[]; n: number } | null>(null);
+  const [menu, setMenu] = useState<{ at: XY; entries: MenuEntry[]; n: number } | null>(null);
   const opens = useRef(0);
   const close = useCallback(() => setMenu(null), []);
 
@@ -30,7 +30,7 @@ export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
 
   useEffect(() => {
     if (!editable) return;
-    let down: MenuAnchor | null = null;
+    let down: XY | null = null;
     const inCanvas = (t: EventTarget | null): t is Element => t instanceof Element && !!rfStore.getState().domNode?.contains(t);
     // why: ADR-0012
     const onContextMenu = (e: MouseEvent) => {

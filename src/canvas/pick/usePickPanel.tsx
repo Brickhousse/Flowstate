@@ -1,22 +1,21 @@
 import { useStoreApi } from '@xyflow/react';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import type { Board } from '../../model/types';
+import type { Board, XY } from '../../model/types';
 import { useFlow } from '../../store/store';
 import type { Route } from '../arrowRoutes';
-import type { MenuAnchor } from '../menu/Popup';
 import { ArrowPickPanel } from './ArrowPickPanel';
 import { panelArrow } from './panelArrow';
 
-type PickState = { at: MenuAnchor; ids: string[]; n: number };
+type PickState = { at: XY; ids: string[]; n: number };
 
-type PickPanel = { open: (ids: string[], at: MenuAnchor) => void; panel: ReactNode; isOpen: boolean };
+type PickPanel = { open: (ids: string[], at: XY) => void; panel: ReactNode; isOpen: boolean };
 
 export function usePickPanel(boardId: string, board: Board | undefined, routes: ReadonlyMap<string, Route> | null): PickPanel {
   const rfStore = useStoreApi();
   const [pick, setPick] = useState<PickState | null>(null);
   const opens = useRef(0);
   const close = useCallback(() => setPick(null), []);
-  const open = useCallback((ids: string[], at: MenuAnchor) => setPick({ at, ids, n: ++opens.current }), []);
+  const open = useCallback((ids: string[], at: XY) => setPick({ at, ids, n: ++opens.current }), []);
 
   useEffect(() => setPick(null), [boardId]);
 
