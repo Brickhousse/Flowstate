@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { XY } from '../../model/types';
+import type { Side, XY } from '../../model/types';
 import type { Rect } from '../geometry';
 import { searchAround, type AroundInput } from './around';
-import { STUB, stubEnd } from './ports';
+import { portAt, STUB, stubEnd } from './ports';
 
 const A = { x: 0, y: 0, w: 180, h: 72 };
 const B = { x: 300, y: 0, w: 180, h: 72 };
@@ -18,6 +18,16 @@ const padded = (r: Rect): Rect => ({ x: r.x - PAD, y: r.y - PAD, w: r.w + PAD * 
 function clearOfPadding(route: XY[], input: AroundInput): boolean {
   const between = [stubEnd(input.source, input.sourceSide), ...route.slice(1, -1), stubEnd(input.target, input.targetSide)];
   return input.boxes.every((box) => !cuts(between, padded(box)));
+}
+
+function scattered(count: number, seed: number): Rect[] {
+  const random = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const boxes: Rect[] = [];
+  while (boxes.length < count) {
+    const b = { x: Math.round(random() * 3000), y: Math.round(random() * 2000), w: 180, h: 72 };
+    if (boxes.every((o) => b.x > o.x + o.w + 60 || o.x > b.x + b.w + 60 || b.y > o.y + o.h + 60 || o.y > b.y + b.h + 60)) boxes.push(b);
+  }
+  return boxes;
 }
 
 function cuts(points: XY[], r: Rect): boolean {
@@ -98,5 +108,21 @@ describe('searchAround', () => {
     const route = searchAround(input);
     expect(route).not.toBeNull();
     expect(clearOfPadding(route ?? [], input)).toBe(true);
+  });
+
+  it('keeps every route on a scattered board clear of the padded boxes', () => {
+    const boxes = scattered(80, 11);
+    const sides: Side[] = ['top', 'right', 'bottom', 'left'];
+    for (let i = 0; i < 16; i++) {
+      const sourceSide = sides[i % 4];
+      const targetSide = sides[(i >> 2) % 4];
+      const input = { source: portAt(boxes[i], sourceSide), sourceSide, target: portAt(boxes[79 - i], targetSide), targetSide, boxes };
+      const route = searchAround(input, { limitMs: Infinity });
+      expect(route).not.toBeNull();
+      const points = route ?? [];
+      expect(clearOfPadding(points, input)).toBe(true);
+      expect(leg(points[0], points[1])).toBeGreaterThanOrEqual(STUB);
+      expect(leg(points[points.length - 2], points[points.length - 1])).toBeGreaterThanOrEqual(STUB);
+    }
   });
 });
