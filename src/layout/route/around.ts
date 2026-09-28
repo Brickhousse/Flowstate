@@ -124,7 +124,7 @@ export function searchAround(input: AroundInput, opts: AroundOptions = {}): XY[]
       const axis = dx !== 0 ? 0 : 1;
       const atGoal = ix === goal.ix && iy === goal.iy;
       // A state records its axis, not its direction, so doubling back over a stub would look free.
-      if ((!cur.from && dx === -out.x && dy === -out.y) || (atGoal && dx === into.x && dy === into.y)) continue;
+      if ((cur.ix === ix0 && cur.iy === iy0 && dx === -out.x && dy === -out.y) || (atGoal && dx === into.x && dy === into.y)) continue;
       const cost = cur.cost + Math.abs(b.x - a.x) + Math.abs(b.y - a.y) + (axis !== cur.axis ? TURN_COST : 0) + (atGoal && axis !== endAxis ? TURN_COST : 0);
       const k = key(ix, iy, axis);
       if ((best.get(k) ?? Infinity) <= cost) continue;

@@ -49,12 +49,19 @@ describe('searchAround', () => {
   it('leaves and enters each port along its side for at least a full stub', () => {
     const D = { x: -400, y: 300, w: 180, h: 72 };
     const E = { x: 400, y: -300, w: 180, h: 72 };
+    const F = { x: 216, y: -52, w: 180, h: 72 };
+    const G = { x: -300, y: -300, w: 180, h: 72 };
+    const H = { x: 231, y: 300, w: 180, h: 72 };
     const cases = [
-      { source: from, sourceSide: 'right', target: { x: -405.5, y: 336 }, targetSide: 'left' },
-      { source: { x: 90, y: 77.5 }, sourceSide: 'bottom', target: { x: 585.5, y: -264 }, targetSide: 'right' },
+      { source: from, sourceSide: 'right', target: { x: -405.5, y: 336 }, targetSide: 'left', boxes: [A, D, E] },
+      { source: { x: 90, y: 77.5 }, sourceSide: 'bottom', target: { x: 585.5, y: -264 }, targetSide: 'right', boxes: [A, D, E] },
+      { source: from, sourceSide: 'right', target: { x: -114.5, y: -264 }, targetSide: 'right', boxes: [A, F, H, G] },
+      { source: { x: 90, y: -5.5 }, sourceSide: 'top', target: { x: 585.5, y: -264 }, targetSide: 'right', boxes: [A, D, E] },
     ] as const;
     for (const c of cases) {
-      const points = searchAround({ ...c, boxes: [A, D, E] })!;
+      const route = searchAround({ ...c, boxes: [...c.boxes] });
+      expect(route).not.toBeNull();
+      const points = route ?? [];
       const first = leg(points[0], points[1]);
       const last = leg(points[points.length - 2], points[points.length - 1]);
       expect(first).toBeGreaterThanOrEqual(STUB);
