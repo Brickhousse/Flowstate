@@ -222,9 +222,7 @@ test('deleting the arrow in the middle of a bend drag closes the drag, and one u
   expect((await board(page)).edges[0].bends).toEqual(BENDS);
 });
 
-test('zoomed out, handles stay grabbable and a segment moves by the pointer distance in board units', async ({ page, request }) => {
-  const p = await seed(request, shapedPair());
-  await open(page, p);
+async function zoomOutTo48(page: Page): Promise<number> {
   await resetZoom(page);
   const pct = page.getByRole('button', { name: 'Reset zoom to 100%' });
   await expect(pct).toHaveText('100%');
@@ -232,7 +230,13 @@ test('zoomed out, handles stay grabbable and a segment moves by the pointer dist
     await page.getByRole('button', { name: 'Zoom out' }).click();
     await expect(pct).toHaveText(step);
   }
-  const zoom = await page.locator('.react-flow__viewport').evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a);
+  return page.locator('.react-flow__viewport').evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a);
+}
+
+test('zoomed out, handles stay grabbable and a segment moves by the pointer distance in board units', async ({ page, request }) => {
+  const p = await seed(request, shapedPair());
+  await open(page, p);
+  const zoom = await zoomOutTo48(page);
   await selectArrow(page, 'e3');
   expect((await boxOf(page.locator('.fs-arrow-bend[data-bend="0"]'))).width).toBeGreaterThanOrEqual(7.5);
   const bar = page.locator('.fs-arrow-bar[data-segment="2"]');
@@ -465,4 +469,55 @@ test('double-clicking a segment bar opens the label editor', async ({ page, requ
   await selectArrow(page, 'e3');
   await page.locator('.fs-arrow-bar').dblclick();
   await expect(page.locator('.fs-edge-toolbar').getByLabel('Arrow label')).toBeFocused();
+});
+
+function autoPair(targetX: number) {
+  return (b: Board) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'B', x: targetX, y: 300 });
+    connect(b, { source: a, target: c });
+  };
+}
+
+test('a bar drag that snaps back to where it started leaves an automatic arrow automatic', async ({ page, request }) => {
+  const p = await seed(request, autoPair(420));
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e3');
+  const bar = page.locator('.fs-arrow-bar.is-vertical');
+  const c = await centerOf(bar);
+  await dragTo(page, bar, { x: c.x + 5, y: c.y });
+  expect((await board(page)).edges[0].bends).toEqual([]);
+  expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
+});
+
+test('an undo during a press held below the threshold stands when the pointer then moves on', async ({ page, request }) => {
+  const p = await seed(request, autoPair(400));
+  await open(page, p);
+  await resetZoom(page);
+  await page.evaluate((bends) => {
+    window.__flowstate!.getState().changeBoard((b) => {
+      b.edges[0].bends = bends;
+    });
+  }, BENDS);
+  await selectArrow(page, 'e3');
+  const c = await centerOf(page.locator('.fs-arrow-bar[data-segment="2"]'));
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await board(page)).edges[0].bends).toEqual([]);
+  await page.mouse.move(c.x + 40, c.y - 60, { steps: 5 });
+  await page.mouse.up();
+  expect((await board(page)).edges[0].bends).toEqual([]);
+  expect(await historyShape(page)).toEqual({ past: 0, future: 1, tx: false });
+});
+
+test('zoomed out, a 2px press on a bar still changes nothing', async ({ page, request }) => {
+  const p = await seed(request, autoPair(400));
+  await open(page, p);
+  await zoomOutTo48(page);
+  await selectArrow(page, 'e3');
+  await press(page, page.locator('.fs-arrow-bar.is-vertical'), 2, 0);
+  expect((await board(page)).edges[0].bends).toEqual([]);
+  expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
 });

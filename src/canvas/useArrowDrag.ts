@@ -4,7 +4,7 @@ import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
 import { moveSegment, segmentAxis, simplify } from '../layout/route/through';
 import { SIDES, type Board, type BoardEdge, type Side, type XY } from '../model/types';
-import { reattach, setBends, type ArrowEnd } from '../ops/arrowPath';
+import { reattach, samePath, setBends, type ArrowEnd } from '../ops/arrowPath';
 import { layoutPrefs } from '../store/layoutPrefs';
 import { flowStore } from '../store/store';
 import { mods } from './assist/modifiers';
@@ -20,7 +20,7 @@ export function useReattaching(): boolean {
 }
 
 type Shape =
-  | { kind: 'segment'; points: XY[]; index: number; across: 'x' | 'y'; offset: number }
+  | { kind: 'segment'; points: XY[]; bends: XY[]; index: number; across: 'x' | 'y'; offset: number }
   | { kind: 'bend'; bends: XY[]; index: number; offset: XY };
 type Session = Shape | { kind: 'end'; end: ArrowEnd };
 
@@ -40,7 +40,11 @@ function snap(v: number): number {
 }
 
 function bendsFor(s: Shape, at: XY): XY[] {
-  if (s.kind === 'segment') return simplify(moveSegment(s.points, s.index, snap(at[s.across] + s.offset))).slice(1, -1);
+  if (s.kind === 'segment') {
+    const moved = simplify(moveSegment(s.points, s.index, snap(at[s.across] + s.offset)));
+    // why: storing an unchanged route's corners would silently turn an automatic arrow hand-shaped.
+    return samePath(moved, simplify(s.points)) ? s.bends : moved.slice(1, -1);
+  }
   return s.bends.map((p, i) => (i === s.index ? { x: snap(at.x + s.offset.x), y: snap(at.y + s.offset.y) } : p));
 }
 
@@ -74,6 +78,8 @@ export function useArrowDrag(edge: BoardEdge, points: XY[]): ArrowDrag {
           if (b.edges.some((x) => x.id === edge.id)) fn(b);
         }, boardId),
       );
+    const current = () => flowStore.getState().project.boards.find((b) => b.id === boardId)?.edges.find((x) => x.id === edge.id);
+    const original = current();
     const pressed = { x: e.clientX, y: e.clientY };
     let moving = false;
     if (s.kind === 'end') arrowDrag.setState({ reattaching: true });
@@ -84,6 +90,11 @@ export function useArrowDrag(edge: BoardEdge, points: XY[]): ArrowDrag {
       }
       if (!moving) {
         if (Math.hypot(ev.clientX - pressed.x, ev.clientY - pressed.y) < DRAG_SLOP) return;
+        // why: no transaction is open below the threshold, so an undo or delete may have made the captured shape stale.
+        if (current() !== original) {
+          finish(null);
+          return;
+        }
         moving = true;
         flowStore.getState().begin();
       }
@@ -117,7 +128,7 @@ export function useArrowDrag(edge: BoardEdge, points: XY[]): ArrowDrag {
     segment: (index) => ({
       onPointerDown: (e) => {
         const across = segmentAxis(points[index], points[index + 1]) === 'x' ? 'y' : 'x';
-        track(e, { kind: 'segment', points, index, across, offset: points[index][across] - toFlow(e)[across] });
+        track(e, { kind: 'segment', points, bends: edge.bends, index, across, offset: points[index][across] - toFlow(e)[across] });
       },
     }),
     bend: (index) => ({
