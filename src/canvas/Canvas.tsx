@@ -36,6 +36,7 @@ import { runSafely } from './safe';
 import { StepNode } from './StepNode';
 import { TextNode } from './TextNode';
 import { toFlowEdges, toFlowNodes, type FlowEdgeType, type FlowNode, type FlowView } from './toFlow';
+import { useReattaching } from './useArrowDrag';
 import { useKeyboard } from './useKeyboard';
 import { useThemeColors, type ThemeColors } from './useThemeColors';
 import { FIT_VIEW } from './viewport';
@@ -109,6 +110,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const assist = useDragAssist(boardId, editable, measured.current);
   const [measureTick, setMeasureTick] = useState(0);
   const [connecting, setConnecting] = useState(false);
+  const reattaching = useReattaching();
   // Ids whose disappearance ends the drag: React Flow never fires onNodeDragStop once the grabbed node unmounts.
   const dragging = useRef<string[] | null>(null);
 
@@ -355,7 +357,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       elementsSelectable={editable}
       onlyRenderVisibleElements={!exporting}
       disableKeyboardA11y
-      className={['fs-flow', !editable && 'is-reference', connecting && 'is-connecting'].filter(Boolean).join(' ')}
+      className={['fs-flow', !editable && 'is-reference', (connecting || (editable && reattaching)) && 'is-connecting'].filter(Boolean).join(' ')}
     >
       {editable && <GuidesOverlay />}
       {menu}

@@ -20,6 +20,10 @@ export function ArrowHandles({ edge, route }: { edge: BoardEdge; route: Route })
   const drag = useArrowDrag(edge, corners);
   if (!only) return null;
   const size = HANDLE * scale;
+  const ends = [
+    { end: 'source', at: corners[0] },
+    { end: 'target', at: corners[corners.length - 1] },
+  ] as const;
   // why: handles next to a box would sit under the node layer, so they draw in a portal above it.
   return (
     <ViewportPortal>
@@ -48,6 +52,11 @@ export function ArrowHandles({ edge, route }: { edge: BoardEdge; route: Route })
         {edge.bends.map((p, i) => (
           <rect key={`bend${i}`} className="fs-arrow-bend" data-edge={edge.id} data-bend={i} x={p.x - size / 2} y={p.y - size / 2} width={size} height={size} rx={2 * scale} {...drag.bend(i)} />
         ))}
+        {ends.map(({ end, at }) => {
+          const dragging = drag.ghost?.end === end;
+          const p = dragging && drag.ghost ? drag.ghost.at : at;
+          return <circle key={end} className={`fs-arrow-end${dragging ? ' is-dragging' : ''}`} data-edge={edge.id} data-end={end} cx={p.x} cy={p.y} r={size / 2} {...drag.end(end)} />;
+        })}
       </svg>
     </ViewportPortal>
   );

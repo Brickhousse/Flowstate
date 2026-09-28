@@ -62,6 +62,13 @@ function shapedPair(label = '') {
   };
 }
 
+function threeBoxes(b: Board): void {
+  const a = addStep(b, { title: 'A', x: 0, y: 0 });
+  const c = addStep(b, { title: 'B', x: 400, y: 0 });
+  addStep(b, { title: 'C', x: 400, y: 300 });
+  connect(b, { source: a, target: c });
+}
+
 test('an arrow starts at the outer edge of its side dot', async ({ page, request }) => {
   const p = await seed(request, (b) => {
     const a = addStep(b, { title: 'A', x: 0, y: 0 });
@@ -306,4 +313,50 @@ test("a board switch mid-drag leaves the other board's same-id arrow alone", asy
   expect(boards[1].edges[0].bends).toEqual(BENDS);
   expect(boards[0].edges[0].bends).toEqual([{ x: 400, y: 120 }, { x: 300, y: 336 }]);
   expect(await openTx(page)).toBe(false);
+});
+
+test('dragging an arrow end onto a side dot reattaches it, and nowhere else changes nothing', async ({ page, request }) => {
+  const p = await seed(request, threeBoxes);
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e4');
+  const end = page.locator('.fs-arrow-end[data-end="target"]');
+  const top = node(page, 's2').locator('.react-flow__handle-top');
+  const c = await centerOf(end);
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.move(c.x + 30, c.y - 60, { steps: 6 });
+  await expect(top).toHaveCSS('opacity', '1');
+  const dot = await centerOf(top);
+  await page.mouse.move(dot.x, dot.y, { steps: 6 });
+  await page.mouse.up();
+  expect((await board(page)).edges[0]).toMatchObject({ target: 's2', targetSide: 'top' });
+  await dragTo(page, end, await centerOf(node(page, 's3').locator('.react-flow__handle-left')));
+  expect((await board(page)).edges[0]).toMatchObject({ target: 's3', targetSide: 'left', bends: [] });
+  const before = await history(page);
+  await dragTo(page, end, { x: c.x + 200, y: c.y + 400 });
+  expect(await history(page)).toBe(before);
+  await dragTo(page, end, await centerOf(node(page, 's1').locator('.react-flow__handle-bottom')));
+  await expect(page.locator('.toast')).toContainText('Cannot connect s1 to itself.');
+  expect((await board(page)).edges[0].target).toBe('s3');
+});
+
+test('dropping an end on its own dot records nothing, and deleting the arrow mid-drag hides the dots', async ({ page, request }) => {
+  const p = await seed(request, threeBoxes);
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e4');
+  const end = page.locator('.fs-arrow-end[data-end="target"]');
+  await dragTo(page, end, await centerOf(node(page, 's2').locator('.react-flow__handle-left')));
+  expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
+  const c = await centerOf(end);
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.move(c.x + 40, c.y + 40, { steps: 4 });
+  await expect(page.locator('.fs-flow.is-connecting')).toHaveCount(1);
+  await page.keyboard.press('Delete');
+  await expect(page.locator('.fs-flow.is-connecting')).toHaveCount(0);
+  await page.mouse.up();
+  expect((await board(page)).edges).toEqual([]);
+  expect(await history(page)).toBe(1);
 });

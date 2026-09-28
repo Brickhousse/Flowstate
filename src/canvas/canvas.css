@@ -605,3 +605,5 @@
 .fs-arrow-bar.is-horizontal { cursor: ns-resize; }
 .fs-arrow-bar.is-vertical { cursor: ew-resize; }
 .fs-arrow-bend { cursor: move; }
+.fs-arrow-end { cursor: grab; }
+.fs-arrow-end.is-dragging { cursor: grabbing; }
