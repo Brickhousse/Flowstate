@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { XY } from '../../model/types';
 import type { Rect } from '../geometry';
-import { searchAround } from './around';
+import { searchAround, type AroundInput } from './around';
 import { STUB, stubEnd } from './ports';
 
 const A = { x: 0, y: 0, w: 180, h: 72 };
@@ -11,6 +11,14 @@ const from = { x: 185.5, y: 36 };
 const to = { x: 594.5, y: 36 };
 
 const leg = (p: XY, q: XY) => Math.abs(q.x - p.x) + Math.abs(q.y - p.y);
+
+const PAD = 16;
+const padded = (r: Rect): Rect => ({ x: r.x - PAD, y: r.y - PAD, w: r.w + PAD * 2, h: r.h + PAD * 2 });
+
+function clearOfPadding(route: XY[], input: AroundInput): boolean {
+  const between = [stubEnd(input.source, input.sourceSide), ...route.slice(1, -1), stubEnd(input.target, input.targetSide)];
+  return input.boxes.every((box) => !cuts(between, padded(box)));
+}
 
 function cuts(points: XY[], r: Rect): boolean {
   return points.slice(1).some((q, i) => {
@@ -22,13 +30,14 @@ function cuts(points: XY[], r: Rect): boolean {
 
 describe('searchAround', () => {
   it('finds a right-angled route that avoids every box in the way', () => {
-    const route = searchAround({ source: from, sourceSide: 'right', target: to, targetSide: 'left', boxes: [A, B, C] });
+    const input = { source: from, sourceSide: 'right', target: to, targetSide: 'left', boxes: [A, B, C] } as const;
+    const route = searchAround({ ...input, boxes: [...input.boxes] });
     expect(route).not.toBeNull();
-    const points = route!;
+    const points = route ?? [];
     expect(points[0]).toEqual(from);
     expect(points[points.length - 1]).toEqual(to);
     expect(points.slice(1).every((p, i) => p.x === points[i].x || p.y === points[i].y)).toBe(true);
-    for (const box of [A, B, C]) expect(cuts(points, box)).toBe(false);
+    expect(clearOfPadding(points, { ...input, boxes: [...input.boxes] })).toBe(true);
   });
 
   it('goes straight when nothing is in the way', () => {
@@ -41,9 +50,20 @@ describe('searchAround', () => {
     expect(searchAround({ source: from, sourceSide: 'right', target: to, targetSide: 'left', boxes: [A, B, C] }, { limitMs: 50, now })).toBeNull();
   });
 
-  it('reports no route when an end is boxed in', () => {
-    const cage = [{ x: 560, y: -100, w: 20, h: 300 }, { x: 560, y: -100, w: 400, h: 20 }, { x: 560, y: 180, w: 400, h: 20 }, { x: 940, y: -100, w: 20, h: 300 }];
-    expect(searchAround({ source: from, sourceSide: 'right', target: to, targetSide: 'left', boxes: [A, C, ...cage] })).toBeNull();
+  it('reports no route once the search runs out of room around a caged end', () => {
+    const cage = [{ x: 500, y: -100, w: 20, h: 300 }, { x: 500, y: -100, w: 460, h: 20 }, { x: 500, y: 180, w: 460, h: 20 }, { x: 940, y: -100, w: 20, h: 300 }];
+    let reads = 0;
+    const now = () => (reads++, 0);
+    expect(searchAround({ source: from, sourceSide: 'right', target: to, targetSide: 'left', boxes: [A, C, ...cage] }, { now })).toBeNull();
+    expect(reads).toBeGreaterThan(2);
+  });
+
+  it('reports no route without searching when a stub end sits inside a padded box', () => {
+    let reads = 0;
+    const now = () => (reads++, 0);
+    const wall = { x: 540, y: 20, w: 20, h: 30 };
+    expect(searchAround({ source: from, sourceSide: 'right', target: to, targetSide: 'left', boxes: [A, C, wall] }, { now })).toBeNull();
+    expect(reads).toBe(1);
   });
 
   it('leaves and enters each port along its side for at least a full stub', () => {
@@ -74,8 +94,9 @@ describe('searchAround', () => {
   it('routes across a 200-box board inside the time limit', () => {
     const boxes: Rect[] = [];
     for (let r = 0; r < 10; r++) for (let c = 0; c < 20; c++) boxes.push({ x: c * 252, y: r * 200, w: 180, h: 72 });
-    const route = searchAround({ source: { x: 5 * 252 + 185.5, y: 36 }, sourceSide: 'right', target: { x: 15 * 252 - 5.5, y: 9 * 200 + 36 }, targetSide: 'left', boxes });
+    const input: AroundInput = { source: { x: 5 * 252 + 185.5, y: 36 }, sourceSide: 'right', target: { x: 15 * 252 - 5.5, y: 9 * 200 + 36 }, targetSide: 'left', boxes };
+    const route = searchAround(input);
     expect(route).not.toBeNull();
-    for (const box of boxes) expect(cuts(route!, box)).toBe(false);
+    expect(clearOfPadding(route ?? [], input)).toBe(true);
   });
 });
