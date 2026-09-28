@@ -587,6 +587,22 @@
 .fs-menu .menu-item:disabled {
   background: transparent;
 }
+.fs-pick-glow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1000;
+}
+.fs-pick-glow path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-opacity: 0.35;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .fs-arrow-handles {
   position: absolute;
   left: 0;

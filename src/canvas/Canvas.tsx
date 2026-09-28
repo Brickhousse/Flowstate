@@ -30,6 +30,7 @@ import { requestFocus } from './focusKey';
 import { GroupNode } from './GroupNode';
 import { LaneNode } from './LaneNode';
 import { useCanvasMenu } from './menu/useCanvasMenu';
+import { useArrowPicker } from './pick/useArrowPicker';
 import type { RenderCache } from './renderCache';
 import { setRevealer } from './reveal';
 import { runSafely } from './safe';
@@ -133,6 +134,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const nodes = useMemo(() => (board ? toFlowNodes(board, view, nodeCache.current, measured.current) : []), [board, view, measureTick]);
   const routes = useMemo(() => (board ? arrowRoutes(board, routeCache.current) : null), [board]);
   const edges = useMemo(() => (board && routes ? toFlowEdges(board, view, edgeCache.current, routes) : []), [board, view, routes]);
+  const picker = useArrowPicker(boardId, editable, board, routes, edges);
 
   useEffect(() => (editable ? setRevealer((ids) => revealIds(rf, ids)) : undefined), [rf, editable]);
   useEffect(
@@ -298,6 +300,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       onConnectStart={() => setConnecting(true)}
       onConnectEnd={onConnectEnd}
       connectionRadius={20}
+      connectOnClick={false}
       elevateNodesOnSelect={false}
       onNodeDragStart={(event, node, dragged) => {
         dragging.current = [node.id];
@@ -324,6 +327,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
         endDrag(dragging);
       }}
       onNodeDoubleClick={(_, node) => editable && node.type !== 'lane' && startEditing(node.id)}
+      onEdgeClick={picker.onEdgeClick}
       onEdgeDoubleClick={(_, edge) => {
         if (!editable) return;
         requestFocus(`label:${edge.id}`);
@@ -361,6 +365,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
     >
       {editable && <GuidesOverlay />}
       {menu}
+      {picker.list}
       <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color={colors.dot} />
       {editable && (
         <MiniMap

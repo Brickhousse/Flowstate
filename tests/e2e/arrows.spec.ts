@@ -521,3 +521,110 @@ test('zoomed out, a 2px press on a bar still changes nothing', async ({ page, re
   expect((await board(page)).edges[0].bends).toEqual([]);
   expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
 });
+
+function fork(b: Board): void {
+  const a = addStep(b, { title: 'A', x: 0, y: 0 });
+  const c = addStep(b, { title: 'B', x: 400, y: 0 });
+  const d = addStep(b, { title: 'C', x: 400, y: 300 });
+  connect(b, { source: a, target: c });
+  connect(b, { source: a, target: d, label: 'overflow' });
+}
+
+const edgeSelection = (page: Page) => page.evaluate(() => window.__flowstate!.getState().edgeSelection);
+const pickList = (page: Page) => page.getByRole('menu', { name: 'Arrows here' });
+
+async function clickBoard(page: Page, edgeId: string, p: XY, shift = false): Promise<void> {
+  const at = await toScreen(page, edgeId, p);
+  if (shift) await page.keyboard.down('Shift');
+  await page.mouse.click(at.x, at.y);
+  if (shift) await page.keyboard.up('Shift');
+}
+
+test('clicking where two arrows share a line selects the top one and lists both to pick from', async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  expect(await edgeSelection(page)).toEqual(['e5']);
+  const rows = pickList(page).getByRole('menuitemcheckbox');
+  await expect(rows).toHaveText(['overflow', 'A → B']);
+  await expect(rows.first()).toHaveAttribute('aria-checked', 'true');
+  await expect(rows.last()).toHaveAttribute('aria-checked', 'false');
+  await rows.last().hover();
+  await expect(page.locator('.fs-pick-glow path')).toHaveAttribute('d', (await pathOf(page, 'e4').getAttribute('d'))!);
+  await rows.last().click();
+  expect(await edgeSelection(page)).toEqual(['e4']);
+  await expect(pickList(page)).toHaveCount(0);
+
+  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  await expect(pickList(page)).toBeVisible();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  expect(await edgeSelection(page)).toEqual(['e4']);
+  await expect(pickList(page)).toHaveCount(0);
+
+  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  await page.keyboard.press('Escape');
+  await expect(pickList(page)).toHaveCount(0);
+  expect(await edgeSelection(page)).toEqual(['e5']);
+
+  await clickBoard(page, 'e4', { x: 230, y: 36 }, true);
+  expect(await edgeSelection(page)).toEqual([]);
+  await expect(pickList(page)).toHaveCount(0);
+  expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
+});
+
+test('the arrow list closes on a click elsewhere, a wheel, a board change and a toolbar zoom', async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  const reopen = async () => {
+    await clickBoard(page, 'e4', { x: 230, y: 36 });
+    await expect(pickList(page)).toBeVisible();
+  };
+  await reopen();
+  await page.locator('.react-flow__pane').click({ position: { x: 5, y: 5 } });
+  await expect(pickList(page)).toHaveCount(0);
+  await reopen();
+  await page.mouse.wheel(0, 100);
+  await expect(pickList(page)).toHaveCount(0);
+  await resetZoom(page);
+  await reopen();
+  await page.evaluate(() => window.__flowstate!.getState().changeBoard((b) => b.nodes[0].x = 20));
+  await expect(pickList(page)).toHaveCount(0);
+  await page.keyboard.press('Control+z');
+  await reopen();
+  await page.getByRole('button', { name: 'Zoom out' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(pickList(page)).toHaveCount(0);
+});
+
+test('a click on a lone arrow selects it and opens no list', async ({ page, request }) => {
+  const p = await seed(request, threeBoxes);
+  await open(page, p);
+  await resetZoom(page);
+  await clickBoard(page, 'e4', { x: 290, y: 36 });
+  expect(await edgeSelection(page)).toEqual(['e4']);
+  await expect(page.getByRole('menu')).toHaveCount(0);
+});
+
+test("a click at an arrow's end over the side dot selects the arrow and starts no connection", async ({ page, request }) => {
+  const p = await seed(request, threeBoxes);
+  await open(page, p);
+  await resetZoom(page);
+  const at = await toScreen(page, 'e4', { x: 397, y: 36 });
+  const onDot = await page.evaluate((q) => !!document.elementFromPoint(q.x, q.y)?.closest('[data-id="s2"] .react-flow__handle-left'), at);
+  expect(onDot).toBe(true);
+  await page.mouse.click(at.x, at.y);
+  expect(await edgeSelection(page)).toEqual(['e4']);
+  expect(await page.evaluate(() => window.__flowstate!.getState().selection)).toEqual([]);
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(page.locator('.react-flow__handle.clickconnecting')).toHaveCount(0);
+
+  await node(page, 's3').hover();
+  await node(page, 's3').locator('.react-flow__handle-top').click();
+  expect(await edgeSelection(page)).toEqual(['e4']);
+  expect(await page.evaluate(() => window.__flowstate!.getState().selection)).toEqual([]);
+  expect((await board(page)).edges).toHaveLength(1);
+  expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
+});
