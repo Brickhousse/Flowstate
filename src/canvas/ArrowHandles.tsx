@@ -1,9 +1,10 @@
 import { useStore, ViewportPortal } from '@xyflow/react';
 import { useMemo, type MouseEvent as ReactMouseEvent } from 'react';
-import { innerSegments, segmentAxis, simplify, splitStubs } from '../layout/route/polyline';
+import { innerSegments, segmentAxis } from '../layout/route/polyline';
 import type { BoardEdge } from '../model/types';
 import { useFlow } from '../store/store';
 import type { Route } from './arrowRoutes';
+import { handlePoints } from './reshape';
 import { soleEdge } from './selection';
 import { useArrowDrag } from './useArrowDrag';
 
@@ -18,7 +19,7 @@ const swallow = (e: ReactMouseEvent) => e.stopPropagation();
 export function ArrowHandles({ edge, route }: { edge: BoardEdge; route: Route }) {
   const only = useFlow((s) => soleEdge(s.edgeSelection, s.selection) === edge.id);
   const scale = useStore((s) => Math.max(1 / s.transform[2], 1));
-  const points = useMemo(() => splitStubs(simplify(route.points)), [route]);
+  const points = useMemo(() => handlePoints(route.points), [route]);
   const drag = useArrowDrag(edge, points);
   if (!only) return null;
   const size = HANDLE * scale;

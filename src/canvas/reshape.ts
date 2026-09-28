@@ -1,10 +1,14 @@
-import { moveSegment, samePoints, segmentAxis, simplify } from '../layout/route/polyline';
+import { moveSegment, samePoints, segmentAxis, simplify, splitStubs } from '../layout/route/polyline';
 import type { Axis } from '../layout/route/ports';
 import type { XY } from '../model/types';
 
 export type Reshape =
   | { kind: 'segment'; points: XY[]; bends: XY[]; index: number; across: Axis; offset: number }
   | { kind: 'bend'; bends: XY[]; index: number; offset: XY };
+
+export function handlePoints(route: XY[]): XY[] {
+  return splitStubs(simplify(route));
+}
 
 export function segmentReshape(points: XY[], bends: XY[], index: number, pointer: XY): Reshape {
   const across = segmentAxis(points[index], points[index + 1]) === 'x' ? 'y' : 'x';

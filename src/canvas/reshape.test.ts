@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { innerSegments } from '../layout/route/polyline';
 import { STUB } from '../layout/route/ports';
 import type { XY } from '../model/types';
-import { bendReshape, reshapedBends, segmentReshape } from './reshape';
+import { bendReshape, handlePoints, reshapedBends, segmentReshape } from './reshape';
 
 const p = (x: number, y: number): XY => ({ x, y });
 const free = (v: number) => v;
@@ -9,6 +10,22 @@ const grid = (v: number) => Math.round(v / 20) * 20;
 
 // Ports at (0,0) and (200,100), stubs 22 long, one vertical run at x=100: the handle points of an automatic S route.
 const S_ROUTE = [p(0, 0), p(STUB, 0), p(100, 0), p(100, 100), p(200 - STUB, 100), p(200, 100)];
+
+describe('handlePoints', () => {
+  it('gives a straight automatic route one bar between two stubs', () => {
+    const points = handlePoints([p(0, 0), p(STUB, 0), p(200 - STUB, 0), p(200, 0)]);
+    expect(points).toEqual([p(0, 0), p(STUB, 0), p(200 - STUB, 0), p(200, 0)]);
+    expect(innerSegments(points)).toEqual([1]);
+  });
+
+  it('drops collinear points before splitting the stubs, so a bend near a port gets no extra corner', () => {
+    expect(handlePoints([p(0, 0), p(5, 0), p(10, 0), p(10, 100)])).toEqual([p(0, 0), p(10, 0), p(10, 100 - STUB), p(10, 100)]);
+  });
+
+  it('returns a two-point route unchanged when both ends fit inside one stub', () => {
+    expect(handlePoints([p(0, 0), p(0, STUB)])).toEqual([p(0, 0), p(0, STUB)]);
+  });
+});
 
 describe('segmentReshape', () => {
   it('slides a vertical segment across x and remembers where on the bar it was grabbed', () => {
