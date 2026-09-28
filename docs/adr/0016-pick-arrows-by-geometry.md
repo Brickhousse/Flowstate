@@ -1,6 +1,6 @@
 # 0016: Arrow clicks are resolved from the routes, and side dots do not connect on click
 
-Status: Accepted (2026-09-27)
+Status: Accepted (2026-09-27), amended 2026-09-28
 
 ## Context
 Arrows leaving the same side share a line, so React Flow's DOM hit testing only ever reaches the top one. Arrows also start and end on the invisible side dots, whose hit rings sit above the edge layer, so a click near an arrow end landed on a dot and started React Flow's click-to-connect.
@@ -19,3 +19,9 @@ Rejected:
 ## Consequences
 - Clicking a side dot selects the step only when no arrow is in reach.
 - An arrow hidden under a box is listed when the click lands on another arrow or a dot, but a click on the box itself still selects the box.
+
+## Amendment (2026-09-28)
+Playtest: the list could cover the arrow's toolbar. When two or more arrows are in reach, the list and the selected arrow's options (`EdgeOptions`, the toolbar's controls) now open as one panel at the pointer, and the toolbar at the arrow's middle is hidden while it is open.
+- Picking a row selects that arrow and keeps the panel open, so overlapping arrows can be edited in turn.
+- It closes on Escape, a click outside, a pan or zoom, a board switch, or once its arrow is no longer the one selected (`src/canvas/pick/panelArrow.ts`). Edits keep it open.
+- It is `ContextMenu` with a `footer`. Keys in the list still close it and reach the canvas; keys in the options never do. Tab moves between the two.
