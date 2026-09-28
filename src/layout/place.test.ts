@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createBoard, makeNode } from '../model/factory';
 import type { Board, BoardNode } from '../model/types';
-import { ensureGap, fitGroup, GAP_CROSS, GAP_MAIN, laneAt, laneBands, nudgeFree, overlaps, placeInLane, positionAfter, positionAtEnd, positionBeside, shiftDownstream } from './place';
+import { carryBends, ensureGap, fitGroup, GAP_CROSS, GAP_MAIN, laneAt, laneBands, nudgeFree, overlaps, placeInLane, positionAfter, positionAtEnd, positionBeside, shiftDownstream } from './place';
 
 function add(b: Board, init: Partial<BoardNode>): BoardNode {
   const n = makeNode(b, 'step', init);
@@ -91,6 +91,29 @@ describe('placement', () => {
     b.edges[1].bends = [{ x: 550, y: 36 }];
     shiftDownstream(b, c.id, 100);
     expect(b.edges.map((e) => e.bends)).toEqual([[{ x: 250, y: 36 }], [{ x: 650, y: 36 }]]);
+  });
+
+  it('skips a zero shift so the bend array reference does not change (no spurious immer change)', () => {
+    const b = createBoard('B');
+    const a = add(b, { x: 0 });
+    const c = add(b, { x: 300 });
+    const d = add(b, { x: 600 });
+    link(b, a.id, c.id);
+    link(b, c.id, d.id);
+    b.edges[1].bends = [{ x: 550, y: 36 }];
+    const bends = b.edges[1].bends;
+    shiftDownstream(b, c.id, 0);
+    expect(b.edges[1].bends).toBe(bends);
+  });
+
+  it('carryBends carries bends only when both ends moved by the same delta', () => {
+    const b = createBoard('B');
+    const a = add(b, { x: 0 });
+    const c = add(b, { x: 300 });
+    link(b, a.id, c.id);
+    b.edges[0].bends = [{ x: 150, y: 36 }];
+    carryBends(b, new Map([[a.id, { x: 10, y: 0 }], [c.id, { x: 10, y: 0 }]]));
+    expect(b.edges[0].bends).toEqual([{ x: 160, y: 36 }]);
   });
 
   it('ensureGap pushes the target only when too close', () => {

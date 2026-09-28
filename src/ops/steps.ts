@@ -1,7 +1,6 @@
 import { makeNode, SHAPE_SIZE } from '../model/factory';
 import type { Actor, Board, EdgeType, Shape, Status, XY } from '../model/types';
-import { fitGroup, nudgeFree, placeInLane, positionAfter, positionAtEnd, positionBefore, type Rect } from '../layout/place';
-import { shiftBends } from './arrowPath';
+import { carryBends, fitGroup, nudgeFree, placeInLane, positionAfter, positionAtEnd, positionBefore, type Rect } from '../layout/place';
 import { assertColor } from './color';
 import { connect } from './edges';
 import { addToGroup } from './groups';
@@ -160,7 +159,7 @@ export function setPositions(b: Board, positions: Record<string, XY>): void {
     if (n.groupId) groups.add(n.groupId);
   }
   for (const g of groups) if (!positions[g]) fitGroup(b, g);
-  shiftBends(b, moved);
+  carryBends(b, moved);
 }
 
 export function resizeNode(b: Board, id: string, rect: Rect): void {

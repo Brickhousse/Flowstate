@@ -1,5 +1,5 @@
 import { GROUP_MIN } from '../model/factory';
-import type { Board, BoardNode } from '../model/types';
+import type { Board, BoardNode, XY } from '../model/types';
 import { axes, boundsOf, GAP_CROSS, GAP_MAIN, overlaps } from './geometry';
 
 export { axes, boundsOf, GAP_CROSS, GAP_MAIN, overlaps } from './geometry';
@@ -60,6 +60,19 @@ export function nudgeFree(board: Board, node: BoardNode, prefer: 1 | -1 = 1, alo
   node[coord] = start;
 }
 
+const BEND_EPS = 0.01;
+
+// why: an arrow only carries its bends when both ends moved by the same amount (a group move, not a resize).
+export function carryBends(board: Board, moved: ReadonlyMap<string, XY>): void {
+  for (const e of board.edges) {
+    const s = moved.get(e.source);
+    const t = moved.get(e.target);
+    if (!e.bends.length || !s || !t) continue;
+    if (Math.abs(s.x - t.x) > BEND_EPS || Math.abs(s.y - t.y) > BEND_EPS || (s.x === 0 && s.y === 0)) continue;
+    e.bends = e.bends.map((p) => ({ x: p.x + s.x, y: p.y + s.y }));
+  }
+}
+
 export function shiftDownstream(board: Board, rootId: string, delta: number, exclude: Set<string> = new Set()): void {
   const ax = axes(board);
   const seen = new Set<string>();
@@ -71,16 +84,16 @@ export function shiftDownstream(board: Board, rootId: string, delta: number, exc
     for (const e of board.edges) if (e.source === id && e.type !== 'handoff') queue.push(e.target);
   }
   const groups = new Set<string>();
+  const moved = new Map<string, XY>();
+  const d: XY = ax.main === 'x' ? { x: delta, y: 0 } : { x: 0, y: delta };
   for (const n of board.nodes) {
     if (!seen.has(n.id)) continue;
     n[ax.main] += delta;
+    moved.set(n.id, d);
     if (n.groupId) groups.add(n.groupId);
   }
   for (const g of groups) fitGroup(board, g);
-  for (const e of board.edges) {
-    if (!e.bends.length || !seen.has(e.source) || !seen.has(e.target)) continue;
-    e.bends = e.bends.map((p) => (ax.main === 'x' ? { x: p.x + delta, y: p.y } : { x: p.x, y: p.y + delta }));
-  }
+  carryBends(board, moved);
 }
 
 export function ensureGap(board: Board, fromId: string, toId: string, exclude: Set<string> = new Set([fromId])): void {

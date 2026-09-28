@@ -1,7 +1,6 @@
-import { axes, laneAt, laneBands } from '../layout/place';
+import { axes, carryBends, laneAt, laneBands } from '../layout/place';
 import { allocId, LANE_SIZE } from '../model/factory';
 import type { Board, BoardNode, XY } from '../model/types';
-import { shiftBends } from './arrowPath';
 import { OpError } from './errors';
 
 export function assertLane(b: Board, laneId: string): void {
@@ -41,7 +40,7 @@ export function setLanes(b: Board, names: string[]): string[] {
     n[ax.cross] += after - before;
     moved.set(n.id, crossDelta(ax.cross, after - before));
   }
-  shiftBends(b, moved);
+  carryBends(b, moved);
   return b.lanes.map((l) => l.id);
 }
 
@@ -63,7 +62,7 @@ export function resizeLane(b: Board, id: string, height: number): void {
     n[ax.cross] += delta;
     moved.set(n.id, crossDelta(ax.cross, delta));
   }
-  shiftBends(b, moved);
+  carryBends(b, moved);
 }
 
 function crossDelta(cross: 'x' | 'y', delta: number): XY {
