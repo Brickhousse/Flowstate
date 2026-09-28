@@ -25,6 +25,14 @@ export function roundedPath(points: XY[], radius = CORNER_RADIUS): string {
   return `${d}L${end.x} ${end.y}`;
 }
 
+export function nearestOnSegment(a: XY, b: XY, p: XY): XY {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const length2 = dx * dx + dy * dy;
+  const t = length2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length2));
+  return { x: a.x + t * dx, y: a.y + t * dy };
+}
+
 export function halfway(points: XY[]): XY {
   const lengths = points.slice(1).map((p, i) => distance(points[i], p));
   let left = lengths.reduce((a, b) => a + b, 0) / 2;

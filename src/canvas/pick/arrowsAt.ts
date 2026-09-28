@@ -1,14 +1,12 @@
 import type { XY } from '../../model/types';
+import { nearestOnSegment } from '../../layout/route/path';
 import type { Route } from '../arrowRoutes';
 
 export const ARROW_HIT_WIDTH = 18;
 
 function distanceToSegment(p: XY, a: XY, b: XY): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const length2 = dx * dx + dy * dy;
-  const t = length2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length2));
-  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+  const n = nearestOnSegment(a, b, p);
+  return Math.hypot(p.x - n.x, p.y - n.y);
 }
 
 function near(points: readonly XY[], p: XY, tolerance: number): boolean {
