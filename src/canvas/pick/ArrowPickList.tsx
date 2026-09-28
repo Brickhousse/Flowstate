@@ -37,6 +37,7 @@ export function ArrowPickList({ at, ids, board, routes, onClose }: Props) {
       label: nameOf(board, edge),
       icon: <EdgeTypeIcon type={edge.type} />,
       checked: selected.includes(id),
+      radio: true,
       preview: () => setPreviewed(id),
       run: () => flowStore.getState().select([], [id]),
     });
@@ -45,7 +46,7 @@ export function ArrowPickList({ at, ids, board, routes, onClose }: Props) {
   return (
     <>
       {glow && <Glow route={glow} />}
-      <ContextMenu at={at} entries={entries} label="Arrows here" onClose={onClose} />
+      <ContextMenu at={at} entries={entries} label="Arrows here" passKeys onClose={onClose} />
     </>
   );
 }

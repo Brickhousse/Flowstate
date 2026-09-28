@@ -26,7 +26,7 @@ export function arrowsAt(routes: ReadonlyMap<string, Route>, order: readonly str
   return hits;
 }
 
-// why: ADR-0014
+// why: ADR-0016
 export function pickTolerance(zoom: number): number {
   return (ARROW_HIT_WIDTH / 2) * Math.max(1, 1 / zoom);
 }

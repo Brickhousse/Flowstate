@@ -8,14 +8,14 @@ import type { FlowEdgeType } from '../toFlow';
 import { ArrowPickList } from './ArrowPickList';
 import { arrowsAt, pickTolerance, stackOrder } from './arrowsAt';
 
-type Pick = { at: MenuAnchor; ids: string[]; n: number };
+type PickState = { at: MenuAnchor; ids: string[]; n: number };
 
-type Picker = { onEdgeClick: (event: ReactMouseEvent) => void; list: ReactNode };
+type Picker = { onEdgeClick: (event: ReactMouseEvent, edge: { id: string }) => void; list: ReactNode };
 
 export function useArrowPicker(boardId: string, editable: boolean, board: Board | undefined, routes: ReadonlyMap<string, Route> | null, edges: readonly FlowEdgeType[]): Picker {
   const rf = useReactFlow();
   const rfStore = useStoreApi();
-  const [pick, setPick] = useState<Pick | null>(null);
+  const [pick, setPick] = useState<PickState | null>(null);
   const opens = useRef(0);
   // why: a stable onEdgeClick keeps React Flow from re-rendering every edge on each board change.
   const latest = useRef({ routes, edges });
@@ -34,18 +34,19 @@ export function useArrowPicker(boardId: string, editable: boolean, board: Board 
     });
   }, [pick, rfStore]);
 
-  const choose = useCallback(
-    (x: number, y: number, fewest: number) => {
+  const hitsAt = useCallback(
+    (at: XY): string[] => {
       const { routes, edges } = latest.current;
-      if (!routes) return;
-      const tolerance = pickTolerance(rfStore.getState().transform[2]);
-      const ids = arrowsAt(routes, stackOrder(edges), rf.screenToFlowPosition({ x, y }), tolerance);
-      if (ids.length < fewest) return;
-      flowStore.getState().select([], [ids[0]]);
-      if (ids.length > 1) setPick({ at: { x, y }, ids, n: ++opens.current });
+      if (!routes) return [];
+      return arrowsAt(routes, stackOrder(edges), rf.screenToFlowPosition(at), pickTolerance(rfStore.getState().transform[2]));
     },
     [rf, rfStore],
   );
+
+  const choose = useCallback((ids: string[], at: MenuAnchor) => {
+    flowStore.getState().select([], [ids[0]]);
+    if (ids.length > 1) setPick({ at, ids, n: ++opens.current });
+  }, []);
 
   useEffect(() => {
     if (!editable) return;
@@ -54,14 +55,17 @@ export function useArrowPicker(boardId: string, editable: boolean, board: Board 
     const onDown = (e: PointerEvent) => {
       down = e.button === 0 && onDot(e.target) ? { x: e.clientX, y: e.clientY } : null;
     };
-    // why: ADR-0014
+    // why: ADR-0016
     const onClick = (e: MouseEvent) => {
       const start = down;
       down = null;
       if (!start || e.shiftKey || !onDot(e.target)) return;
       if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > rfStore.getState().connectionDragThreshold) return;
+      const at = { x: e.clientX, y: e.clientY };
+      const ids = hitsAt(at);
+      if (!ids.length) return;
       e.stopPropagation();
-      if (e.detail < 2) choose(e.clientX, e.clientY, 1);
+      if (e.detail < 2) choose(ids, at);
     };
     window.addEventListener('pointerdown', onDown, true);
     window.addEventListener('click', onClick, true);
@@ -69,13 +73,19 @@ export function useArrowPicker(boardId: string, editable: boolean, board: Board 
       window.removeEventListener('pointerdown', onDown, true);
       window.removeEventListener('click', onClick, true);
     };
-  }, [editable, rfStore, choose]);
+  }, [editable, rfStore, hitsAt, choose]);
 
   const onEdgeClick = useCallback(
-    (e: ReactMouseEvent) => {
-      if (editable && !e.shiftKey && e.detail < 2) choose(e.clientX, e.clientY, 2);
+    (e: ReactMouseEvent, edge: { id: string }) => {
+      if (!editable || e.shiftKey || e.detail > 1) return;
+      // Toolbar and label clicks bubble here through their portals.
+      if (!(e.target instanceof Element) || !e.target.closest('.react-flow__edge')) return;
+      const at = { x: e.clientX, y: e.clientY };
+      // why: ADR-0016
+      const ids = [edge.id, ...hitsAt(at).filter((id) => id !== edge.id)];
+      if (ids.length > 1) choose(ids, at);
     },
-    [editable, choose],
+    [editable, hitsAt, choose],
   );
 
   const list = pick && board && routes ? <ArrowPickList key={pick.n} at={pick.at} ids={pick.ids} board={board} routes={routes} onClose={close} /> : null;

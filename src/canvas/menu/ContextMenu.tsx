@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { isTyping } from '../useKeyboard';
 
 export type MenuEntry =
-  | { kind: 'item'; label: string; shortcut?: string; disabled?: boolean; checked?: boolean; icon?: ReactNode; preview?: () => void; run: () => void }
+  | { kind: 'item'; label: string; shortcut?: string; disabled?: boolean; checked?: boolean; radio?: boolean; icon?: ReactNode; preview?: () => void; run: () => void }
   | { kind: 'submenu'; label: string; disabled?: boolean; entries: MenuEntry[] }
   | { kind: 'custom'; id: string; render: (close: () => void) => ReactNode }
   | { kind: 'sep' };
@@ -21,6 +21,7 @@ function ariaShortcut(shortcut: string): string {
 }
 
 const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta']);
+const LIST_KEYS = new Set(['ArrowUp', 'ArrowDown', 'Enter', 'Escape']);
 
 type Actionable = Extract<MenuEntry, { kind: 'item' | 'submenu' }>;
 
@@ -28,7 +29,9 @@ function actionable(e: MenuEntry | undefined): e is Actionable {
   return !!e && (e.kind === 'item' || e.kind === 'submenu') && !e.disabled;
 }
 
-function MenuList({ entries, close, onBack, label }: { entries: MenuEntry[]; close: () => void; onBack?: () => void; label?: string }) {
+type ListProps = { entries: MenuEntry[]; close: () => void; onBack?: () => void; label?: string; passKeys?: boolean };
+
+function MenuList({ entries, close, onBack, label, passKeys }: ListProps) {
   const [active, setActive] = useState(() => entries.findIndex(actionable));
   const [open, setOpen] = useState<number | null>(null);
   const [flip, setFlip] = useState({ x: false, y: false });
@@ -65,6 +68,10 @@ function MenuList({ entries, close, onBack, label }: { entries: MenuEntry[]; clo
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'Escape' && e.key !== 'Tab' && isTyping(e.target)) {
       e.stopPropagation();
+      return;
+    }
+    if (passKeys && !LIST_KEYS.has(e.key)) {
+      if (!MODIFIERS.has(e.key)) close();
       return;
     }
     switch (e.key) {
@@ -107,7 +114,7 @@ function MenuList({ entries, close, onBack, label }: { entries: MenuEntry[]; clo
         const isOpen = e.kind === 'submenu' && open === i;
         return (
           <div
-            key={`${i}${e.label}`}
+            key={i}
             className="fs-menu-row"
             onMouseEnter={() => {
               highlight(i);
@@ -118,7 +125,7 @@ function MenuList({ entries, close, onBack, label }: { entries: MenuEntry[]; clo
             <button
               type="button"
               tabIndex={-1}
-              role={e.kind === 'item' && e.checked !== undefined ? 'menuitemcheckbox' : 'menuitem'}
+              role={e.kind !== 'item' ? 'menuitem' : e.radio ? 'menuitemradio' : e.checked !== undefined ? 'menuitemcheckbox' : 'menuitem'}
               aria-checked={e.kind === 'item' ? e.checked : undefined}
               aria-haspopup={e.kind === 'submenu' ? 'menu' : undefined}
               aria-expanded={e.kind === 'submenu' ? isOpen : undefined}
@@ -145,7 +152,10 @@ function MenuList({ entries, close, onBack, label }: { entries: MenuEntry[]; clo
   );
 }
 
-export function ContextMenu({ at, entries, label, onClose }: { at: MenuAnchor; entries: MenuEntry[]; label?: string; onClose: () => void }) {
+type MenuProps = { at: MenuAnchor; entries: MenuEntry[]; label?: string; passKeys?: boolean; onClose: () => void };
+
+// passKeys: keys other than Up, Down, Enter and Escape close the menu and carry on to the canvas shortcuts.
+export function ContextMenu({ at, entries, label, passKeys, onClose }: MenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState(at);
 
@@ -178,7 +188,7 @@ export function ContextMenu({ at, entries, label, onClose }: { at: MenuAnchor; e
 
   return createPortal(
     <div ref={ref} className="fs-context-menu" style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>
-      <MenuList entries={entries} close={onClose} label={label} />
+      <MenuList entries={entries} close={onClose} label={label} passKeys={passKeys} />
     </div>,
     document.body,
   );

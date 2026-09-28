@@ -15,4 +15,4 @@
 | [0011](0011-ctrl-drag-copy-reads-the-drop-event.md) | Ctrl+drag copy reads the modifier from the drop event and runs inside the drag transaction | Accepted |
 | [0012](0012-right-click-menu-on-pointerup.md) | Right-click menu opens on pointerup and yields to right-drag panning | Accepted |
 | [0013](0013-honest-layer-order.md) | Layer order is the board's node order and selection does not raise nodes | Accepted |
-| [0014](0014-pick-arrows-by-geometry.md) | Arrow clicks are resolved from the routes, and side dots do not connect on click | Accepted |
+| [0016](0016-pick-arrows-by-geometry.md) | Arrow clicks are resolved from the routes, and side dots do not connect on click | Accepted |

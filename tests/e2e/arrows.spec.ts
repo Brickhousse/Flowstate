@@ -531,6 +531,14 @@ function fork(b: Board): void {
 }
 
 const edgeSelection = (page: Page) => page.evaluate(() => window.__flowstate!.getState().edgeSelection);
+const nodeSelection = (page: Page) => page.evaluate(() => window.__flowstate!.getState().selection);
+// Negative checks wait two frames so a list that is about to mount has mounted.
+async function menusAfterSettling(page: Page): Promise<number> {
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  return page.getByRole('menu').count();
+}
+// fs-fade animates transform, so a new arrow toolbar sweeps in from the board origin for 100ms and can take a click.
+const toolbarSettled = (page: Page) => page.locator('.fs-edge-toolbar').evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
 const pickList = (page: Page) => page.getByRole('menu', { name: 'Arrows here' });
 
 async function clickBoard(page: Page, edgeId: string, p: XY, shift = false): Promise<void> {
@@ -546,7 +554,7 @@ test('clicking where two arrows share a line selects the top one and lists both 
   await resetZoom(page);
   await clickBoard(page, 'e4', { x: 230, y: 36 });
   expect(await edgeSelection(page)).toEqual(['e5']);
-  const rows = pickList(page).getByRole('menuitemcheckbox');
+  const rows = pickList(page).getByRole('menuitemradio');
   await expect(rows).toHaveText(['overflow', 'A → B']);
   await expect(rows.first()).toHaveAttribute('aria-checked', 'true');
   await expect(rows.last()).toHaveAttribute('aria-checked', 'false');
@@ -556,6 +564,7 @@ test('clicking where two arrows share a line selects the top one and lists both 
   expect(await edgeSelection(page)).toEqual(['e4']);
   await expect(pickList(page)).toHaveCount(0);
 
+  await toolbarSettled(page);
   await clickBoard(page, 'e4', { x: 230, y: 36 });
   await expect(pickList(page)).toBeVisible();
   await page.keyboard.press('ArrowDown');
@@ -563,6 +572,7 @@ test('clicking where two arrows share a line selects the top one and lists both 
   expect(await edgeSelection(page)).toEqual(['e4']);
   await expect(pickList(page)).toHaveCount(0);
 
+  await toolbarSettled(page);
   await clickBoard(page, 'e4', { x: 230, y: 36 });
   await page.keyboard.press('Escape');
   await expect(pickList(page)).toHaveCount(0);
@@ -570,7 +580,7 @@ test('clicking where two arrows share a line selects the top one and lists both 
 
   await clickBoard(page, 'e4', { x: 230, y: 36 }, true);
   expect(await edgeSelection(page)).toEqual([]);
-  await expect(pickList(page)).toHaveCount(0);
+  expect(await menusAfterSettling(page)).toBe(0);
   expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
 });
 
@@ -605,7 +615,7 @@ test('a click on a lone arrow selects it and opens no list', async ({ page, requ
   await resetZoom(page);
   await clickBoard(page, 'e4', { x: 290, y: 36 });
   expect(await edgeSelection(page)).toEqual(['e4']);
-  await expect(page.getByRole('menu')).toHaveCount(0);
+  expect(await menusAfterSettling(page)).toBe(0);
 });
 
 test("a click at an arrow's end over the side dot selects the arrow and starts no connection", async ({ page, request }) => {
@@ -617,14 +627,98 @@ test("a click at an arrow's end over the side dot selects the arrow and starts n
   expect(onDot).toBe(true);
   await page.mouse.click(at.x, at.y);
   expect(await edgeSelection(page)).toEqual(['e4']);
-  expect(await page.evaluate(() => window.__flowstate!.getState().selection)).toEqual([]);
-  await expect(page.getByRole('menu')).toHaveCount(0);
+  expect(await nodeSelection(page)).toEqual([]);
+  expect(await menusAfterSettling(page)).toBe(0);
   await expect(page.locator('.react-flow__handle.clickconnecting')).toHaveCount(0);
+
+  // The second click of a double-click must not hand the selection to the step either. It goes to the dot
+  // directly because the selected arrow's end handle now covers this point.
+  await page.evaluate((q) => {
+    const el = document.querySelector('[data-id="s2"] .react-flow__handle-left')!;
+    el.dispatchEvent(new PointerEvent('pointerdown', { clientX: q.x, clientY: q.y, button: 0, bubbles: true }));
+    el.dispatchEvent(new MouseEvent('click', { clientX: q.x, clientY: q.y, button: 0, detail: 2, bubbles: true }));
+  }, at);
+  expect(await edgeSelection(page)).toEqual(['e4']);
+  expect(await nodeSelection(page)).toEqual([]);
 
   await node(page, 's3').hover();
   await node(page, 's3').locator('.react-flow__handle-top').click();
-  expect(await edgeSelection(page)).toEqual(['e4']);
-  expect(await page.evaluate(() => window.__flowstate!.getState().selection)).toEqual([]);
+  expect(await nodeSelection(page)).toEqual(['s3']);
+  expect(await edgeSelection(page)).toEqual([]);
+  await expect(page.locator('.react-flow__handle.clickconnecting')).toHaveCount(0);
+  await node(page, 's1').hover();
+  await node(page, 's1').locator('.react-flow__handle-bottom').click();
   expect((await board(page)).edges).toHaveLength(1);
   expect(await historyShape(page)).toEqual({ past: 0, future: 0, tx: false });
+});
+
+test('a click on a dot where two arrows start selects the top one and lists both', async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await node(page, 's1').hover();
+  await node(page, 's1').locator('.react-flow__handle-right').click();
+  expect(await edgeSelection(page)).toEqual(['e5']);
+  expect(await nodeSelection(page)).toEqual([]);
+  await expect(pickList(page).getByRole('menuitemradio')).toHaveText(['overflow', 'A → B']);
+});
+
+test('keys the arrow list does not handle close it and reach the canvas', async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await clickBoard(page, 'e4', { x: 230, y: 36 });
+  await expect(pickList(page)).toBeVisible();
+  await page.keyboard.press('Delete');
+  await expect(pickList(page)).toHaveCount(0);
+  expect((await board(page)).edges.map((e) => e.id)).toEqual(['e4']);
+  await page.keyboard.press('Control+z');
+  expect((await board(page)).edges.map((e) => e.id)).toEqual(['e4', 'e5']);
+});
+
+test('a click on the inside of a rounded corner keeps the clicked arrow first in the list', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'B', x: 400, y: 300 });
+    const d = addStep(b, { title: 'C', x: -400, y: 18 });
+    const f = addStep(b, { title: 'D', x: 400, y: 18 });
+    connect(b, { source: d, target: f });
+    connect(b, { source: a, target: c });
+    b.edges[1].bends = BENDS.map((q) => ({ ...q }));
+  });
+  await open(page, p);
+  await resetZoom(page);
+  // 8.4 inside the corner curve at (300, 36): within the hit stroke, 9.44 from the straight corner, 8.56 from the arrow below.
+  const inside = { x: 296.5 - 8.4 / Math.SQRT2, y: 39.5 + 8.4 / Math.SQRT2 };
+  // Clicks land on whole pixels; at 400% that rounding is a quarter of a board unit, inside those margins.
+  const before = await toScreen(page, 'e6', inside);
+  await page.mouse.move(before.x, before.y);
+  await page.mouse.wheel(0, -1000);
+  await expect(page.getByRole('button', { name: 'Reset zoom to 100%' })).toHaveText('400%');
+  const at = await toScreen(page, 'e6', inside);
+  const hit = await page.evaluate((q) => document.elementFromPoint(q.x, q.y)?.closest('.react-flow__edge')?.getAttribute('data-id'), at);
+  expect(hit).toBe('e6');
+  await page.mouse.click(at.x, at.y);
+  expect(await edgeSelection(page)).toEqual(['e6']);
+  await expect(pickList(page).getByRole('menuitemradio')).toHaveText(['A → B', 'C → D']);
+});
+
+test('a click in the arrow toolbar never opens the arrow list', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'B', x: 400, y: 0 });
+    const d = addStep(b, { title: 'C', x: 185, y: -300 });
+    const f = addStep(b, { title: 'D', x: 185, y: 150 });
+    connect(b, { source: a, target: c });
+    connect(b, { source: d, target: f, sourceSide: 'bottom', targetSide: 'top' });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e5');
+  // C to D runs down x = 275, under the label field of A to B's toolbar.
+  const label = page.locator('.fs-edge-toolbar').getByLabel('Arrow label');
+  await label.click();
+  expect(await menusAfterSettling(page)).toBe(0);
+  await expect(label).toBeFocused();
+  expect(await edgeSelection(page)).toEqual(['e5']);
 });
