@@ -728,9 +728,10 @@ test('a new arrow toolbar never slides in, so a click at once where it would hav
   });
   await open(page, p);
   await resetZoom(page);
-  await selectArrow(page, 'e4');
   // Holding the entry animation on its first frame stands in for a click that lands before it ends.
-  await page.locator('.fs-edge-toolbar').evaluate((el) => el.getAnimations().forEach((a) => ((a.currentTime = 0), a.pause())));
+  await page.addStyleTag({ content: '.fs-toolbar { animation-play-state: paused !important; }' });
+  await selectArrow(page, 'e4');
+  await expect(page.locator('.fs-edge-toolbar')).toBeAttached();
   const a = await centerOf(node(page, 's1'));
   expect(await page.evaluate((q) => document.elementFromPoint(q.x, q.y)?.closest('.fs-edge-toolbar') ?? null, a)).toBeNull();
   await page.mouse.click(a.x, a.y);
@@ -787,7 +788,17 @@ test('a tint from the arrow toolbar colours the line, head and label in one undo
   expect((await board(page)).edges[0].color).toBe('violet');
   await expect.poll(looks).toEqual([violet, violet]);
 
+  await selectArrow(page, 'e3');
+  await bar.getByTitle('Colour', { exact: true }).click();
+  await bar.getByLabel('Custom colour').fill('#12ab34');
+  expect((await board(page)).edges[0].color).toBe('#12ab34');
+  expect(await historyShape(page)).toEqual({ past: 2, future: 0, tx: false });
+  await page.locator('.react-flow__pane').click({ position: { x: 5, y: 5 } });
+  const custom = 'rgb(18, 171, 52)';
+  await expect.poll(looks).toEqual([custom, custom]);
+  await expect(label).toHaveCSS('color', custom);
+
   await page.getByRole('button', { name: /Critical path/ }).click();
   await expect.poll(looks).toEqual([critical, critical]);
-  await expect(label).toHaveCSS('color', violet);
+  await expect(label).toHaveCSS('color', custom);
 });
