@@ -2,6 +2,44 @@
 
 One entry per working session, most recent first. Long-term status lives in `PROJECT_STATUS.md`.
 
+### ⚠️ Session 2026-09-26/27: layout assists finished, arrow routing and export specced, arrow routing slice 1 started
+
+**Layout assists.**
+- Tasks 7 to 14 were built and reviewed on `feat/layout-assists`:
+  - Ctrl+drag copy;
+  - align, distribute, match size and layer order;
+  - custom colour;
+  - Ctrl+X, nudge and layer shortcuts;
+  - the right-click menu;
+  - AI `arrange`.
+- The whole-branch review found two Important menu bugs, now fixed: a lost custom-colour pick when the picker blurs the window, and keys leaking to the canvas under an open menu.
+- A smoke test on an isolated instance passed.
+- Step titles now fit the box height instead of a fixed 3 lines (`ba3ee43`).
+- The branch awaits the user's Tasks 7 to 13 playtest and merge.
+
+**Arrow routing.**
+- Arrow routing and interactive HTML/PDF export were designed and specced.
+- The arrow routing plan (20 tasks) is written. Tasks 0 to 2 are done on `feat/arrow-routing`, which branches off `feat/layout-assists`:
+  - performance baselines: 33.4ms p95 drag, 484ms open;
+  - schema 2;
+  - the React Flow route port.
+- The SDD ledger at `.superpowers/sdd/2026-09-27-arrow-routing/progress.md` resumes at Task 3.
+
+**Operational mutations (all authorized):**
+- Created branch `feat/arrow-routing` off `feat/layout-assists` (`d9d7c01`). Nothing was pushed or merged.
+- The project file format is schema 2 on `feat/arrow-routing`: the first migration, which adds `separate` and `bends` to arrows. A project saved while running that branch will not open on `feat/layout-assists` or `master`.
+- Claude Code stopped the background dev server (5173/8797) and the smoke instance under memory pressure. No data was affected. Neither was restarted.
+- Deleted the layout-assists SDD workspace after its final review. Its rulings were reported in chat, and its follow-ups moved to `PROJECT_STATUS.md`.
+
+**Lessons:**
+- Back up `workspace/` before running `feat/arrow-routing` against real projects (schema 2).
+- Smoke-test on an isolated instance so saved projects are never touched: Vite on 5175, `FLOWSTATE_API_PORT=8789`, and `FLOWSTATE_WORKSPACE` pointing at a scratch folder.
+- A selected step's floating toolbar can cover a neighbour's centre, so presses there hit the toolbar.
+- Playwright MCP writes `.playwright-mcp/` into the repo root. Delete it after smoke runs.
+- Run Playwright with `--workers=2` on this machine.
+
+**State at close / next session:** see `PROJECT_STATUS.md`. Resume the arrow-routing SDD run at Task 3 (`/catch-me-up`, then "resume the arrow-routing SDD run").
+
 ### ✅ Session 2026-09-26: layout-assists playtest approved
 
 The user approved the playtest of Tasks 1 to 6 with no issues. The SDD ledger records it; Task 7 is next. No code changed.

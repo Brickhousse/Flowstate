@@ -1,13 +1,14 @@
 # Project status
 
-**As of:** 2026-09-26
+**As of:** 2026-09-27
 
 ## Complete
 - v1 as specified in `docs/superpowers/specs/2026-09-25-flowstate-design.md`: infinite canvas with 9 shapes, free text, groups and swimlanes; actors, durations, owners, status and flags; flow, dependency and handoff arrows; parallel branches; live critical path; keyboard-first editing and floating toolbars; boards, reference view and projects; autosave with undo/redo; PNG, SVG and JSON export and import; Claude chat that edits the board through the same operations as the UI. Merged to `master`.
-- Layout assists: all 14 tasks built on `feat/layout-assists`, drag and resize snapping with smart guides and spacing guides, Ctrl+drag copy, align and distribute, custom colour, Ctrl+X, nudge and layer shortcuts, the right-click menu, and AI arrange. Awaiting a final playtest and merge.
+- Layout assists: all 14 tasks built on `feat/layout-assists`, drag and resize snapping with smart guides and spacing guides, Ctrl+drag copy, align and distribute, custom colour, Ctrl+X, nudge and layer shortcuts, the right-click menu, and AI arrange. Step titles now fit the box height. Awaiting a final playtest and merge.
 
 ## In flight
-- Playtest layout assists Tasks 7 to 13 (Ctrl+drag copy, right-click menu including Shift+F10, align and distribute, layer order, custom colour, Ctrl+arrow nudge, Ctrl+X), then merge `feat/layout-assists`. Also check: menu Custom colour in Firefox (the picker blurs the window), no native menu beside ours on Shift+F10, and Alt held before a drag then Delete.
+- Playtest layout assists Tasks 7 to 13 (Ctrl+drag copy, right-click menu including Shift+F10, align and distribute, layer order, custom colour, Ctrl+arrow nudge, Ctrl+X), then merge `feat/layout-assists`. Also check: menu Custom colour in Firefox (the picker blurs the window), no native menu beside ours on Shift+F10, Alt held before a drag then Delete, and dragging steps taller and shorter.
+- Arrow routing on `feat/arrow-routing` (branched off `feat/layout-assists`; spec `docs/superpowers/specs/2026-09-27-arrow-routing-design.md`, plan `docs/superpowers/plans/2026-09-27-arrow-routing.md`). Tasks 0 to 2 of 20 done: performance baselines, schema 2, and the React Flow route port. Resume at Task 3; the run stops at Task 11 for a playtest. Schema 2 files do not open on older branches, so back up `workspace/` before using this branch on real projects.
 - Human playtest of the full app (keyboard-only and chat-only builds against the 2-minute target in the spec).
 - Live API check: `$env:LIVE_API=1; npx playwright test tests/e2e/live.spec.ts` plus one real "draft an agentic version" request. Needs the user's go-ahead because it spends API credit.
 
@@ -25,7 +26,6 @@
   - The menu's Custom colour is not reachable by keyboard.
   - The perf gate (p95 under 50ms) is too loose to catch a regression.
   - Tidy and its failure toast are repeated in three places.
-  - The `XY` type is defined three times.
   - `endResize` belongs beside the resize wiring, not in `overlay.ts`.
   - Right-clicking the node toolbar or an edge label opens the pane menu.
 
@@ -33,7 +33,7 @@
 - None.
 
 ## Heading
-Finish layout assists, then the co-building assistant, then team sharing: hosted storage behind authentication and real-time co-editing (Yjs), which ADR 0002 and ADR 0004 anticipate.
+Finish layout assists, then arrow routing, then interactive HTML and PDF export (specced in `docs/superpowers/specs/2026-09-27-interactive-html-and-pdf-export-design.md`, built after arrow routing slice 1), then the co-building assistant, then team sharing: hosted storage behind authentication and real-time co-editing (Yjs), which ADR 0002 and ADR 0004 anticipate.
 
 ## Timeline
 | Date | Milestone |
@@ -42,3 +42,4 @@ Finish layout assists, then the co-building assistant, then team sharing: hosted
 | 2026-09-26 | Layout assists specced and planned; Tasks 1 to 6 built on `feat/layout-assists` |
 | 2026-09-26 | Tasks 1 to 6 playtest approved |
 | 2026-09-26 | Layout assists Tasks 7 to 14 built and reviewed |
+| 2026-09-27 | Title fit; arrow routing and HTML/PDF export specced; arrow routing plan written, Tasks 0 to 2 built |
