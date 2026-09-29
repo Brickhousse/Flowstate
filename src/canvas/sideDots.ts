@@ -12,8 +12,8 @@ export function asSide(handleId: string | null | undefined): Side | null {
   return SIDES.find((s) => s === handleId) ?? null;
 }
 
-export function isOnSideDot(target: EventTarget | null): target is Element {
-  return target instanceof Element && !!target.closest(`.${DOT_CLASS}`);
+export function sideDotElement(target: EventTarget | null): Element | null {
+  return target instanceof Element ? target.closest(`.${DOT_CLASS}`) : null;
 }
 
 function sideDotOf(el: Element): SideDot | null {
