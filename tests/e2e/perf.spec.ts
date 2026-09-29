@@ -98,8 +98,8 @@ test('drags on a 1000-step board with guides on without long frames', async ({ p
 const BASELINE = { dragP95Ms: 33.4, openMs: 484 };
 // Pan p95 median measured with React Flow culling on (onlyRenderVisibleElements), at commit 189df81.
 const CULLED_PAN_BASELINE = { panP95Ms: 16.8 };
-// Open median of the noted 200-arrow board measured at 80029fd, before the step notes feature.
-const NOTED_BASELINE = { openMs: 507 };
+// Noted 200-arrow board open median over five opens, measured at 80029fd before the step notes feature.
+const NOTED_BASELINE = { openMs: 512 };
 const ENFORCE_BUDGET = !!process.env.PERF_BUDGET;
 
 function median(values: number[]): number {
@@ -144,9 +144,9 @@ async function dragRuns(page: Page, project: Project, title: string): Promise<nu
   return runs;
 }
 
-async function openRuns(page: Page, project: Project): Promise<number[]> {
+async function openRuns(page: Page, project: Project, measured = 3): Promise<number[]> {
   const runs: number[] = [];
-  for (let run = 0; run < 4; run++) {
+  for (let run = 0; run <= measured; run++) {
     await page.goto(`/?project=${project.id}`);
     await page.locator('.react-flow__edge-path').first().waitFor({ state: 'attached' });
     const at = await page.evaluate(() => new Promise<number>((resolve) => requestAnimationFrame(() => resolve(performance.now()))));
@@ -258,7 +258,8 @@ test('opens a 200-arrow board with shifted arrows within the routing budget', as
 
 test('opens a 200-arrow board with notes on every step within 5% of its time before notes', async ({ page, request }) => {
   test.setTimeout(120_000);
-  const runs = await openRuns(page, await seed(request, skipsSeparateWithNotes, 'Perf notes open'));
+  // why: its 5% bar is tighter than run to run noise over three opens.
+  const runs = await openRuns(page, await seed(request, skipsSeparateWithNotes, 'Perf notes open'), 5);
   await expectNoteMarkers(page);
   withinOpenBudget('notes', runs, NOTED_BASELINE.openMs * 1.05);
 });
