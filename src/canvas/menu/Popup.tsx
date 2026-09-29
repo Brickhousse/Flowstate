@@ -1,11 +1,11 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { XY } from '../../model/types';
-import { usePopupDismiss } from './usePopupDismiss';
+import { usePopupDismiss, type DismissOptions } from './usePopupDismiss';
 
-type Props = { at: XY; onClose: () => void; wheelInside: 'close' | 'scroll'; className?: string; children: ReactNode };
+type Props = { at: XY; onClose: () => void; wheelInside: 'close' | 'scroll'; dismiss?: DismissOptions; className?: string; children: ReactNode };
 
-export function Popup({ at, onClose, wheelInside, className, children }: Props) {
+export function Popup({ at, onClose, wheelInside, dismiss, className, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState(at);
 
@@ -24,7 +24,7 @@ export function Popup({ at, onClose, wheelInside, className, children }: Props) 
     return () => resized.disconnect();
   }, [at]);
 
-  usePopupDismiss(ref, onClose, wheelInside);
+  usePopupDismiss(ref, onClose, wheelInside, dismiss);
 
   return createPortal(
     <div ref={ref} className={className ? `fs-context-menu ${className}` : 'fs-context-menu'} style={{ left: pos.x, top: pos.y }} onContextMenu={(e) => e.preventDefault()}>

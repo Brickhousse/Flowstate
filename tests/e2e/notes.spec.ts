@@ -167,6 +167,74 @@ test('a click on the panel around the text box keeps the typing in the note', as
   expect((await board(page)).nodes).toHaveLength(1);
 });
 
+test('focus leaving the note by Shift+Tab saves and closes it', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'Tabbed', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  const before = await history(page);
+  await noteButton(page).click();
+  await page.keyboard.type('Kept');
+  await page.keyboard.press('Shift+Tab');
+  await expect(panel(page)).toHaveCount(0);
+  expect((await board(page)).nodes[0].note).toBe('Kept');
+  expect(await history(page)).toBe(before + 1);
+});
+
+test('focus taken by a toolbar button saves the note before a key can delete the step', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'Stolen', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  const before = await history(page);
+  await noteButton(page).click();
+  await page.keyboard.type('Kept');
+  await page.getByRole('button', { name: 'Colour' }).focus();
+  await expect(panel(page)).toHaveCount(0);
+  expect(await history(page)).toBe(before + 1);
+  await page.keyboard.press('Backspace');
+  expect((await board(page)).nodes).toHaveLength(0);
+  await page.keyboard.press('Control+z');
+  expect((await board(page)).nodes[0].note).toBe('Kept');
+});
+
+test('the Note button toggles the note and shows whether it is open', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'Toggle', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  const before = await history(page);
+  await expect(noteButton(page)).toHaveAttribute('aria-pressed', 'false');
+  await noteButton(page).click();
+  await expect(noteButton(page)).toHaveAttribute('aria-pressed', 'true');
+  await noteButton(page).click();
+  await expect(panel(page)).toHaveCount(0);
+  await expect(noteButton(page)).toHaveAttribute('aria-pressed', 'false');
+  expect(await history(page)).toBe(before);
+  await noteButton(page).click();
+  await page.keyboard.type('Twice');
+  await noteButton(page).click();
+  await expect(panel(page)).toHaveCount(0);
+  expect((await board(page)).nodes[0].note).toBe('Twice');
+  expect(await history(page)).toBe(before + 1);
+});
+
+test('the note stays open when the window loses focus', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'Alt tab', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  await noteButton(page).click();
+  await page.keyboard.type('Half written');
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await expect(panel(page)).toHaveCount(1);
+  await expect(noteInput(page)).toHaveValue('Half written');
+});
+
 test('leaving the page with a note open saves it and asks before unloading', async ({ page, request }) => {
   const p = await seed(request, (b) => {
     addStep(b, { title: 'Unload', x: 0, y: 0 });

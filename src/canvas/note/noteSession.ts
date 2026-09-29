@@ -6,6 +6,7 @@ import type { FlowStore } from '../../store/store';
 export interface NoteSession {
   state: StoreApi<{ nodeId: string | null }>;
   open(nodeId: string): void;
+  toggle(nodeId: string): void;
   edit(text: string): void;
   close(): void;
 }
@@ -25,12 +26,18 @@ export function createNoteSession(flow: StoreApi<FlowStore>, boardId: string): N
     if (note !== null) flow.getState().changeBoard((b) => updateSteps(b, [{ id: nodeId, note }]), boardId);
   };
 
+  const open = (nodeId: string) => {
+    if (state.getState().nodeId === nodeId) return;
+    close();
+    state.setState({ nodeId });
+  };
+
   return {
     state,
-    open(nodeId) {
-      if (state.getState().nodeId === nodeId) return;
-      close();
-      state.setState({ nodeId });
+    open,
+    toggle(nodeId) {
+      if (state.getState().nodeId === nodeId) close();
+      else open(nodeId);
     },
     edit(text) {
       if (state.getState().nodeId) draft = text;

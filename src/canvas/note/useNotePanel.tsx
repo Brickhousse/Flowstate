@@ -5,12 +5,13 @@ import type { Board } from '../../model/types';
 import { holdDraft } from '../../store/drafts';
 import { flowStore } from '../../store/store';
 import { boardOf } from '../commands';
+import type { NoteControls } from './noteControls';
 import { NotePanel } from './NotePanel';
 import { createNoteSession } from './noteSession';
 
 const PANEL_GAP = 8;
 
-type NotePanelHandle = { open: (nodeId: string) => void; panel: ReactNode };
+type NotePanelHandle = { controls: NoteControls; panel: ReactNode };
 
 export function useNotePanel(boardId: string, editable: boolean, board: Board | undefined): NotePanelHandle {
   const rf = useReactFlow();
@@ -37,5 +38,5 @@ export function useNotePanel(boardId: string, editable: boolean, board: Board | 
   }, [rf, boardId, nodeId]);
 
   const panel = node && at ? <NotePanel key={node.id} at={at} note={node.note} editable={editable} onEdit={session.edit} onClose={session.close} /> : null;
-  return { open: session.open, panel };
+  return { controls: session, panel };
 }

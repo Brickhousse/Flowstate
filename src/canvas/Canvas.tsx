@@ -36,7 +36,7 @@ import { FlowEdge } from './FlowEdge';
 import { GroupNode } from './GroupNode';
 import { LaneNode } from './LaneNode';
 import { useCanvasMenu } from './menu/useCanvasMenu';
-import { NoteOpener } from './note/noteOpener';
+import { NoteControlsContext } from './note/noteControls';
 import { useNotePanel } from './note/useNotePanel';
 import { PickPanelOpen } from './pick/pickPanelOpen';
 import { useArrowPicker } from './pick/useArrowPicker';
@@ -111,7 +111,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const colors = useThemeColors();
   const rf = useReactFlow<FlowNode, FlowEdgeType>();
   const notes = useNotePanel(boardId, editable, board);
-  useKeyboard(boardId, editable, notes.open);
+  useKeyboard(boardId, editable, notes.controls.open);
   const nodeCache = useRef<RenderCache<FlowNode>>(new Map());
   const edgeCache = useRef<RenderCache<FlowEdgeType>>(new Map());
   const routeCache = useRef<RouteCache>(new Map());
@@ -368,7 +368,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const saved = viewports.get(boardId);
   return (
     <PickPanelOpen value={picker.open}>
-      <NoteOpener value={notes.open}>
+      <NoteControlsContext value={notes.controls}>
         <ReactFlow<FlowNode, FlowEdgeType>
           nodes={nodes}
           edges={edges}
@@ -430,7 +430,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
             />
           )}
         </ReactFlow>
-      </NoteOpener>
+      </NoteControlsContext>
     </PickPanelOpen>
   );
 }

@@ -148,4 +148,18 @@ describe('note session', () => {
     close();
     expect(noteOf(a)).toBe('Loose');
   });
+
+  it('toggles a note shut, saving it, and opens another step in its place', () => {
+    const { session, a, b, noteOf, history, openId } = setup();
+    const { toggle } = session;
+    toggle(a);
+    expect(openId()).toBe(a);
+    session.edit('Toggled');
+    toggle(b);
+    expect(openId()).toBe(b);
+    expect(noteOf(a)).toBe('Toggled');
+    toggle(b);
+    expect(openId()).toBeNull();
+    expect(history()).toBe(1);
+  });
 });

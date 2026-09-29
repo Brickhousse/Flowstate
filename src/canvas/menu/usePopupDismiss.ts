@@ -1,9 +1,16 @@
 import { useEffect, type RefObject } from 'react';
 
-export function usePopupDismiss(ref: RefObject<HTMLDivElement | null>, onClose: () => void, wheelInside: 'close' | 'scroll'): void {
+// toggler: a selector for the button that opens and closes the popup, whose own click decides.
+export type DismissOptions = { closeOnBlur?: boolean; toggler?: string };
+
+export function usePopupDismiss(ref: RefObject<HTMLDivElement | null>, onClose: () => void, wheelInside: 'close' | 'scroll', options: DismissOptions = {}): void {
+  const { closeOnBlur = true, toggler } = options;
   useEffect(() => {
     const outside = (e: PointerEvent | WheelEvent) => {
-      if (!ref.current?.contains(e.target as Node)) onClose();
+      const t = e.target;
+      if (t instanceof Node && ref.current?.contains(t)) return;
+      if (toggler && t instanceof Element && t.closest(toggler)) return;
+      onClose();
     };
     // A native colour dialog blurs the window; closing then would unmount the input before its change fires.
     const onBlur = () => {
@@ -13,7 +20,7 @@ export function usePopupDismiss(ref: RefObject<HTMLDivElement | null>, onClose: 
     const onWheel = wheelInside === 'scroll' ? outside : onClose;
     window.addEventListener('pointerdown', outside, true);
     window.addEventListener('wheel', onWheel, true);
-    window.addEventListener('blur', onBlur);
+    if (closeOnBlur) window.addEventListener('blur', onBlur);
     window.addEventListener('resize', onClose);
     return () => {
       window.removeEventListener('pointerdown', outside, true);
@@ -21,5 +28,5 @@ export function usePopupDismiss(ref: RefObject<HTMLDivElement | null>, onClose: 
       window.removeEventListener('blur', onBlur);
       window.removeEventListener('resize', onClose);
     };
-  }, [ref, onClose, wheelInside]);
+  }, [ref, onClose, wheelInside, closeOnBlur, toggler]);
 }

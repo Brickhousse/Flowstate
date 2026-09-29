@@ -2,9 +2,19 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { consumeFocus, registerFocus } from '../canvas/focusKey';
 import { isHex } from '../model/color';
 
-export function ToolButton({ title, active, className, onClick, children }: { title: string; active?: boolean; className?: string; onClick: () => void; children: ReactNode }) {
+type ToolButtonProps = { title: string; active?: boolean; className?: string; keepFocus?: boolean; onClick: () => void; children: ReactNode };
+
+export function ToolButton({ title, active, className, keepFocus, onClick, children }: ToolButtonProps) {
   return (
-    <button type="button" className={`fs-tool ${active ? 'is-active' : ''} ${className ?? ''}`} title={title} aria-label={title} aria-pressed={active} onClick={onClick}>
+    <button
+      type="button"
+      className={`fs-tool ${active ? 'is-active' : ''} ${className ?? ''}`}
+      title={title}
+      aria-label={title}
+      aria-pressed={active}
+      onMouseDown={keepFocus ? (e) => e.preventDefault() : undefined}
+      onClick={onClick}
+    >
       {children}
     </button>
   );
