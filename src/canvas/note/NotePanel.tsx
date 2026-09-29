@@ -60,6 +60,7 @@ function NoteEditor({ note, onEdit, onClose }: { note: string; onEdit: (text: st
         onKeyDown={(e) => {
           e.stopPropagation();
           if (e.nativeEvent.isComposing) return;
+          // why: ADR-0019
           if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) {
             e.preventDefault();
             onClose();

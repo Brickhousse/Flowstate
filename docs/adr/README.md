@@ -20,3 +20,4 @@
 | [0016](0016-pick-arrows-by-geometry.md) | Arrow clicks are resolved from the routes, and side dots do not connect on click | Accepted |
 | [0017](0017-colour-is-lenient-in-files-strict-in-operations.md) | Colour fields accept any string in the file and only colours in operations | Accepted |
 | [0018](0018-draw-culled-arrows-in-an-overlay.md) | Arrows React Flow culls are drawn by an overlay while their route is on screen | Accepted |
+| [0019](0019-the-note-panel-saves-on-every-close.md) | The note panel saves whenever it closes, Escape included | Accepted |
