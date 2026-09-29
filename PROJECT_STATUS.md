@@ -33,6 +33,11 @@
   8. Export PNG: no marker in the image.
   9. Light and dark theme, low zoom, a sticky note and a decision shape: does the marker look right? After a marquee selection, can you still click a marker?
   10. With API credit approved: ask the assistant to explain a step (the explanation goes in the note, the title stays short), and to edit a note longer than 300 characters (nothing is lost).
+  11. Right-click in the note text: the browser menu shows spelling suggestions and paste.
+  12. Tab out of the note: it saves and closes.
+  13. While reading a reference note, keys (Delete, Tab, arrows) do nothing to the active board.
+  14. A note on a step near the bottom edge of the window, and Shift+F2 on a selected step that is off screen: where does the panel land?
+  15. With API credit approved: ask the assistant to change the step whose note is open. Does the panel stay put, and does a deleted step say "Note not saved"?
 - Human playtest of the full app (keyboard-only and chat-only builds against the 2-minute target in the spec).
 - Live API check: `$env:LIVE_API=1; npx playwright test tests/e2e/live.spec.ts` plus one real "draft an agentic version" request. Needs the user's go-ahead because it spends API credit.
 

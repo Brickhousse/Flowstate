@@ -20,12 +20,13 @@
 3. **The export test checks the SVG file, not PNG pixels.** PNG and SVG share one `filter` in `src/io/exportImage.ts`, and only the SVG text can show that the marker's element is absent.
 4. **"Closes when the board changes" means the panel's canvas switches board or unmounts** (tab switch, reference closed, board deleted), and such a close saves to the board the note was opened on. It does not close on every edit to the board, which would close it whenever the assistant touched anything.
 5. **"Closes on wheel":** a wheel outside the panel closes it; a wheel inside scrolls it (`wheelInside="scroll"`), because the textarea scrolls past 12 lines.
+6. **The marker is a plain button inside `StepNode`, not a `NoteMarker.tsx` component.** A noted board draws a marker on most steps, and a component with a context read, four handlers and a nine-element lucide icon cost the open budget. The icon is a CSS mask on the button's `::before`; overflow is marked by a `data-overflow` attribute on the note line, so the marker shows by CSS without a re-render; and one capture listener per canvas (`src/canvas/note/useNoteMarkerClicks.ts`) toggles the note, keeps focus where it is, and stops the selection and title edit. For the same reason the marker's `aria-expanded` is written on the DOM by one subscription per canvas (`useNoteMarkerExpanded.ts`).
 
 ## Global Constraints
 
 - **Data:** no schema change. `BoardNode.note` stays a `string`. Paragraphs are separated by a blank line (`\n\n`); single line breaks are kept. Saving trims leading and trailing whitespace only.
 - **Icon:** lucide `notebook-text`, exported as `NotebookText` from `lucide-react` (verified in `node_modules/lucide-react/dist/lucide-react.d.ts`).
-- **Panel:** textarea 320px wide, grows with content up to 12 lines, then scrolls. Enter adds a line break. Escape, Ctrl+Enter (Cmd+Enter), a click outside, wheel outside, window resize or blur, or opening another step's note all close it and save. One open-edit-close session is one undo step; a close with no change adds none.
+- **Panel:** textarea 320px wide, grows with content up to 12 lines, then scrolls. Enter adds a line break. Escape, Ctrl+Enter (Cmd+Enter), a click outside, wheel outside, window resize or blur, or opening another step's note all close it and save. One open-edit-close session is one undo step; a close with no change adds none. *(Superseded in part by ADR-0019: window blur no longer closes the panel.)*
 - **Keys:** Shift+F2 opens the note of a single selected step. F2 alone still edits the title.
 - **Summary excerpt:** first 300 characters (code points), a cut note ends with `…` (U+2026) and the step line gains ` note-truncated`.
 - **Tool text, verbatim from the spec:** note fields in `add_steps` and `update_steps` are described as "Longer explanation of the step, such as what a presenter would say about it. Separate paragraphs with a blank line. update_steps replaces the whole note."
