@@ -119,15 +119,18 @@ Each unit has one responsibility. Pure routing lives in `src/layout/`, so `ops` 
 |---|---|
 | `model/types.ts`, `model/migrate.ts` | Edge fields and the v1 to v2 migration |
 | `layout/route/elbow.ts` | Automatic route between two sides |
-| `layout/route/through.ts` | Right-angled route through bends; collinear cleanup |
+| `layout/route/through.ts` | Right-angled route through bends |
+| `layout/route/polyline.ts` | Collinear cleanup, stub corners, segment moves |
 | `layout/route/apart.ts` | "Don't merge": port spreading and line shifting |
 | `layout/route/around.ts` | Time-limited search around boxes |
-| `ops/arrowPath.ts` | Reattach, set `separate`, add and remove bends, reset, move bends with their boxes, route around |
+| `ops/arrowPath.ts` | Reattach, set `separate`, add and remove bends, reset, route around |
+| `layout/place.ts` | Moves bends with their boxes (`carryBends`) |
 | `ops/edges.ts` | Unchanged responsibility: create, delete, relabel |
 | `canvas/arrowRoutes.ts` | Board-to-route bridge for drawing, with caching |
 | `canvas/FlowEdge.tsx` | Draws the path and label; no geometry decisions |
-| `canvas/ArrowHandles.tsx`, `canvas/useArrowDrag.ts` | Handles, and turning drags into single undo steps |
-| `canvas/menu/entries.tsx` | The arrow menu's items, calling `ops` |
+| `canvas/ArrowHandles.tsx`, `canvas/useArrowDrag.ts` | Handles, and turning drags into single undo steps (`reshapeSession.ts`, `reattachSession.ts`) |
+| `canvas/menu/arrowEntries.ts` | The arrow menu's items, calling `ops` |
+| `canvas/menu/colourEntries.tsx` | The colour submenu builder shared by the arrow and step menus |
 | `ai/schemas.ts`, `ai/executor.ts` | `update_arrows`, mapped onto `ops` |
 
 `Canvas.tsx` only gets wiring. Handle logic stays with the arrow.

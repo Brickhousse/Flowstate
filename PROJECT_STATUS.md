@@ -5,10 +5,11 @@
 ## Complete
 - v1 as specified in `docs/superpowers/specs/2026-09-25-flowstate-design.md`: infinite canvas with 9 shapes, free text, groups and swimlanes; actors, durations, owners, status and flags; flow, dependency and handoff arrows; parallel branches; live critical path; keyboard-first editing and floating toolbars; boards, reference view and projects; autosave with undo/redo; PNG, SVG and JSON export and import; Claude chat that edits the board through the same operations as the UI. Merged to `master`.
 - Layout assists: all 14 tasks built on `feat/layout-assists`, drag and resize snapping with smart guides and spacing guides, Ctrl+drag copy, align and distribute, custom colour, Ctrl+X, nudge and layer shortcuts, the right-click menu, and AI arrange. Step titles now fit the box height. Awaiting a final playtest and merge.
+- Arrow routing: attach an arrow to any side dot, "Don't merge" for its own line, hand-shaped arrows with segment bars and bend squares, route around boxes, arrow colour, an arrow right-click menu, and the assistant's `update_arrows`, within the measured drag and load budget (ADR 0014, ADR 0015). Built on `feat/arrow-routing`; awaiting the final playtest and merge.
 
 ## In flight
 - Playtest layout assists Tasks 7 to 13 (Ctrl+drag copy, right-click menu including Shift+F10, align and distribute, layer order, custom colour, Ctrl+arrow nudge, Ctrl+X), then merge `feat/layout-assists`. Also check: menu Custom colour in Firefox (the picker blurs the window), no native menu beside ours on Shift+F10, Alt held before a drag then Delete, and dragging steps taller and shorter. The live app now runs this branch from the `D:\Projects\Flowstate-live` worktree (5173/8797, real workspace), so everyday use doubles as the playtest.
-- Arrow routing on `feat/arrow-routing` (branched off `feat/layout-assists`; spec `docs/superpowers/specs/2026-09-27-arrow-routing-design.md`, plan `docs/superpowers/plans/2026-09-27-arrow-routing.md`). Tasks 0 to 15 of 20 done, plus playtest fixes (every arrow can be reshaped, a pick panel for overlapping arrows with the arrow's options, arrow colour) and a single-responsibility refactor. Next: Task 15's last re-review, the arrow right-click menu (16), the assistant's arrow tool (17), board summary markers (18), ADRs and docs (19), then the final review; the SDD ledger holds the exact resume point. Schema 2 (arrow `separate`, `bends`, `color`) does not open on older branches, so never run this branch against the real `workspace/`; a playtest copy runs on 5175 against a scratch copy.
+- Final playtest of arrow routing ("Don't merge", route around boxes, arrow colour, the right-click menu, the assistant's `update_arrows`), then merge `feat/arrow-routing`. Schema 2 (arrow `separate`, `bends`, `color`) does not open on older branches, so never run this branch against the real `workspace/`; a playtest copy runs on 5175 against a scratch copy.
 - Human playtest of the full app (keyboard-only and chat-only builds against the 2-minute target in the spec).
 - Live API check: `$env:LIVE_API=1; npx playwright test tests/e2e/live.spec.ts` plus one real "draft an agentic version" request. Needs the user's go-ahead because it spends API credit.
 
@@ -28,7 +29,7 @@
   - The perf gate (p95 under 50ms) is too loose to catch a regression.
   - Tidy and its failure toast are repeated in three places.
   - `endResize` belongs beside the resize wiring, not in `overlay.ts`.
-  - Right-clicking the node toolbar or an edge label opens the pane menu.
+  - Right-clicking the node toolbar or the arrow toolbar opens the pane menu.
 
 ## Scrapped
 - None.
@@ -45,3 +46,4 @@ Finish layout assists, then arrow routing, then multi-paragraph step notes (a mu
 | 2026-09-26 | Layout assists Tasks 7 to 14 built and reviewed |
 | 2026-09-27 | Title fit; arrow routing and HTML/PDF export specced; arrow routing plan written, Tasks 0 to 2 built |
 | 2026-09-27/28 | Arrow routing Tasks 3 to 15 with two playtest rounds and an SRP refactor; live app moved to a worktree |
+| 2026-09-28 | Arrow routing Tasks 16 to 19: arrow menu, assistant update_arrows, docs; awaiting playtest and merge |

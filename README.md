@@ -25,6 +25,7 @@ The local API only answers pages served from localhost (ADR 0004), so other webs
 - Every chat message resends the whole board, so long chats cost more. "New chat" resets the history.
 - Two tabs open on the same project overwrite each other's edits.
 - Steps resize from their corners only; the middle of each edge holds the + button.
+- Tidy (L) resets hand-shaped arrows to automatic routes; one Ctrl+Z brings them back.
 
 ## Keys
 
@@ -45,6 +46,9 @@ The local API only answers pages served from localhost (ADR 0004), so other webs
 | Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D, Ctrl+A | Copy, cut, paste, duplicate, select all |
 | Shift+drag, Alt+drag | Move in a straight line, or move without snapping |
 | Ctrl+drag, Ctrl+Shift+drag | Drop a copy, or copy in a straight line |
+| Drag an arrow's end circle to a side dot | Attach that end there, on the same step or another |
+| Drag an arrow's bar or square (Alt: no snapping) | Reshape the arrow; each drag is one undo |
+| Right-click an arrow or its label | Don't merge, add or remove a bend, route around boxes, reset the path, colour |
 | Ctrl+arrow | Nudge by a grid step (Shift for 1px) |
 | Ctrl+], Ctrl+[ | Bring forward, send backward (Shift for front/back) |
 | Ctrl+' | Snap to grid on or off (the Layout menu switches each assist) |
