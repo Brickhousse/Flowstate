@@ -995,3 +995,204 @@ test('a tint from the arrow toolbar colours the line, head and label in one undo
   await expect.poll(looks).toEqual([critical, critical]);
   await expect(label).toHaveCSS('color', custom);
 });
+
+async function rightClickArrow(page: Page, edgeId: string, at: XY): Promise<void> {
+  const p = await toScreen(page, edgeId, at);
+  await page.mouse.click(p.x, p.y, { button: 'right' });
+}
+
+function pair(b: Board): void {
+  const a = addStep(b, { title: 'A', x: 0, y: 0 });
+  const c = addStep(b, { title: 'B', x: 400, y: 0 });
+  connect(b, { source: a, target: c, label: 'go' });
+}
+
+test('right-clicking an arrow selects it and opens the arrow menu', async ({ page, request }) => {
+  const p = await seed(request, pair);
+  await open(page, p);
+  await resetZoom(page);
+  await rightClickArrow(page, 'e3', { x: 240, y: 36 });
+  expect(await edgeSelection(page)).toEqual(['e3']);
+  for (const name of ['Edit label', 'Add bend here', 'Route around boxes', 'Colour', 'Delete arrow']) await expect(page.getByRole('menuitem', { name, exact: true })).toBeVisible();
+  await expect(page.getByRole('menuitemcheckbox', { name: "Don't merge" })).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByRole('menuitem', { name: 'Reset path' })).toBeDisabled();
+  await expect(page.getByRole('menuitem', { name: 'Remove bend' })).toHaveCount(0);
+  await expect(page.getByRole('menuitem', { name: 'Paste here' })).toHaveCount(0);
+});
+
+test('right-clicking an arrow label opens the arrow menu and Edit label focuses the label', async ({ page, request }) => {
+  const p = await seed(request, pair);
+  await open(page, p);
+  await page.locator('.fs-edge-label').click({ button: 'right' });
+  expect(await edgeSelection(page)).toEqual(['e3']);
+  await page.getByRole('menuitem', { name: 'Edit label' }).click();
+  await expect(page.getByLabel('Arrow label')).toBeFocused();
+});
+
+test('Add bend here and Remove bend from the menu, one undo step each', async ({ page, request }) => {
+  const p = await seed(request, pair);
+  await open(page, p);
+  await resetZoom(page);
+  await rightClickArrow(page, 'e3', { x: 290, y: 36 });
+  await page.getByRole('menuitem', { name: 'Add bend here' }).click();
+  const [bend] = (await board(page)).edges[0].bends;
+  expect(bend.y).toBe(36);
+  expect(bend.x).toBeCloseTo(290, 0);
+  await page.locator('.fs-arrow-bend[data-bend="0"]').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Remove bend' }).click();
+  expect((await board(page)).edges[0].bends).toEqual([]);
+  expect(await history(page)).toBe(2);
+});
+
+test("Don't merge on two selected arrows spreads their attach points in one undo step", async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const up = addStep(b, { title: 'Up', x: 400, y: -200 });
+    const down = addStep(b, { title: 'Down', x: 400, y: 200 });
+    connect(b, { source: a, target: up });
+    connect(b, { source: a, target: down });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await page.evaluate(() => window.__flowstate!.getState().select([], ['e4', 'e5']));
+  await rightClickArrow(page, 'e4', { x: 290, y: -60 });
+  expect(await edgeSelection(page)).toEqual(['e4', 'e5']);
+  await page.getByRole('menuitemcheckbox', { name: "Don't merge" }).click();
+  expect((await board(page)).edges.map((e) => e.separate)).toEqual([true, true]);
+  await expect(pathOf(page, 'e4')).toHaveAttribute('d', /^M185\.5 24/);
+  await expect(pathOf(page, 'e5')).toHaveAttribute('d', /^M185\.5 48/);
+  expect(await history(page)).toBe(1);
+});
+
+test("Don't merge moves an arrow off a line it shares and leaves the other arrow alone", async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'C', x: 400, y: 300 });
+    const e = addStep(b, { title: 'E', x: 0, y: 200 });
+    const f = addStep(b, { title: 'F', x: 400, y: 500 });
+    connect(b, { source: a, target: c });
+    connect(b, { source: e, target: f });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  const shared = await pathOf(page, 'e5').getAttribute('d');
+  await rightClickArrow(page, 'e6', { x: 240, y: 236 });
+  await page.getByRole('menuitemcheckbox', { name: "Don't merge" }).click();
+  await expect(pathOf(page, 'e6')).toHaveAttribute('d', 'M185.5 236L 286,236Q 300,236 300,250L 300,522Q 300,536 314,536L394.5 536');
+  await expect(pathOf(page, 'e5')).toHaveAttribute('d', shared!);
+});
+
+test('Route around boxes takes the arrow around a box between its ends', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'In the way', x: 300, y: 0 });
+    const c = addStep(b, { title: 'C', x: 600, y: 0 });
+    connect(b, { source: a, target: c });
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await rightClickArrow(page, 'e4', { x: 240, y: 36 });
+  await page.getByRole('menuitem', { name: 'Route around boxes' }).click();
+  const b = await board(page);
+  const points = [{ x: 185.5, y: 36 }, ...b.edges[0].bends, { x: 594.5, y: 36 }];
+  expect(points.length).toBeGreaterThan(2);
+  const cutsBox = points.slice(1).some((q, i) => {
+    const p0 = points[i];
+    const [x0, x1] = [Math.min(p0.x, q.x), Math.max(p0.x, q.x)];
+    const [y0, y1] = [Math.min(p0.y, q.y), Math.max(p0.y, q.y)];
+    return x0 < 480 && x1 > 300 && y0 < 72 && y1 > 0;
+  });
+  expect(cutsBox).toBe(false);
+});
+
+test('Delete arrow from the menu removes it', async ({ page, request }) => {
+  const p = await seed(request, pair);
+  await open(page, p);
+  await resetZoom(page);
+  await rightClickArrow(page, 'e3', { x: 240, y: 36 });
+  await page.getByRole('menuitem', { name: 'Delete arrow' }).click();
+  expect((await board(page)).edges).toEqual([]);
+  expect(await edgeSelection(page)).toEqual([]);
+});
+
+test('right-clicking a shared line acts on the top arrow, or on the selected one under the pointer, with no list', async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await zoomSettled(page);
+  await rightClickArrow(page, 'e4', { x: 230, y: 36 });
+  expect(await edgeSelection(page)).toEqual(['e5']);
+  await expect(page.getByRole('menuitem', { name: 'Add bend here' })).toBeVisible();
+  await expect(pickList(page)).toHaveCount(0);
+  await page.keyboard.press('Escape');
+
+  await selectArrow(page, 'e4');
+  await rightClickArrow(page, 'e4', { x: 230, y: 36 });
+  expect(await edgeSelection(page)).toEqual(['e4']);
+  await page.getByRole('menuitem', { name: 'Delete arrow' }).click();
+  expect((await board(page)).edges.map((e) => e.id)).toEqual(['e5']);
+});
+
+test('right-clicking a side dot opens the menu of the top arrow there, or the step menu when no arrow is in reach', async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await node(page, 's1').hover();
+  await node(page, 's1').locator('.react-flow__handle-right').click({ button: 'right' });
+  expect(await edgeSelection(page)).toEqual(['e5']);
+  expect(await nodeSelection(page)).toEqual([]);
+  await expect(page.getByRole('menuitem', { name: 'Add bend here' })).toBeVisible();
+  await expect(pickList(page)).toHaveCount(0);
+  await page.keyboard.press('Escape');
+
+  await node(page, 's3').hover();
+  await node(page, 's3').locator('.react-flow__handle-bottom').click({ button: 'right' });
+  expect(await nodeSelection(page)).toEqual(['s3']);
+  await expect(page.getByRole('menuitem', { name: 'Cut' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Add bend here' })).toHaveCount(0);
+});
+
+test("right-clicking a selected arrow's end handle opens its menu", async ({ page, request }) => {
+  const p = await seed(request, pair);
+  await open(page, p);
+  await resetZoom(page);
+  await selectArrow(page, 'e3');
+  await page.locator('.fs-arrow-end[data-end="target"]').click({ button: 'right' });
+  expect(await edgeSelection(page)).toEqual(['e3']);
+  await expect(page.getByRole('menuitem', { name: 'Add bend here' })).toBeVisible();
+});
+
+test('a colour from the arrow menu goes to every selected arrow in one undo step', async ({ page, request }) => {
+  const p = await seed(request, fork);
+  await open(page, p);
+  await resetZoom(page);
+  await page.evaluate(() => window.__flowstate!.getState().select([], ['e4', 'e5']));
+  await rightClickArrow(page, 'e4', { x: 350, y: 36 });
+  await page.getByRole('menuitem', { name: 'Colour', exact: true }).hover();
+  await page.getByRole('menuitem', { name: 'Violet', exact: true }).click();
+  expect((await board(page)).edges.map((e) => e.color)).toEqual(['violet', 'violet']);
+  expect(await history(page)).toBe(1);
+
+  await rightClickArrow(page, 'e4', { x: 350, y: 36 });
+  await page.getByRole('menuitem', { name: 'Colour', exact: true }).hover();
+  await page.getByLabel('Custom colour').fill('#12ab34');
+  expect((await board(page)).edges.map((e) => e.color)).toEqual(['#12ab34', '#12ab34']);
+  expect(await history(page)).toBe(2);
+});
+
+test('the reference view opens no arrow menu', async ({ page, request }) => {
+  const p = await seed(request, (b, project) => {
+    pair(b);
+    const other = createBoard('Reference');
+    pair(other);
+    project.boards.push(other);
+  });
+  await open(page, p);
+  await page.getByRole('button', { name: 'Reference', exact: true }).click({ modifiers: ['Shift'] });
+  const label = page.locator('.canvas-pane.is-reference .fs-edge-label');
+  await label.click({ button: 'right' });
+  const box = await boxOf(label);
+  await page.mouse.click(box.x - 20, box.y + box.height / 2, { button: 'right' });
+  expect(await menusAfterSettling(page)).toBe(0);
+  expect(await edgeSelection(page)).toEqual([]);
+});

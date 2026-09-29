@@ -17,7 +17,7 @@ export function FlowEdge({ id, data, selected, markerEnd }: EdgeProps<FlowEdgeTy
       <BaseEdge id={id} path={roundedPath(route.points)} markerEnd={markerEnd} className={className} style={{ stroke: color }} interactionWidth={ARROW_HIT_WIDTH} />
       {(edge.label || openFlags.length > 0) && (
         <EdgeLabelRenderer>
-          <div className={`fs-edge-label nodrag nopan ${dimmed ? 'is-dimmed' : ''}`} style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, color: labelColor ?? undefined }}>
+          <div className={`fs-edge-label nodrag nopan ${dimmed ? 'is-dimmed' : ''}`} data-edge={id} style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`, color: labelColor ?? undefined }}>
             {edge.label && <span>{edge.label}</span>}
             <FlagBadges flags={openFlags} />
           </div>

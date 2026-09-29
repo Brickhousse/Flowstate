@@ -1,6 +1,6 @@
 # 0016: Arrow clicks are resolved from the routes, and side dots do not connect on click
 
-Status: Accepted (2026-09-27), amended 2026-09-28
+Status: Accepted (2026-09-27), amended 2026-09-28 (twice)
 
 ## Context
 Arrows leaving the same side share a line, so React Flow's DOM hit testing only ever reaches the top one. Arrows also start and end on the invisible side dots, whose hit rings sit above the edge layer, so a click near an arrow end landed on a dot and started React Flow's click-to-connect.
@@ -25,3 +25,10 @@ Playtest: the list could cover the arrow's toolbar. When two or more arrows are 
 - Picking a row selects that arrow and keeps the panel open, so overlapping arrows can be edited in turn.
 - It closes on Escape, a click outside, a pan or zoom, a board switch, or once its arrow is no longer the one selected (`src/canvas/pick/panelArrow.ts`). Edits keep it open.
 - It is the shared `Popup` and `MenuList` with a `MenuFooter` below the list. Keys in the list still close it and reach the canvas. Keys in the options act as in the toolbar, so only Escape, or a canvas key that removes the arrow such as Delete, closes it from there. Tab moves between the two.
+
+## Amendment (2026-09-28): right-click
+A right-click resolves its arrow from the same hit test (`src/canvas/pick/useArrowsAt.ts`, decided in `menuArrow.ts`) and opens the arrow menu.
+- A label, end circle, segment bar or bend square names its arrow through `data-edge`, and a bend square adds Remove bend.
+- On a line, the arrow React Flow reports; on a side dot, the top arrow in reach. Either way an already selected arrow in reach wins, so a right-click after picking from the list acts on the picked arrow.
+- It never opens the list: the menu acts on that arrow, or on the whole arrow selection when it is part of it.
+- A side dot with no arrow in reach opens the step menu, as before.

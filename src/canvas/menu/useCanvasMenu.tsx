@@ -3,7 +3,11 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { boundsOf } from '../../layout/geometry';
 import type { XY } from '../../model/types';
 import { flowStore } from '../../store/store';
+import { arrowPointerAt } from '../pick/arrowPointer';
+import { menuArrow } from '../pick/menuArrow';
+import type { ArrowsAtScreen } from '../pick/useArrowsAt';
 import { isTyping } from '../useKeyboard';
+import { arrowEntries } from './arrowEntries';
 import { ContextMenu } from './ContextMenu';
 import type { MenuEntry } from './MenuList';
 import { nodeEntries, paneEntries } from './entries';
@@ -19,7 +23,7 @@ function topSelectedAt(x: number, y: number, selection: string[]): string | null
   return null;
 }
 
-export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
+export function useCanvasMenu(boardId: string, editable: boolean, arrowsAt: ArrowsAtScreen): ReactNode {
   const rf = useReactFlow();
   const rfStore = useStoreApi();
   const [menu, setMenu] = useState<{ at: XY; entries: MenuEntry[]; n: number } | null>(null);
@@ -44,10 +48,19 @@ export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
       down = null;
       if (e.button !== 2 || !start || !inCanvas(e.target)) return;
       if (Math.hypot(e.clientX - start.x, e.clientY - start.y) >= CLICK_SLOP) return;
-      if (e.target.closest('.react-flow__edge, .react-flow__minimap, .react-flow__controls')) return;
-      const at = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      const id = e.target.closest('.react-flow__node')?.getAttribute('data-id');
+      if (e.target.closest('.react-flow__minimap, .react-flow__controls')) return;
+      const screen = { x: e.clientX, y: e.clientY };
+      const at = rf.screenToFlowPosition(screen);
       const st = flowStore.getState();
+      const pointer = arrowPointerAt(e.target);
+      // why: ADR-0016
+      const arrow = pointer && menuArrow(pointer, () => arrowsAt(screen), st.edgeSelection);
+      if (arrow) {
+        if (!st.edgeSelection.includes(arrow.edgeId)) st.select([], [arrow.edgeId]);
+        setMenu({ at: screen, entries: arrowEntries(boardId, arrow.edgeId, at, arrow.bend), n: ++opens.current });
+        return;
+      }
+      const id = e.target.closest('.react-flow__node')?.getAttribute('data-id');
       let refId: string | null = null;
       if (e.target.closest('.react-flow__nodesselection') && st.selection.length) {
         refId = topSelectedAt(e.clientX, e.clientY, st.selection) ?? st.selection[0];
@@ -79,7 +92,7 @@ export function useCanvasMenu(boardId: string, editable: boolean): ReactNode {
       window.removeEventListener('pointerup', onUp, true);
       window.removeEventListener('keydown', onKey);
     };
-  }, [boardId, editable, rf, rfStore]);
+  }, [boardId, editable, rf, rfStore, arrowsAt]);
 
   return menu ? <ContextMenu key={menu.n} at={menu.at} entries={menu.entries} onClose={close} /> : null;
 }

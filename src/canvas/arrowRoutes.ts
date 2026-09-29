@@ -66,3 +66,8 @@ export function arrowRoutes(board: Board, cache: RouteCache): Map<string, Route>
   }
   return out;
 }
+
+// why: a fresh cache and the whole board, because a separate arrow's attach point depends on its neighbours.
+export function routeFor(board: Board, edgeId: string): Route | undefined {
+  return arrowRoutes(board, new Map()).get(edgeId);
+}

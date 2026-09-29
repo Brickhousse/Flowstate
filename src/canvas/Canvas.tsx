@@ -102,7 +102,6 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const colors = useThemeColors();
   const rf = useReactFlow<FlowNode, FlowEdgeType>();
   useKeyboard(boardId, editable);
-  const menu = useCanvasMenu(boardId, editable);
   const nodeCache = useRef<RenderCache<FlowNode>>(new Map());
   const edgeCache = useRef<RenderCache<FlowEdgeType>>(new Map());
   const routeCache = useRef<RouteCache>(new Map());
@@ -135,6 +134,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const routes = useMemo(() => (board ? arrowRoutes(board, routeCache.current) : null), [board]);
   const edges = useMemo(() => (board && routes ? toFlowEdges(board, view, edgeCache.current, routes) : []), [board, view, routes]);
   const arrowsAt = useArrowsAt(routes, edges);
+  const menu = useCanvasMenu(boardId, editable, arrowsAt);
   const picker = useArrowPicker(boardId, editable, board, routes, arrowsAt);
 
   useEffect(() => (editable ? setRevealer((ids) => revealIds(rf, ids)) : undefined), [rf, editable]);
