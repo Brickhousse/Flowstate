@@ -98,8 +98,8 @@ test('drags on a 1000-step board with guides on without long frames', async ({ p
 const BASELINE = { dragP95Ms: 33.4, openMs: 484 };
 // Pan p95 median measured with React Flow culling on (onlyRenderVisibleElements), at commit 189df81.
 const CULLED_PAN_BASELINE = { panP95Ms: 16.8 };
-// Noted board open: median of five full perf-suite runs (five opens each) at 80029fd, before step notes. Alone it reads differently.
-const NOTED_BASELINE = { openMs: 512 };
+// Noted over plain open median ratio: median of five full perf-suite runs at 80029fd, before step notes.
+const NOTED_RATIO_BASELINE = { openRatio: 1.052 };
 const ENFORCE_BUDGET = !!process.env.PERF_BUDGET;
 
 function median(values: number[]): number {
@@ -144,15 +144,45 @@ async function dragRuns(page: Page, project: Project, title: string): Promise<nu
   return runs;
 }
 
-async function openRuns(page: Page, project: Project, measured = 3): Promise<number[]> {
+async function openTime(page: Page, project: Project): Promise<number> {
+  await page.goto(`/?project=${project.id}`);
+  await page.locator('.react-flow__edge-path').first().waitFor({ state: 'attached' });
+  return page.evaluate(() => new Promise<number>((resolve) => requestAnimationFrame(() => resolve(performance.now()))));
+}
+
+async function openRuns(page: Page, project: Project): Promise<number[]> {
   const runs: number[] = [];
-  for (let run = 0; run <= measured; run++) {
-    await page.goto(`/?project=${project.id}`);
-    await page.locator('.react-flow__edge-path').first().waitFor({ state: 'attached' });
-    const at = await page.evaluate(() => new Promise<number>((resolve) => requestAnimationFrame(() => resolve(performance.now()))));
+  for (let run = 0; run < 4; run++) {
+    const at = await openTime(page, project);
     if (run > 0) runs.push(at);
   }
   return runs;
+}
+
+const OPEN_PAIRS = 10;
+
+async function freshOpenTime(page: Page, project: Project): Promise<number> {
+  const tab = await page.context().newPage();
+  try {
+    return await openTime(tab, project);
+  } finally {
+    await tab.close();
+  }
+}
+
+// why: repeated opens in one tab drift slower, so each open gets a fresh tab;
+// alternating the boards lets both medians see the same machine load, so their ratio does not drift with it.
+async function pairedOpenRuns(page: Page, plain: Project, noted: Project): Promise<{ plain: number[]; noted: number[] }> {
+  const plainRuns: number[] = [];
+  const notedRuns: number[] = [];
+  for (let run = 0; run <= OPEN_PAIRS; run++) {
+    const p = await freshOpenTime(page, plain);
+    const n = await freshOpenTime(page, noted);
+    if (run === 0) continue;
+    plainRuns.push(p);
+    notedRuns.push(n);
+  }
+  return { plain: plainRuns, noted: notedRuns };
 }
 
 async function panRuns(page: Page, project: Project, ready: (page: Page) => Promise<void> = async () => {}): Promise<number[]> {
@@ -186,10 +216,17 @@ function withinDragBudget(name: string, runs: number[]): void {
   if (ENFORCE_BUDGET) expect(worst).toBeLessThanOrEqual(BASELINE.dragP95Ms + 2);
 }
 
-function withinOpenBudget(name: string, runs: number[], limitMs = BASELINE.openMs * 1.1): void {
+function withinOpenBudget(name: string, runs: number[]): void {
   const typical = median(runs);
   console.log(`${name} open per run ${runs.map((r) => r.toFixed(0)).join(', ')}ms, median ${typical.toFixed(0)}ms`);
-  if (ENFORCE_BUDGET) expect(typical).toBeLessThanOrEqual(limitMs);
+  if (ENFORCE_BUDGET) expect(typical).toBeLessThanOrEqual(BASELINE.openMs * 1.1);
+}
+
+function withinNotedOpenRatio(runs: { plain: number[]; noted: number[] }): void {
+  const ratio = median(runs.noted) / median(runs.plain);
+  const list = (xs: number[]) => xs.map((x) => x.toFixed(0)).join(', ');
+  console.log(`notes open ${list(runs.noted)}ms, median ${median(runs.noted).toFixed(0)}ms; plain open ${list(runs.plain)}ms, median ${median(runs.plain).toFixed(0)}ms; ratio ${ratio.toFixed(3)}`);
+  if (ENFORCE_BUDGET) expect(ratio).toBeLessThanOrEqual(NOTED_RATIO_BASELINE.openRatio * 1.05);
 }
 
 function withinPanBudget(name: string, runs: number[]): void {
@@ -255,12 +292,14 @@ test('opens a 200-arrow board with shifted arrows within the routing budget', as
   withinOpenBudget('shifted', await openRuns(page, await seed(request, crossingsSeparate, 'Perf shifted open')));
 });
 
-test('opens a 200-arrow board with notes on every step within 5% of its time before notes', async ({ page, request }) => {
+test('opens a 200-arrow board with notes within 5% of its ratio to the plain board before notes', async ({ page, request }) => {
   test.setTimeout(120_000);
-  // why: its 5% bar is tighter than run to run noise over three opens.
-  const runs = await openRuns(page, await seed(request, skipsSeparateWithNotes, 'Perf notes open'), 5);
+  const plain = await seed(request, skipsSeparate, 'Perf notes open, plain');
+  const noted = await seed(request, skipsSeparateWithNotes, 'Perf notes open');
+  const runs = await pairedOpenRuns(page, plain, noted);
+  await open(page, noted);
   await expectNoteMarkers(page);
-  withinOpenBudget('notes', runs, NOTED_BASELINE.openMs * 1.05);
+  withinNotedOpenRatio(runs);
 });
 
 test('drags a noted step on a 200-arrow board with notes within the routing budget', async ({ page, request }) => {
