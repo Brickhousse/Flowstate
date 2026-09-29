@@ -298,6 +298,12 @@ describe('update_arrows', () => {
     expect(active().edges.map((e) => e.separate)).toEqual([true, true]);
   });
 
+  it('counts an arrow once when several links match it', async () => {
+    const { run } = setup(shaped);
+    const out = await run('update_arrows', { links: [{ from: 's1', to: 's2' }, { from: 's1', to: 's2', type: 'flow' }, { from: 's1', to: 's2' }], separate: true });
+    expect(out).toMatchObject({ ok: true, stats: { arrowsUpdated: 2 } });
+  });
+
   it('resets a hand-shaped arrow and routes another around a step in the way', async () => {
     const { run, active } = setup((b) => {
       shaped(b);

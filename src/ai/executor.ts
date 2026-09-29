@@ -166,11 +166,12 @@ const handlers: { [N in ToolName]: Handler<N> } = {
       if (!from_side && !to_side && separate === undefined && !reset_path && !route_around && color === undefined) {
         throw new OpError('Say what to change: from_side, to_side, separate, reset_path, route_around or color.');
       }
-      const ids = input.links.flatMap((l) => {
+      const matched = input.links.flatMap((l) => {
         const found = b.edges.filter((e) => e.source === l.from && e.target === l.to && (!l.type || e.type === l.type));
         if (!found.length) throw new OpError(`${l.from} is not connected to ${l.to}.`);
         return found.map((e) => e.id);
       });
+      const ids = [...new Set(matched)];
       for (const id of ids) {
         const e = getEdge(b, id);
         if (from_side) reattach(b, id, 'source', e.source, from_side);
