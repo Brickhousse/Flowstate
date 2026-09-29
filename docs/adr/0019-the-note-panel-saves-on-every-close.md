@@ -20,4 +20,4 @@ Rejected:
 
 ## Consequences
 - Escape means "done" in the note panel and "cancel" in the title editor and toolbar fields. The README says so.
-- The panel closes and saves when focus leaves it, which covers Tab and Shift+Tab, and when the Note button or the marker is clicked a second time.
+- The panel closes and saves when focus moves to another element in the page, which covers Shift+Tab, and on Tab, which it takes itself: Tab from the end of the page would move focus to the browser, a window blur the panel ignores. It also closes when the Note button, the marker or Shift+F2 is used a second time. Keys pressed in the panel never reach the board's shortcuts.

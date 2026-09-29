@@ -1,4 +1,4 @@
-import { useEffect, useRef, type FocusEvent } from 'react';
+import { useEffect, useRef, type FocusEvent, type KeyboardEvent } from 'react';
 import { noteParagraphs } from '../../model/note';
 import type { XY } from '../../model/types';
 import { Popup } from '../menu/Popup';
@@ -21,6 +21,18 @@ function closeWhenFocusLeaves(onClose: () => void) {
   return (e: FocusEvent<HTMLElement>) => {
     const to = e.relatedTarget;
     if (to instanceof Node ? !e.currentTarget.contains(to) : document.hasFocus()) onClose();
+  };
+}
+
+// Every key stays in the panel so none reaches the board's shortcuts. why (the close keys): ADR-0019
+function handleNoteKeys(onClose: () => void) {
+  return (e: KeyboardEvent<HTMLElement>) => {
+    e.stopPropagation();
+    if (e.nativeEvent.isComposing) return;
+    const closes = e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) || (e.key === 'Tab' && !e.shiftKey) || (e.key === 'F2' && e.shiftKey);
+    if (!closes) return;
+    e.preventDefault();
+    onClose();
   };
 }
 
@@ -57,15 +69,7 @@ function NoteEditor({ note, onEdit, onClose }: { note: string; onEdit: (text: st
           fitHeight(e.currentTarget);
           onEdit(e.currentTarget.value);
         }}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.nativeEvent.isComposing) return;
-          // why: ADR-0019
-          if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) {
-            e.preventDefault();
-            onClose();
-          }
-        }}
+        onKeyDown={handleNoteKeys(onClose)}
       />
     </div>
   );
@@ -82,11 +86,7 @@ function NoteReader({ note, onClose }: { note: string; onClose: () => void }) {
       aria-label="Note"
       tabIndex={-1}
       onBlur={closeWhenFocusLeaves(onClose)}
-      onKeyDown={(e) => {
-        if (e.key !== 'Escape') return;
-        e.stopPropagation();
-        onClose();
-      }}
+      onKeyDown={handleNoteKeys(onClose)}
     >
       {noteParagraphs(note).map((p, i) => (
         <p key={i}>{p}</p>

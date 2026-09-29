@@ -411,3 +411,67 @@ test('a marker in the reference view opens only the reference note, never the ac
   await expect(panel(page).locator('p')).toHaveText(['One', 'Two']);
   expect(await page.evaluate(() => document.body.dataset.panelsOpened)).toBe('1');
 });
+
+async function openReferenceBeside(page: Page): Promise<Locator> {
+  await page.getByRole('button', { name: 'Reference', exact: true }).click({ modifiers: ['Shift'] });
+  return page.locator('.canvas-pane.is-reference');
+}
+
+test('keys while reading a reference note do nothing to the active board', async ({ page, request }) => {
+  const p = await seed(request, (b, project) => {
+    addStep(b, { title: 'Active', x: 0, y: 0 });
+    const other = createBoard('Reference');
+    addStep(other, { title: 'Explained', note: 'One\n\nTwo', x: 0, y: 0 });
+    project.boards.push(other);
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  const before = await history(page);
+  const reference = await openReferenceBeside(page);
+  await marker(reference.getByTestId('node-s1')).click();
+  await expect(panel(page).locator('p')).toHaveText(['One', 'Two']);
+  await page.keyboard.press('Delete');
+  await page.keyboard.press('ArrowRight');
+  await expect(panel(page)).toHaveCount(1);
+  await page.keyboard.press('Tab');
+  await expect(panel(page)).toHaveCount(0);
+  expect((await board(page)).nodes).toHaveLength(1);
+  expect(await history(page)).toBe(before);
+});
+
+test('Tab out of the note saves and closes it without adding a step', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'Tabbed on', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  const before = await history(page);
+  await noteButton(page).click();
+  await page.keyboard.type('Forward');
+  await page.evaluate(() => {
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') setTimeout(() => (document.body.dataset.tabKept = String(e.defaultPrevented)));
+    }, true);
+  });
+  await page.keyboard.press('Tab');
+  await expect(panel(page)).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => document.body.dataset.tabKept)).toBe('true');
+  expect((await board(page)).nodes).toHaveLength(1);
+  expect((await board(page)).nodes[0].note).toBe('Forward');
+  expect(await history(page)).toBe(before + 1);
+});
+
+test('Shift+F2 in the note saves and closes it', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'Toggled by key', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  const before = await history(page);
+  await page.keyboard.press('Shift+F2');
+  await page.keyboard.type('Keyed');
+  await page.keyboard.press('Shift+F2');
+  await expect(panel(page)).toHaveCount(0);
+  expect((await board(page)).nodes[0].note).toBe('Keyed');
+  expect(await history(page)).toBe(before + 1);
+});
