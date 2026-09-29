@@ -100,6 +100,8 @@ test('drags on a 1000-step board with guides on without long frames', async ({ p
 
 // Medians measured on the last commit before arrow routing (spec section 4, ADR-0015).
 const BASELINE = { dragP95Ms: 33.4, openMs: 484 };
+// Pan p95 median measured with React Flow culling on (onlyRenderVisibleElements), at commit 189df81.
+const CULLED_PAN_BASELINE = { panP95Ms: 16.8 };
 const ENFORCE_BUDGET = !!process.env.PERF_BUDGET;
 
 function median(values: number[]): number {
@@ -155,6 +157,30 @@ async function openRuns(page: Page, project: Project): Promise<number[]> {
   return runs;
 }
 
+async function panRuns(page: Page, project: Project): Promise<number[]> {
+  await open(page, project);
+  await page.getByRole('button', { name: 'Reset zoom to 100%' }).click();
+  await zoomSettled(page);
+  const pane = (await page.locator('.react-flow__pane').boundingBox())!;
+  const offsetY = pane.y + (await viewportMatrix(page)).f;
+  // why: a point between rows (board y 136 + 200k) stays between rows as the board moves with the pointer.
+  const betweenRows = Math.round((pane.y + pane.height / 2 + 120 - offsetY - 136) / 200) * 200 + 136;
+  const grab = { x: pane.x + pane.width / 2 + 300, y: betweenRows + offsetY };
+  const runs: number[] = [];
+  for (let run = 0; run < 3; run++) {
+    const dir = run % 2 ? 1 : -1;
+    const from = run % 2 ? { x: grab.x - 600, y: grab.y - 240 } : grab;
+    const times = await recordFrames(page, async () => {
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down({ button: 'middle' });
+      for (let i = 1; i <= 60; i++) await page.mouse.move(from.x + dir * i * 10, from.y + dir * i * 4);
+      await page.mouse.up({ button: 'middle' });
+    });
+    runs.push(p95(times));
+  }
+  return runs;
+}
+
 function withinDragBudget(name: string, runs: number[]): void {
   const worst = median(runs);
   console.log(`${name} drag p95 per run ${runs.map((r) => r.toFixed(1)).join(', ')}ms, median ${worst.toFixed(1)}ms`);
@@ -165,6 +191,12 @@ function withinOpenBudget(name: string, runs: number[]): void {
   const typical = median(runs);
   console.log(`${name} open per run ${runs.map((r) => r.toFixed(0)).join(', ')}ms, median ${typical.toFixed(0)}ms`);
   if (ENFORCE_BUDGET) expect(typical).toBeLessThanOrEqual(BASELINE.openMs * 1.1);
+}
+
+function withinPanBudget(name: string, runs: number[]): void {
+  const worst = median(runs);
+  console.log(`${name} pan p95 per run ${runs.map((r) => r.toFixed(1)).join(', ')}ms, median ${worst.toFixed(1)}ms`);
+  if (ENFORCE_BUDGET) expect(worst).toBeLessThanOrEqual(CULLED_PAN_BASELINE.panP95Ms + 2);
 }
 
 function skipsSeparate(b: Board): void {
@@ -185,6 +217,11 @@ test('drags a step on a 200-arrow board within the routing budget', async ({ pag
 test('opens a 200-arrow board within the routing budget', async ({ page, request }) => {
   test.setTimeout(120_000);
   withinOpenBudget('routing', await openRuns(page, await seed(request, skipsSeparate, 'Perf open')));
+});
+
+test('pans a 200-arrow board at 100% within the routing budget', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  withinPanBudget('routing', await panRuns(page, await seed(request, skipsSeparate, 'Perf pan')));
 });
 
 test('drags a step on a 200-arrow board with shifted arrows within the routing budget', async ({ page, request }) => {
