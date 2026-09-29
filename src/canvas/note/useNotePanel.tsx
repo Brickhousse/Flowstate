@@ -4,18 +4,20 @@ import { useStore } from 'zustand';
 import type { Board } from '../../model/types';
 import { holdDraft } from '../../store/drafts';
 import { flowStore } from '../../store/store';
+import { notify } from '../../ui/toast';
 import { boardOf } from '../commands';
 import type { NoteControls } from './noteControls';
 import { NotePanel } from './NotePanel';
 import { createNoteSession } from './noteSession';
 
 const PANEL_GAP = 8;
+const draftLost = () => notify('Note not saved: the step was deleted.');
 
 type NotePanelHandle = { controls: NoteControls; panel: ReactNode };
 
 export function useNotePanel(boardId: string, editable: boolean, board: Board | undefined): NotePanelHandle {
   const rf = useReactFlow();
-  const session = useMemo(() => createNoteSession(flowStore, boardId), [boardId]);
+  const session = useMemo(() => createNoteSession(flowStore, boardId, draftLost), [boardId]);
   const nodeId = useStore(session.state, (s) => s.nodeId);
   const node = nodeId ? board?.nodes.find((n) => n.id === nodeId) : undefined;
 

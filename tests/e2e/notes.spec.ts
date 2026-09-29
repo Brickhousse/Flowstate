@@ -130,6 +130,7 @@ test('deleting the step closes its open note without saving', async ({ page, req
     }),
   );
   await expect(panel(page)).toHaveCount(0);
+  await expect(page.locator('.toast')).toContainText('Note not saved: the step was deleted.');
   expect(await history(page)).toBe(before + 1);
   expect((await board(page)).nodes).toHaveLength(0);
 });

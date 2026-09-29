@@ -11,7 +11,7 @@ export interface NoteSession {
   close(): void;
 }
 
-export function createNoteSession(flow: StoreApi<FlowStore>, boardId: string): NoteSession {
+export function createNoteSession(flow: StoreApi<FlowStore>, boardId: string, onDraftLost: () => void): NoteSession {
   const state = createStore<{ nodeId: string | null }>()(() => ({ nodeId: null }));
   let draft: string | null = null;
 
@@ -22,7 +22,11 @@ export function createNoteSession(flow: StoreApi<FlowStore>, boardId: string): N
     if (!nodeId) return;
     state.setState({ nodeId: null });
     const node = flow.getState().project.boards.find((b) => b.id === boardId)?.nodes.find((n) => n.id === nodeId);
-    const note = node && text !== null ? noteToSave(node.note, text) : null;
+    if (!node) {
+      if (text?.trim()) onDraftLost();
+      return;
+    }
+    const note = text !== null ? noteToSave(node.note, text) : null;
     if (note !== null) flow.getState().changeBoard((b) => updateSteps(b, [{ id: nodeId, note }]), boardId);
   };
 

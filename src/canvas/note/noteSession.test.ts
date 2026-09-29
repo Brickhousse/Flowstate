@@ -10,11 +10,12 @@ function setup() {
   const a = addStep(board, { title: 'A', note: 'Old' });
   const b = addStep(board, { title: 'B' });
   const flow = createFlowStore(project);
-  const session = createNoteSession(flow, board.id);
+  let lost = 0;
+  const session = createNoteSession(flow, board.id, () => lost++);
   const noteOf = (id: string) => flow.getState().project.boards.find((x) => x.id === board.id)?.nodes.find((n) => n.id === id)?.note;
   const history = () => flow.getState().past.length;
   const openId = () => session.state.getState().nodeId;
-  return { flow, session, a, b, boardId: board.id, noteOf, history, openId };
+  return { flow, session, a, b, boardId: board.id, noteOf, history, openId, lostDrafts: () => lost };
 }
 
 describe('note session', () => {
@@ -116,6 +117,35 @@ describe('note session', () => {
     session.close();
     expect(history()).toBe(before);
     expect(openId()).toBeNull();
+  });
+
+  it('reports a written draft it had to drop because the step is gone', () => {
+    const { flow, session, a, lostDrafts } = setup();
+    session.open(a);
+    session.edit('Lost');
+    flow.getState().changeBoard((x) => deleteSteps(x, [a]));
+    session.close();
+    expect(lostDrafts()).toBe(1);
+  });
+
+  it('reports nothing when the step goes with the note unedited or blanked', () => {
+    const { flow, session, a, b, lostDrafts } = setup();
+    session.open(a);
+    flow.getState().changeBoard((x) => deleteSteps(x, [a]));
+    session.close();
+    session.open(b);
+    session.edit('  \n');
+    flow.getState().changeBoard((x) => deleteSteps(x, [b]));
+    session.close();
+    expect(lostDrafts()).toBe(0);
+  });
+
+  it('reports nothing when a written draft is saved', () => {
+    const { session, a, lostDrafts } = setup();
+    session.open(a);
+    session.edit('Kept');
+    session.close();
+    expect(lostDrafts()).toBe(0);
   });
 
   it('drops the draft quietly when its board is gone', () => {
