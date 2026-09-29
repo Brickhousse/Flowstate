@@ -7,10 +7,15 @@ import {
   SelectionMode,
   useReactFlow,
   type EdgeChange,
+  type EdgeMouseHandler,
   type NodeChange,
+  type NodeMouseHandler,
   type OnConnect,
   type OnConnectEnd,
+  type OnMoveEnd,
+  type OnNodeDrag,
   type ReactFlowInstance,
+  type SelectionDragHandler,
   type Viewport,
 } from '@xyflow/react';
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent as ReactMouseEvent } from 'react';
@@ -24,7 +29,7 @@ import { flowStore, useFlow } from '../store/store';
 import { arrowRoutes, type RouteCache } from './arrowRoutes';
 import { GuidesOverlay } from './assist/GuidesOverlay';
 import { useDragAssist } from './assist/useDragAssist';
-import { editArrowLabel } from './commands';
+import { boardOf, editArrowLabel } from './commands';
 import { cursor } from './cursor';
 import { FlowEdge } from './FlowEdge';
 import { GroupNode } from './GroupNode';
@@ -51,6 +56,7 @@ export const SHAPE_MIME = 'application/x-flowstate-shape';
 const nodeTypes = { step: StepNode, text: TextNode, group: GroupNode, lane: LaneNode };
 const edgeTypes = { flow: FlowEdge };
 const EMPTY: string[] = [];
+const PAN_BUTTONS = [1, 2];
 const viewports = new Map<string, Viewport>();
 
 function minimapColor(type: string | undefined, actor: string | null | undefined, colors: ThemeColors): string {
@@ -241,7 +247,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       const fromId = state.fromNode.id;
       const fromSide = asSide(state.fromHandle?.id);
       const dropId = document.elementFromPoint(point.clientX, point.clientY)?.closest('.react-flow__node')?.getAttribute('data-id');
-      const dropTarget = board?.nodes.find((n) => n.id === dropId && n.kind !== 'group' && n.id !== fromId);
+      const dropTarget = boardOf(boardId)?.nodes.find((n) => n.id === dropId && n.kind !== 'group' && n.id !== fromId);
       if (dropTarget) {
         runSafely(() => flowStore.getState().changeBoard((b) => connect(b, { source: fromId, target: dropTarget.id, sourceSide: fromSide }), boardId));
         return;
@@ -256,7 +262,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
       );
       if (id) startEditing(id);
     },
-    [rf, board, boardId, editable, startEditing],
+    [rf, boardId, editable, startEditing],
   );
 
   const onPaneClick = useCallback(
@@ -287,6 +293,73 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
     [rf, boardId, editable, startEditing],
   );
 
+  const onConnectStart = useCallback(() => setConnecting(true), []);
+
+  const onNodeDragStart: OnNodeDrag<FlowNode> = useCallback(
+    (event, node, dragged) => {
+      dragging.current = [node.id];
+      flowStore.getState().begin();
+      const ids = dragged.map((n) => n.id);
+      if (event.shiftKey) keepSelected(rf, ids);
+      assist.start(ids);
+    },
+    [rf, assist],
+  );
+
+  const onSelectionDragStart: SelectionDragHandler<FlowNode> = useCallback((_, dragged) => {
+    dragging.current = dragged.map((n) => n.id);
+  }, []);
+
+  const onNodeDragStop: OnNodeDrag<FlowNode> = useCallback(
+    (event) => {
+      // The copy lands before endDrag commits so it shares the drag's undo entry; see ADR 0011.
+      const copy = assist.finish(event);
+      if (copy) {
+        const ids = runSafely(() =>
+          flowStore.getState().changeBoard((b) => {
+            setPositions(b, copy.start);
+            return pasteSubgraph(b, copySubgraph(b, copy.ids), copy.delta.x, copy.delta.y);
+          }, boardId),
+        );
+        if (ids) flowStore.getState().select(ids);
+      }
+      endDrag(dragging);
+    },
+    [assist, boardId],
+  );
+
+  const onNodeDoubleClick: NodeMouseHandler<FlowNode> = useCallback(
+    (_, node) => {
+      if (editable && node.type !== 'lane') startEditing(node.id);
+    },
+    [editable, startEditing],
+  );
+
+  const onEdgeDoubleClick: EdgeMouseHandler<FlowEdgeType> = useCallback(
+    (_, edge) => {
+      if (editable) editArrowLabel(edge.id);
+    },
+    [editable],
+  );
+
+  const onPaneMouseMove = useCallback(
+    (e: ReactMouseEvent) => {
+      cursor.flow = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    },
+    [rf],
+  );
+
+  const onMoveEnd: OnMoveEnd = useCallback((_, vp) => viewports.set(boardId, vp), [boardId]);
+
+  const onDragOver = useCallback((e: DragEvent) => {
+    if (e.dataTransfer.types.includes(SHAPE_MIME)) e.preventDefault();
+  }, []);
+
+  const minimapNodeColor = useCallback(
+    (n: FlowNode) => minimapColor(n.type, n.type === 'lane' ? null : (n.data as { node?: { actor: string | null } }).node?.actor, colors),
+    [colors],
+  );
+
   if (!board) return null;
   const saved = viewports.get(boardId);
   return (
@@ -299,46 +372,21 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onConnectStart={() => setConnecting(true)}
+        onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         connectionRadius={20}
         connectOnClick={false}
         elevateNodesOnSelect={false}
-        onNodeDragStart={(event, node, dragged) => {
-          dragging.current = [node.id];
-          flowStore.getState().begin();
-          const ids = dragged.map((n) => n.id);
-          if (event.shiftKey) keepSelected(rf, ids);
-          assist.start(ids);
-        }}
-        onSelectionDragStart={(_, dragged) => {
-          dragging.current = dragged.map((n) => n.id);
-        }}
-        onNodeDragStop={(event) => {
-          // The copy lands before endDrag commits so it shares the drag's undo entry; see ADR 0011.
-          const copy = assist.finish(event);
-          if (copy) {
-            const ids = runSafely(() =>
-              flowStore.getState().changeBoard((b) => {
-                setPositions(b, copy.start);
-                return pasteSubgraph(b, copySubgraph(b, copy.ids), copy.delta.x, copy.delta.y);
-              }, boardId),
-            );
-            if (ids) flowStore.getState().select(ids);
-          }
-          endDrag(dragging);
-        }}
-        onNodeDoubleClick={(_, node) => editable && node.type !== 'lane' && startEditing(node.id)}
+        onNodeDragStart={onNodeDragStart}
+        onSelectionDragStart={onSelectionDragStart}
+        onNodeDragStop={onNodeDragStop}
+        onNodeDoubleClick={onNodeDoubleClick}
         onEdgeClick={picker.onEdgeClick}
-        onEdgeDoubleClick={(_, edge) => editable && editArrowLabel(edge.id)}
+        onEdgeDoubleClick={onEdgeDoubleClick}
         onPaneClick={onPaneClick}
-        onPaneMouseMove={(e) => {
-          cursor.flow = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
-        }}
-        onMoveEnd={(_, vp) => viewports.set(boardId, vp)}
-        onDragOver={(e) => {
-          if (e.dataTransfer.types.includes(SHAPE_MIME)) e.preventDefault();
-        }}
+        onPaneMouseMove={onPaneMouseMove}
+        onMoveEnd={onMoveEnd}
+        onDragOver={onDragOver}
         onDrop={onDrop}
         defaultViewport={saved}
         fitView={!saved}
@@ -346,7 +394,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
         connectionMode={ConnectionMode.Loose}
         minZoom={0.05}
         maxZoom={4}
-        panOnDrag={[1, 2]}
+        panOnDrag={PAN_BUTTONS}
         selectionOnDrag={editable}
         selectionKeyCode={null}
         selectionMode={SelectionMode.Partial}
@@ -371,7 +419,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
             zoomable
             nodeStrokeWidth={0}
             maskColor={colors.mask}
-            nodeColor={(n) => minimapColor(n.type, n.type === 'lane' ? null : (n.data as { node?: { actor: string | null } }).node?.actor, colors)}
+            nodeColor={minimapNodeColor}
           />
         )}
       </ReactFlow>
