@@ -36,6 +36,8 @@ import { FlowEdge } from './FlowEdge';
 import { GroupNode } from './GroupNode';
 import { LaneNode } from './LaneNode';
 import { useCanvasMenu } from './menu/useCanvasMenu';
+import { NoteOpener } from './note/noteOpener';
+import { useNotePanel } from './note/useNotePanel';
 import { PickPanelOpen } from './pick/pickPanelOpen';
 import { useArrowPicker } from './pick/useArrowPicker';
 import { useArrowsAt } from './pick/useArrowsAt';
@@ -108,7 +110,8 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const exporting = useFlow((s) => s.exporting);
   const colors = useThemeColors();
   const rf = useReactFlow<FlowNode, FlowEdgeType>();
-  useKeyboard(boardId, editable);
+  const notes = useNotePanel(boardId, editable, board);
+  useKeyboard(boardId, editable, notes.open);
   const nodeCache = useRef<RenderCache<FlowNode>>(new Map());
   const edgeCache = useRef<RenderCache<FlowEdgeType>>(new Map());
   const routeCache = useRef<RouteCache>(new Map());
@@ -365,66 +368,69 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const saved = viewports.get(boardId);
   return (
     <PickPanelOpen value={picker.open}>
-      <ReactFlow<FlowNode, FlowEdgeType>
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onConnectStart={onConnectStart}
-        onConnectEnd={onConnectEnd}
-        connectionRadius={20}
-        connectOnClick={false}
-        elevateNodesOnSelect={false}
-        onNodeDragStart={onNodeDragStart}
-        onSelectionDragStart={onSelectionDragStart}
-        onNodeDragStop={onNodeDragStop}
-        onNodeDoubleClick={onNodeDoubleClick}
-        onEdgeClick={picker.onEdgeClick}
-        onEdgeDoubleClick={onEdgeDoubleClick}
-        onPaneClick={onPaneClick}
-        onPaneMouseMove={onPaneMouseMove}
-        onMoveEnd={onMoveEnd}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        defaultViewport={saved}
-        fitView={!saved}
-        fitViewOptions={FIT_VIEW}
-        connectionMode={ConnectionMode.Loose}
-        minZoom={0.05}
-        maxZoom={4}
-        panOnDrag={PAN_BUTTONS}
-        selectionOnDrag={editable}
-        selectionKeyCode={null}
-        selectionMode={SelectionMode.Partial}
-        panActivationKeyCode="Space"
-        zoomOnDoubleClick={false}
-        deleteKeyCode={null}
-        multiSelectionKeyCode="Shift"
-        nodesDraggable={editable}
-        nodesConnectable={editable}
-        elementsSelectable={editable}
-        onlyRenderVisibleElements={!exporting}
-        disableKeyboardA11y
-        className={['fs-flow', !editable && 'is-reference', (connecting || (editable && reattaching)) && 'is-connecting'].filter(Boolean).join(' ')}
-      >
-        {editable && <GuidesOverlay />}
-        {!exporting && routes && <CulledArrows edges={edges} routes={routes} editable={editable} onEdgeClick={picker.onEdgeClick} onEdgeDoubleClick={onEdgeDoubleClick} />}
-        {menu}
-        {picker.panel}
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color={colors.dot} />
-        {editable && (
-          <MiniMap
-            pannable
-            zoomable
-            nodeStrokeWidth={0}
-            maskColor={colors.mask}
-            nodeColor={minimapNodeColor}
-          />
-        )}
-      </ReactFlow>
+      <NoteOpener value={notes.open}>
+        <ReactFlow<FlowNode, FlowEdgeType>
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onConnectStart={onConnectStart}
+          onConnectEnd={onConnectEnd}
+          connectionRadius={20}
+          connectOnClick={false}
+          elevateNodesOnSelect={false}
+          onNodeDragStart={onNodeDragStart}
+          onSelectionDragStart={onSelectionDragStart}
+          onNodeDragStop={onNodeDragStop}
+          onNodeDoubleClick={onNodeDoubleClick}
+          onEdgeClick={picker.onEdgeClick}
+          onEdgeDoubleClick={onEdgeDoubleClick}
+          onPaneClick={onPaneClick}
+          onPaneMouseMove={onPaneMouseMove}
+          onMoveEnd={onMoveEnd}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          defaultViewport={saved}
+          fitView={!saved}
+          fitViewOptions={FIT_VIEW}
+          connectionMode={ConnectionMode.Loose}
+          minZoom={0.05}
+          maxZoom={4}
+          panOnDrag={PAN_BUTTONS}
+          selectionOnDrag={editable}
+          selectionKeyCode={null}
+          selectionMode={SelectionMode.Partial}
+          panActivationKeyCode="Space"
+          zoomOnDoubleClick={false}
+          deleteKeyCode={null}
+          multiSelectionKeyCode="Shift"
+          nodesDraggable={editable}
+          nodesConnectable={editable}
+          elementsSelectable={editable}
+          onlyRenderVisibleElements={!exporting}
+          disableKeyboardA11y
+          className={['fs-flow', !editable && 'is-reference', (connecting || (editable && reattaching)) && 'is-connecting'].filter(Boolean).join(' ')}
+        >
+          {editable && <GuidesOverlay />}
+          {!exporting && routes && <CulledArrows edges={edges} routes={routes} editable={editable} onEdgeClick={picker.onEdgeClick} onEdgeDoubleClick={onEdgeDoubleClick} />}
+          {menu}
+          {picker.panel}
+          {notes.panel}
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color={colors.dot} />
+          {editable && (
+            <MiniMap
+              pannable
+              zoomable
+              nodeStrokeWidth={0}
+              maskColor={colors.mask}
+              nodeColor={minimapNodeColor}
+            />
+          )}
+        </ReactFlow>
+      </NoteOpener>
     </PickPanelOpen>
   );
 }

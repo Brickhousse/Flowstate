@@ -666,3 +666,53 @@
 .fs-arrow-bend { cursor: move; }
 .fs-arrow-end { cursor: grab; }
 .fs-arrow-end.is-dragging { cursor: grabbing; }
+.fs-context-menu.fs-note-panel {
+  width: 320px;
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+}
+.fs-note-edit {
+  padding: 8px;
+}
+.fs-note-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 68px;
+  max-height: 230px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 18px;
+  resize: none;
+  overflow-y: auto;
+  outline: none;
+}
+.fs-note-input:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.fs-note-read {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--text);
+  outline: none;
+}
+.fs-note-read p {
+  margin: 0 0 8px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.fs-note-read p:last-child {
+  margin-bottom: 0;
+}

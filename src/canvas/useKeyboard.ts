@@ -34,7 +34,7 @@ function nextActor(actor: Actor | null): Actor | null {
   return i === ACTORS.length - 1 ? null : ACTORS[i + 1];
 }
 
-export function useKeyboard(boardId: string, enabled: boolean): void {
+export function useKeyboard(boardId: string, enabled: boolean, openNote: (nodeId: string) => void): void {
   const rf = useReactFlow();
 
   useEffect(() => {
@@ -134,7 +134,12 @@ export function useKeyboard(boardId: string, enabled: boolean): void {
           }
           return;
         case 'F2':
-          if (one) {
+          if (e.shiftKey) {
+            if (oneStep) {
+              e.preventDefault();
+              openNote(oneStep);
+            }
+          } else if (one) {
             e.preventDefault();
             st.setEditing(one);
           }
@@ -182,5 +187,5 @@ export function useKeyboard(boardId: string, enabled: boolean): void {
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [rf, boardId, enabled]);
+  }, [rf, boardId, enabled, openNote]);
 }
