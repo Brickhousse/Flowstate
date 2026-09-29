@@ -639,6 +639,13 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+.fs-culled {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
 .fs-arrow-handles {
   position: absolute;
   left: 0;

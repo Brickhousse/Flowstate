@@ -32,7 +32,10 @@ async function drag(page: Page, target: Locator, dx: number, dy: number): Promis
   await page.mouse.up();
 }
 
-const pathOf = (page: Page, edgeId: string) => page.locator(`[data-testid="rf__edge-${edgeId}"] .react-flow__edge-path`);
+const mountedPath = (page: Page, edgeId: string) => page.locator(`[data-testid="rf__edge-${edgeId}"] .react-flow__edge-path`);
+const culledPath = (page: Page, edgeId: string) => page.locator(`.fs-culled-arrow[data-id="${edgeId}"] .react-flow__edge-path`);
+// The arrow's one drawn path: React Flow's, or the overlay's while React Flow culls it (ADR-0018).
+const pathOf = (page: Page, edgeId: string) => mountedPath(page, edgeId).or(culledPath(page, edgeId));
 
 function toScreen(page: Page, edgeId: string, p: XY): Promise<XY> {
   return pathOf(page, edgeId).evaluate((el: SVGPathElement, pt) => {
@@ -1195,4 +1198,85 @@ test('the reference view opens no arrow menu', async ({ page, request }) => {
   await page.mouse.click(box.x - 20, box.y + box.height / 2, { button: 'right' });
   expect(await menusAfterSettling(page)).toBe(0);
   expect(await edgeSelection(page)).toEqual([]);
+});
+
+const viewportShiftY = (page: Page) => page.locator('.react-flow__viewport').evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).f);
+
+// Middle-drags the empty pane in 600px pieces until its top edge sits in [boardY, boardY + 1) at zoom 1.
+async function panTopTo(page: Page, boardY: number): Promise<void> {
+  const pane = await boxOf(page.locator('.react-flow__pane'));
+  let remaining = Math.floor(-(await viewportShiftY(page)) - boardY);
+  while (remaining !== 0) {
+    const step = Math.sign(remaining) * Math.min(Math.abs(remaining), 600);
+    // why: the minimap sits in the bottom right corner and the board tabs at the top centre.
+    const grab = { x: pane.x + pane.width * 0.75, y: step > 0 ? pane.y + 100 : pane.y + pane.height - 100 };
+    await page.mouse.move(grab.x, grab.y);
+    await page.mouse.down({ button: 'middle' });
+    await page.mouse.move(grab.x, grab.y + step, { steps: 6 });
+    await page.mouse.up({ button: 'middle' });
+    remaining -= step;
+  }
+}
+
+function detourPair(b: Board): void {
+  const a = addStep(b, { title: 'A', x: 0, y: 0 });
+  const c = addStep(b, { title: 'B', x: 400, y: 0 });
+  connect(b, { source: a, target: c });
+  b.edges[0].bends = [{ x: 300, y: 36 }, { x: 300, y: 2000 }, { x: 350, y: 2000 }, { x: 350, y: 36 }];
+}
+
+async function openOnDetour(page: Page, request: Parameters<typeof seed>[0]): Promise<{ x: number; y: number; width: number; height: number }> {
+  const p = await seed(request, detourPair);
+  await open(page, p);
+  await resetZoom(page);
+  await zoomSettled(page);
+  const pane = await boxOf(page.locator('.react-flow__pane'));
+  await panTopTo(page, 2000 - pane.height / 2);
+  return pane;
+}
+
+test('a hand-shaped arrow stays drawn while only its detour is on screen', async ({ page, request }) => {
+  const pane = await openOnDetour(page, request);
+  await expect(pathOf(page, 'e3')).toHaveCount(1);
+  await expect(pathOf(page, 'e3')).toBeVisible();
+  const detour = await toScreen(page, 'e3', { x: 325, y: 2000 });
+  expect(detour.y).toBeGreaterThan(pane.y);
+  expect(detour.y).toBeLessThan(pane.y + pane.height);
+  expect((await toScreen(page, 'e3', { x: 0, y: 72 })).y).toBeLessThan(pane.y);
+});
+
+test('right-clicking the detour of a culled arrow opens the arrow menu', async ({ page, request }) => {
+  await openOnDetour(page, request);
+  await rightClickArrow(page, 'e3', { x: 300, y: 1800 });
+  await expect(page.getByRole('menuitem', { name: 'Route around boxes' })).toBeVisible();
+  expect(await edgeSelection(page)).toEqual(['e3']);
+});
+
+test('clicking the detour of a culled arrow selects it with its handles, and a double-click opens the label editor', async ({ page, request }) => {
+  await openOnDetour(page, request);
+  await clickBoard(page, 'e3', { x: 300, y: 1800 });
+  expect(await edgeSelection(page)).toEqual(['e3']);
+  expect(await nodeSelection(page)).toEqual([]);
+  expect(await menusAfterSettling(page)).toBe(0);
+  await expect(page.locator('.fs-arrow-end')).toHaveCount(2);
+  const at = await toScreen(page, 'e3', { x: 300, y: 1800 });
+  await page.mouse.dblclick(at.x, at.y);
+  await expect(page.locator('.fs-edge-toolbar').getByLabel('Arrow label')).toBeFocused();
+});
+
+test('a culled arrow is drawn exactly once as its box pans onto the screen', async ({ page, request }) => {
+  await openOnDetour(page, request);
+  await panTopTo(page, 74);
+  await expect(culledPath(page, 'e3')).toHaveCount(1);
+  await expect(mountedPath(page, 'e3')).toHaveCount(0);
+  const head = await culledPath(page, 'e3').getAttribute('marker-end');
+  expect(head).toContain('url(');
+  // why: the two boxes end at y 72, so React Flow takes over between the pane top passing 72 and 71.
+  for (const top of [73, 72, 71, 70]) {
+    await panTopTo(page, top);
+    await expect(pathOf(page, 'e3')).toHaveCount(1);
+  }
+  await expect(mountedPath(page, 'e3')).toHaveCount(1);
+  await expect(culledPath(page, 'e3')).toHaveCount(0);
+  expect(await mountedPath(page, 'e3').getAttribute('marker-end')).toBe(head);
 });

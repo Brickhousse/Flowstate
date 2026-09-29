@@ -12,7 +12,7 @@ const HANDLE = 8;
 const BAR_LONG = 16;
 const BAR_SHORT = 6;
 
-// why: clicks bubble through the portal to React Flow's edge wrapper, which would open the label editor or Shift-deselect.
+// why: clicks bubble through the portal to the arrow's wrapper, which would open the label editor or Shift-deselect.
 // A bar lets its double-click through, because it sits where users double-click an arrow to label it.
 const swallow = (e: ReactMouseEvent) => e.stopPropagation();
 

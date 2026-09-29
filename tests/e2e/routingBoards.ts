@@ -1,3 +1,4 @@
+import { GAP_MAIN } from '../../src/layout/geometry';
 import type { Board } from '../../src/model/types';
 import { connect, disconnect } from '../../src/ops/edges';
 import { addStep } from '../../src/ops/steps';
@@ -55,4 +56,25 @@ export function separateSkips(b: Board): void {
 export function separateCrossings(b: Board): void {
   const at = cells(b);
   for (const e of b.edges) if (at.get(e.source)?.row !== at.get(e.target)?.row) e.separate = true;
+}
+
+const DETOUR_COLS = [10, 12];
+const DETOUR_DEPTH = 1400;
+
+// why: 20 hand-shaped arrows whose detours run seven rows away from their boxes, so that at 100% about ten of them
+// are on screen while their boxes are not, which is what the culled-arrow layer draws (ADR-0018).
+export function detourArrows(b: Board): void {
+  const at = cells(b);
+  const byId = new Map(b.nodes.map((n) => [n.id, n]));
+  for (const e of b.edges) {
+    const s = at.get(e.source);
+    const t = at.get(e.target);
+    const n = byId.get(e.source);
+    if (!s || !t || !n || s.row !== t.row || t.col !== s.col + 1 || !DETOUR_COLS.includes(s.col)) continue;
+    const y = n.y + n.h / 2;
+    const far = y + (s.row < ROWS / 2 ? DETOUR_DEPTH : -DETOUR_DEPTH);
+    const left = n.x + n.w + GAP_MAIN / 3;
+    const right = n.x + n.w + (GAP_MAIN * 2) / 3;
+    e.bends = [{ x: left, y }, { x: left, y: far }, { x: right, y: far }, { x: right, y }];
+  }
 }

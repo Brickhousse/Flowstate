@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import type { Board, Project } from '../../src/model/types';
 import { addStep } from '../../src/ops/steps';
 import { board, open, seed } from './fixtures';
-import { crossRowBoard, routingBoard, separateCrossings, separateSkips } from './routingBoards';
+import { crossRowBoard, detourArrows, routingBoard, separateCrossings, separateSkips } from './routingBoards';
 
 function sampleFrames(page: Page, count = 240): Promise<number[]> {
   return page.evaluate(
@@ -209,6 +209,11 @@ function crossingsSeparate(b: Board): void {
   separateCrossings(b);
 }
 
+function skipsSeparateWithDetours(b: Board): void {
+  skipsSeparate(b);
+  detourArrows(b);
+}
+
 test('drags a step on a 200-arrow board within the routing budget', async ({ page, request }) => {
   test.setTimeout(120_000);
   withinDragBudget('routing', await dragRuns(page, await seed(request, skipsSeparate, 'Perf routing'), 'R0 C5'));
@@ -222,6 +227,11 @@ test('opens a 200-arrow board within the routing budget', async ({ page, request
 test('pans a 200-arrow board at 100% within the routing budget', async ({ page, request }) => {
   test.setTimeout(120_000);
   withinPanBudget('routing', await panRuns(page, await seed(request, skipsSeparate, 'Perf pan')));
+});
+
+test('pans a 200-arrow board with 20 long detours at 100% within the routing budget', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  withinPanBudget('detours', await panRuns(page, await seed(request, skipsSeparateWithDetours, 'Perf detours')));
 });
 
 test('drags a step on a 200-arrow board with shifted arrows within the routing budget', async ({ page, request }) => {

@@ -30,6 +30,7 @@ import { arrowRoutes, type RouteCache } from './arrowRoutes';
 import { GuidesOverlay } from './assist/GuidesOverlay';
 import { useDragAssist } from './assist/useDragAssist';
 import { boardOf, editArrowLabel } from './commands';
+import { CulledArrows } from './culled/CulledArrows';
 import { cursor } from './cursor';
 import { FlowEdge } from './FlowEdge';
 import { GroupNode } from './GroupNode';
@@ -410,6 +411,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
         className={['fs-flow', !editable && 'is-reference', (connecting || (editable && reattaching)) && 'is-connecting'].filter(Boolean).join(' ')}
       >
         {editable && <GuidesOverlay />}
+        {!exporting && routes && <CulledArrows edges={edges} routes={routes} editable={editable} onEdgeClick={picker.onEdgeClick} onEdgeDoubleClick={onEdgeDoubleClick} />}
         {menu}
         {picker.panel}
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color={colors.dot} />

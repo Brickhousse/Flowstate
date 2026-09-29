@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { crossRowBoard, routingBoard, separateCrossings, separateSkips } from '../../tests/e2e/routingBoards';
+import { crossRowBoard, detourArrows, routingBoard, separateCrossings, separateSkips } from '../../tests/e2e/routingBoards';
 import { simplify } from '../layout/route/polyline';
 import { createBoard } from '../model/factory';
 import type { Board, XY } from '../model/types';
 import { arrowRoutes, type RouteCache } from './arrowRoutes';
+import { overlayCandidates } from './culled/culling';
+import type { NodeBoxSource } from './culled/edgeVisible';
 
 const samePoints = (a: XY[], b: XY[]) => a.length === b.length && a.every((p, i) => p.x === b[i].x && p.y === b[i].y);
 
@@ -42,5 +44,16 @@ describe('perf routing boards', () => {
     separateCrossings(crossings);
     expect(shiftedArrows(skips)).toHaveLength(0);
     expect(shiftedArrows(crossings)).toHaveLength(20);
+  });
+
+  it('gives 20 arrows a detour that leaves the box React Flow culls by, and no other arrow one', () => {
+    const b = createBoard('B');
+    routingBoard(b);
+    separateSkips(b);
+    detourArrows(b);
+    expect(b.edges.filter((e) => e.bends.length)).toHaveLength(20);
+    const nodes = new Map<string, NodeBoxSource>(b.nodes.map((n) => [n.id, { internals: { positionAbsolute: { x: n.x, y: n.y } }, width: n.w, height: n.h }]));
+    const candidates = overlayCandidates(b.edges, arrowRoutes(b, new Map()), nodes);
+    expect(candidates.map((e) => e.id).sort()).toEqual(b.edges.filter((e) => e.bends.length).map((e) => e.id).sort());
   });
 });
