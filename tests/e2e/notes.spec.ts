@@ -491,3 +491,18 @@ test('a right-click in the note text keeps the browser menu', async ({ page, req
   await expect.poll(() => page.evaluate(() => document.body.dataset.menuBlocked)).toBe('false');
   await expect(panel(page)).toHaveCount(1);
 });
+
+test('a wheel over the Note button closes the open note like any wheel outside it', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'Zoomed', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  await noteButton(page).click();
+  await page.keyboard.type('Before the zoom');
+  const at = await centerOf(noteButton(page));
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.wheel(0, 120);
+  await expect(panel(page)).toHaveCount(0);
+  expect((await board(page)).nodes[0].note).toBe('Before the zoom');
+});
