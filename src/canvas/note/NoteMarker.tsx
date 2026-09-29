@@ -1,4 +1,3 @@
-import { NotebookText } from 'lucide-react';
 import { useContext } from 'react';
 import { NOTE_TOGGLE_CLASS, NoteControlsContext } from './noteControls';
 
@@ -17,8 +16,6 @@ export function NoteMarker({ nodeId }: { nodeId: string }) {
         notes.toggle(nodeId);
       }}
       onDoubleClick={(e) => e.stopPropagation()}
-    >
-      <NotebookText size={10} strokeWidth={2.2} />
-    </button>
+    />
   );
 }
