@@ -150,9 +150,11 @@ async function openTime(page: Page, project: Project): Promise<number> {
   return page.evaluate(() => new Promise<number>((resolve) => requestAnimationFrame(() => resolve(performance.now()))));
 }
 
+const MEASURED_OPENS = 3;
+
 async function openRuns(page: Page, project: Project): Promise<number[]> {
   const runs: number[] = [];
-  for (let run = 0; run < 4; run++) {
+  for (let run = 0; run <= MEASURED_OPENS; run++) {
     const at = await openTime(page, project);
     if (run > 0) runs.push(at);
   }
