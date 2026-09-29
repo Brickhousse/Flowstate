@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { firstLine, hasMoreLines, noteParagraphs, noteToSave } from './note';
+import { firstLine, hasMoreLines, noteExcerpt, noteParagraphs, noteToSave } from './note';
 
 describe('note rules', () => {
   it('takes the text before the first line break as the first line', () => {
@@ -24,5 +24,20 @@ describe('note rules', () => {
     expect(noteToSave('Old', 'Old  \n\n')).toBeNull();
     expect(noteToSave('', '   ')).toBeNull();
     expect(noteToSave('Old', '')).toBe('');
+  });
+});
+
+describe('noteExcerpt', () => {
+  it('keeps a note of 300 characters whole', () => {
+    const note = 'x'.repeat(300);
+    expect(noteExcerpt(note)).toEqual({ text: note, truncated: false });
+  });
+
+  it('cuts a longer note to 300 characters and an ellipsis', () => {
+    expect(noteExcerpt(`${'x'.repeat(300)}yz`)).toEqual({ text: `${'x'.repeat(300)}…`, truncated: true });
+  });
+
+  it('never splits a character made of two code units', () => {
+    expect(noteExcerpt(`${'a'.repeat(299)}😀😀`)).toEqual({ text: `${'a'.repeat(299)}😀…`, truncated: true });
   });
 });

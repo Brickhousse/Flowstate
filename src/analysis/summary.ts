@@ -1,4 +1,5 @@
 import { formatDuration } from '../model/duration';
+import { noteExcerpt } from '../model/note';
 import type { BoardNode, Flag, Project } from '../model/types';
 
 const q = (s: string) => JSON.stringify(s);
@@ -15,7 +16,11 @@ function describeStep(n: BoardNode): string {
   if (n.durationMin !== null) parts.push(`dur=${formatDuration(n.durationMin)}`);
   if (n.status) parts.push(`status=${n.status}`);
   if (n.laneId) parts.push(`lane=${n.laneId}`);
-  if (n.note) parts.push(`note=${q(n.note)}`);
+  if (n.note) {
+    const { text, truncated } = noteExcerpt(n.note);
+    parts.push(`note=${q(text)}`);
+    if (truncated) parts.push('note-truncated');
+  }
   if (n.replaces) parts.push(`replaces=${q(n.replaces)}`);
   return parts.join(' ') + describeFlags(n.flags);
 }

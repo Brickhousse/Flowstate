@@ -58,4 +58,14 @@ describe('summarizeBoard', () => {
     expect(text).toContain('e4: s1 -> s2 flow separate');
     expect(text).toContain('e5: s1 -> s3 flow hand-shaped');
   });
+
+  it('cuts a long note to 300 characters and marks it note-truncated', () => {
+    const project = createProject('P');
+    const b = project.boards[0];
+    addStep(b, { title: 'Long', note: `${'x'.repeat(300)}y` });
+    addStep(b, { title: 'Short', note: 'One\n\nTwo' });
+    const lines = summarizeBoard(project, b.id).split('\n');
+    expect(lines).toContain(`s1 [process] "Long" note="${'x'.repeat(300)}…" note-truncated`);
+    expect(lines).toContain('s2 [process] "Short" note="One\\n\\nTwo"');
+  });
 });
