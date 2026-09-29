@@ -2,15 +2,10 @@ import { setBends } from '../ops/arrowPath';
 import { layoutPrefs } from '../store/layoutPrefs';
 import { flowStore } from '../store/store';
 import { mods } from './assist/modifiers';
-import { GRID } from './assist/snap';
 import type { DragContext, DragSession } from './dragSession';
-import { reshapedBends, type Reshape } from './reshape';
+import { arrowSnap, reshapedBends, type Reshape } from './reshape';
 
 const DRAG_SLOP = 3;
-
-function snap(v: number): number {
-  return layoutPrefs.getState().prefs.gridSnap && !mods.alt ? Math.round(v / GRID) * GRID : v;
-}
 
 export function reshapeSession(ctx: DragContext, r: Reshape): DragSession {
   const current = () => flowStore.getState().project.boards.find((b) => b.id === ctx.boardId)?.edges.find((x) => x.id === ctx.edgeId);
@@ -25,7 +20,7 @@ export function reshapeSession(ctx: DragContext, r: Reshape): DragSession {
         moving = true;
         flowStore.getState().begin();
       }
-      ctx.change((b) => setBends(b, ctx.edgeId, reshapedBends(r, ctx.toFlow(ev), snap)));
+      ctx.change((b) => setBends(b, ctx.edgeId, reshapedBends(r, ctx.toFlow(ev), arrowSnap(layoutPrefs.getState().prefs.gridSnap, mods.alt))));
       return true;
     },
     finish() {

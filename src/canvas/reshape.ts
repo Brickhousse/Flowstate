@@ -1,10 +1,15 @@
 import { moveSegment, samePoints, segmentAxis, simplify, splitStubs } from '../layout/route/polyline';
 import type { Axis } from '../layout/route/ports';
 import type { XY } from '../model/types';
+import { GRID } from './assist/snap';
 
 export type Reshape =
   | { kind: 'segment'; points: XY[]; bends: XY[]; index: number; across: Axis; offset: number }
   | { kind: 'bend'; bends: XY[]; index: number; offset: XY };
+
+export function arrowSnap(gridSnap: boolean, alt: boolean): (v: number) => number {
+  return gridSnap && !alt ? (v) => Math.round(v / GRID) * GRID : (v) => v;
+}
 
 export function handlePoints(route: XY[]): XY[] {
   return splitStubs(simplify(route));

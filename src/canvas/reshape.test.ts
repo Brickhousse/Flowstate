@@ -2,14 +2,29 @@ import { describe, expect, it } from 'vitest';
 import { innerSegments } from '../layout/route/polyline';
 import { STUB } from '../layout/route/ports';
 import type { XY } from '../model/types';
-import { bendReshape, handlePoints, reshapedBends, segmentReshape } from './reshape';
+import { arrowSnap, bendReshape, handlePoints, reshapedBends, segmentReshape } from './reshape';
 
 const p = (x: number, y: number): XY => ({ x, y });
 const free = (v: number) => v;
 const grid = (v: number) => Math.round(v / 20) * 20;
 
-// Ports at (0,0) and (200,100), stubs 22 long, one vertical run at x=100: the handle points of an automatic S route.
+// Ports at (0,0) and (200,100), a stub at each end, one vertical run at x=100: the handle points of an automatic S route.
 const S_ROUTE = [p(0, 0), p(STUB, 0), p(100, 0), p(100, 100), p(200 - STUB, 100), p(200, 100)];
+
+describe('arrowSnap', () => {
+  it('rounds to the 20px grid when grid snap is on', () => {
+    const snap = arrowSnap(true, false);
+    expect([snap(148), snap(150), snap(7), snap(-11)]).toEqual([140, 160, 0, -20]);
+  });
+
+  it('leaves values alone when grid snap is off', () => {
+    expect(arrowSnap(false, false)(148)).toBe(148);
+  });
+
+  it('leaves values alone while Alt is held, even with grid snap on', () => {
+    expect(arrowSnap(true, true)(148)).toBe(148);
+  });
+});
 
 describe('handlePoints', () => {
   it('gives a straight automatic route one bar between two stubs', () => {
