@@ -28,7 +28,7 @@ export function useArrowDrag(edge: BoardEdge, points: XY[]): ArrowDrag {
 
   const toFlow = (e: { clientX: number; clientY: number }) => rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
 
-  // why: listen on window, because a segment that lines up with its neighbour vanishes mid-drag along with its bar.
+  // why: ADR-0014
   // why: the session starts after the button and one-at-a-time filters, so a right-click never flags a reattach.
   const track = (e: ReactPointerEvent<SVGElement>, start: (ctx: DragContext) => DragSession) => {
     if (e.button !== 0 || stop.current) return;

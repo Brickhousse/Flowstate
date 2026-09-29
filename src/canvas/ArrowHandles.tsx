@@ -27,7 +27,7 @@ export function ArrowHandles({ edge, route }: { edge: BoardEdge; route: Route })
     { end: 'source', at: points[0] },
     { end: 'target', at: points[points.length - 1] },
   ] as const;
-  // why: handles next to a box would sit under the node layer, so they draw in a portal above it.
+  // why: ADR-0014
   return (
     <ViewportPortal>
       <svg className="fs-arrow-handles" width={1} height={1} onClick={swallow}>

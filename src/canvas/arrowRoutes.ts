@@ -46,7 +46,7 @@ function ends({ e, s, t }: Link, direction: Direction): ArrowEnds {
 
 export function arrowRoutes(board: Board, cache: RouteCache): Map<string, Route> {
   const links = linksOf(board);
-  // why: the board-wide pass runs only when some arrow is separate (ADR-0015).
+  // why: ADR-0015
   const spots = links.some((l) => l.e.separate) ? spreadPorts(links.map((l) => ends(l, board.direction))) : null;
   const out = new Map<string, Route>();
   for (const link of links) {

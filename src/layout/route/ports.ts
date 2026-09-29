@@ -3,7 +3,7 @@ import type { Rect } from '../geometry';
 
 export const STUB = 22;
 export const CORNER_RADIUS = 14;
-// why: React Flow anchors an arrow at the outer edge of the side dot (9px plus a 1px rendered border, centred on the box edge).
+// why: ADR-0014
 export const PORT_OUTSET = 5.5;
 
 export type Axis = 'x' | 'y';

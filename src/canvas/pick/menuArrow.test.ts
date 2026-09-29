@@ -7,8 +7,8 @@ const never = () => {
 
 describe('menuArrow', () => {
   it('takes a handle, label or bend square at its word, bend included', () => {
-    expect(menuArrow({ on: 'handle', edgeId: 'e1', bend: 2 }, never, [])).toEqual({ edgeId: 'e1', bend: 2 });
-    expect(menuArrow({ on: 'handle', edgeId: 'e1', bend: null }, never, ['e2'])).toEqual({ edgeId: 'e1', bend: null });
+    expect(menuArrow({ on: 'named', edgeId: 'e1', bend: 2 }, never, [])).toEqual({ edgeId: 'e1', bend: 2 });
+    expect(menuArrow({ on: 'named', edgeId: 'e1', bend: null }, never, ['e2'])).toEqual({ edgeId: 'e1', bend: null });
   });
 
   it('takes the arrow React Flow reports on a line, unless a selected arrow is also under the pointer', () => {
