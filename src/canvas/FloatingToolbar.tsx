@@ -58,7 +58,7 @@ export function FloatingToolbar({ node }: { node: BoardNode }) {
           <ColorSwatch color={node.color} />
         </ToolButton>
         {/* keepFocus: the open note closes when its text box loses focus, which would turn this toggle into a reopen. */}
-        <ToolButton title="Note (Shift+F2)" active={noteOpen} className={NOTE_TOGGLE_CLASS} keepFocus onClick={() => notes.toggle(node.id)}>
+        <ToolButton title="Note (Shift+F2)" active={noteOpen} className={NOTE_TOGGLE_CLASS} keepFocus opensDialog onClick={() => notes.toggle(node.id)}>
           <NotebookText size={15} />
         </ToolButton>
         <ToolButton title="More details" active={panel === 'more'} onClick={() => toggle('more')}>

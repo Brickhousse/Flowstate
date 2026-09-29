@@ -210,19 +210,17 @@ test('focus taken by a toolbar button saves the note before a key can delete the
   expect((await board(page)).nodes[0].note).toBe('Kept');
 });
 
-test('the Note button toggles the note and shows whether it is open', async ({ page, request }) => {
+test('the Note button toggles the note', async ({ page, request }) => {
   const p = await seed(request, (b) => {
     addStep(b, { title: 'Toggle', x: 0, y: 0 });
   });
   await open(page, p);
   await node(page, 's1').click();
   const before = await history(page);
-  await expect(noteButton(page)).toHaveAttribute('aria-pressed', 'false');
   await noteButton(page).click();
-  await expect(noteButton(page)).toHaveAttribute('aria-pressed', 'true');
+  await expect(panel(page)).toHaveCount(1);
   await noteButton(page).click();
   await expect(panel(page)).toHaveCount(0);
-  await expect(noteButton(page)).toHaveAttribute('aria-pressed', 'false');
   expect(await history(page)).toBe(before);
   await noteButton(page).click();
   await page.keyboard.type('Twice');
@@ -506,4 +504,31 @@ test('a wheel over the Note button closes the open note like any wheel outside i
   await page.mouse.wheel(0, 120);
   await expect(panel(page)).toHaveCount(0);
   expect((await board(page)).nodes[0].note).toBe('Before the zoom');
+});
+
+test('the note openers announce a dialog and whether it is open, and the dialog names its step', async ({ page, request }) => {
+  const p = await seed(request, (b, project) => {
+    addStep(b, { title: 'Announced', note: 'First\n\nSecond', x: 0, y: 0 });
+    const other = createBoard('Reference');
+    addStep(other, { title: 'Read only', note: 'One\n\nTwo', x: 0, y: 0 });
+    project.boards.push(other);
+  });
+  await open(page, p);
+  const onBox = marker(node(page, 's1'));
+  await expect(onBox).toHaveAttribute('aria-haspopup', 'dialog');
+  await expect(onBox).toHaveAttribute('aria-expanded', 'false');
+  await onBox.click();
+  await expect(page.getByRole('dialog', { name: 'Note: Announced' })).toBeVisible();
+  await expect(onBox).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Escape');
+  await expect(onBox).toHaveAttribute('aria-expanded', 'false');
+  await node(page, 's1').click();
+  await expect(noteButton(page)).toHaveAttribute('aria-haspopup', 'dialog');
+  await expect(noteButton(page)).toHaveAttribute('aria-expanded', 'false');
+  await noteButton(page).click();
+  await expect(noteButton(page)).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Escape');
+  const reference = await openReferenceBeside(page);
+  await marker(reference.getByTestId('node-s1')).click();
+  await expect(page.getByRole('dialog', { name: 'Note: Read only' })).toBeVisible();
 });

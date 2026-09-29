@@ -4,15 +4,15 @@ import type { XY } from '../../model/types';
 import { Popup } from '../menu/Popup';
 import { NOTE_TOGGLE_CLASS } from './noteControls';
 
-type Props = { at: XY; note: string; editable: boolean; onEdit: (text: string) => void; onClose: () => void };
+type Props = { at: XY; title: string; note: string; editable: boolean; onEdit: (text: string) => void; onClose: () => void };
 
 const DISMISS = { closeOnBlur: false, toggler: `.${NOTE_TOGGLE_CLASS}` };
 
-export function NotePanel({ at, note, editable, onEdit, onClose }: Props) {
+export function NotePanel({ at, title, note, editable, onEdit, onClose }: Props) {
   return (
     <Popup at={at} onClose={onClose} wheelInside="scroll" dismiss={DISMISS} className="fs-note-panel">
       {/* Popup blocks the browser menu for its menus; note text needs it for spelling and paste. */}
-      <div onContextMenu={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-label={title ? `Note: ${title}` : 'Note'} onContextMenu={(e) => e.stopPropagation()}>
         {editable ? <NoteEditor note={note} onEdit={onEdit} onClose={onClose} /> : <NoteReader note={note} onClose={onClose} />}
       </div>
     </Popup>
@@ -85,8 +85,6 @@ function NoteReader({ note, onClose }: { note: string; onClose: () => void }) {
     <div
       ref={ref}
       className="fs-note-read"
-      role="region"
-      aria-label="Note"
       tabIndex={-1}
       onBlur={closeWhenFocusLeaves(onClose)}
       onKeyDown={handleNoteKeys(onClose)}

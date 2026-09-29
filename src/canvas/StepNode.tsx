@@ -88,7 +88,7 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
         {node.note && (
           <div className={noteLine.more ? 'fs-note has-more' : 'fs-note'}>
             <span className="fs-note-text">{noteLine.first}</span>
-            <button type="button" className={MARKER_CLASS} title="Open note" aria-label="Open note" />
+            <button type="button" className={MARKER_CLASS} title="Open note" aria-label="Open note" aria-haspopup="dialog" aria-expanded="false" />
           </div>
         )}
         {(node.owner || node.durationMin !== null || critical) && (

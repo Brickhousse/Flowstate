@@ -39,6 +39,6 @@ export function useNotePanel(boardId: string, editable: boolean, board: Board | 
     return { x: p.x, y: p.y + PANEL_GAP };
   }, [rf, boardId, nodeId]);
 
-  const panel = node && at ? <NotePanel key={node.id} at={at} note={node.note} editable={editable} onEdit={session.edit} onClose={session.close} /> : null;
+  const panel = node && at ? <NotePanel key={node.id} at={at} title={node.title} note={node.note} editable={editable} onEdit={session.edit} onClose={session.close} /> : null;
   return { controls: session, panel };
 }
