@@ -1,6 +1,6 @@
 import { Handle, NodeResizer, Position, type NodeProps } from '@xyflow/react';
 import { Clock } from 'lucide-react';
-import { memo, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { fillOf } from '../model/color';
 import { formatDuration } from '../model/duration';
 import { firstLine, hasMoreLines } from '../model/note';
@@ -47,6 +47,7 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
   const { node, critical, dimmed, glowing, editable } = data;
   const body = useRef<HTMLDivElement>(null);
   const [noteCut, setNoteCut] = useState(false);
+  const noteLine = useMemo(() => ({ first: firstLine(node.note), more: hasMoreLines(node.note) }), [node.note]);
   useLayoutEffect(() => {
     if (!body.current) return;
     // Read before fitTitle writes, so both measurements share one layout.
@@ -81,8 +82,8 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
         <StepTitle node={node} editable={editable} />
         {node.note && (
           <div className="fs-note">
-            <span className="fs-note-text">{firstLine(node.note)}</span>
-            {(noteCut || hasMoreLines(node.note)) && <NoteMarker nodeId={id} />}
+            <span className="fs-note-text">{noteLine.first}</span>
+            {(noteCut || noteLine.more) && <NoteMarker nodeId={id} />}
           </div>
         )}
         {(node.owner || node.durationMin !== null || critical) && (
