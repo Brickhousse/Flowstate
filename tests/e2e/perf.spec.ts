@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { Board, Project } from '../../src/model/types';
 import { addStep } from '../../src/ops/steps';
-import { board, open, seed } from './fixtures';
+import { board, open, seed, zoomSettled } from './fixtures';
 import { crossRowBoard, detourArrows, routingBoard, separateCrossings, separateSkips } from './routingBoards';
 
 function sampleFrames(page: Page, count = 240): Promise<number[]> {
@@ -25,10 +25,6 @@ function sampleFrames(page: Page, count = 240): Promise<number[]> {
 function p95(times: number[]): number {
   const sorted = times.slice(5).sort((a, b) => a - b);
   return sorted[Math.floor(sorted.length * 0.95)];
-}
-
-async function zoomSettled(page: Page): Promise<void> {
-  await expect.poll(() => viewportMatrix(page).then((m) => m.a)).toBe(1);
 }
 
 function viewportMatrix(page: Page): Promise<{ a: number; f: number }> {
@@ -157,10 +153,11 @@ async function openRuns(page: Page, project: Project): Promise<number[]> {
   return runs;
 }
 
-async function panRuns(page: Page, project: Project): Promise<number[]> {
+async function panRuns(page: Page, project: Project, ready: (page: Page) => Promise<void> = async () => {}): Promise<number[]> {
   await open(page, project);
   await page.getByRole('button', { name: 'Reset zoom to 100%' }).click();
   await zoomSettled(page);
+  await ready(page);
   const pane = (await page.locator('.react-flow__pane').boundingBox())!;
   const offsetY = pane.y + (await viewportMatrix(page)).f;
   // why: a point between rows (board y 136 + 200k) stays between rows as the board moves with the pointer.
@@ -231,7 +228,8 @@ test('pans a 200-arrow board at 100% within the routing budget', async ({ page, 
 
 test('pans a 200-arrow board with 20 long detours at 100% within the routing budget', async ({ page, request }) => {
   test.setTimeout(120_000);
-  withinPanBudget('detours', await panRuns(page, await seed(request, skipsSeparateWithDetours, 'Perf detours')));
+  const culledDrawn = async (page: Page) => expect(await page.locator('.fs-culled-arrow').count()).toBeGreaterThan(0);
+  withinPanBudget('detours', await panRuns(page, await seed(request, skipsSeparateWithDetours, 'Perf detours'), culledDrawn));
 });
 
 test('drags a step on a 200-arrow board with shifted arrows within the routing budget', async ({ page, request }) => {

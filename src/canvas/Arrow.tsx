@@ -15,7 +15,7 @@ export interface ArrowProps {
   markerEnd: string | undefined;
 }
 
-// Everything an arrow draws, whether React Flow mounts it or the culled-arrow layer does (ADR-0018).
+// why: ADR-0018
 export function Arrow({ id, data, route, selected, markerEnd }: ArrowProps) {
   const { edge, critical, dimmed, color, labelColor } = data;
   const { x: labelX, y: labelY } = route.label;

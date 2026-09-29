@@ -1,4 +1,4 @@
-import type { InternalNode, Node } from '@xyflow/react';
+import type { InternalNode, Node, Transform } from '@xyflow/react';
 import { isEdgeVisible as reference } from '@xyflow/system';
 import { describe, expect, it } from 'vitest';
 import { isEdgeVisible, nodeBox, overlapArea } from './edgeVisible';
@@ -14,7 +14,6 @@ function internalNode(x: number, y: number, size: { measured?: [number, number];
   return { ...userNode, measured: { width: size.measured?.[0], height: size.measured?.[1] }, internals: { positionAbsolute: { x, y }, z: 0, userNode } };
 }
 
-// A deterministic generator, so a failure names its seed.
 function lcg(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
@@ -38,7 +37,8 @@ describe('isEdgeVisible agrees with @xyflow/system', () => {
         const source = internalNode(rnd() * 4000 - 2000, rnd() * 4000 - 2000, size);
         const target = internalNode(rnd() * 4000 - 2000, rnd() * 4000 - 2000, size);
         const zoom = 0.05 + rnd() * 3.95;
-        const pane = { width: rnd() * 2000, height: rnd() * 1200, transform: [rnd() * 6000 - 3000, rnd() * 6000 - 3000, zoom] as [number, number, number] };
+        const transform: Transform = [rnd() * 6000 - 3000, rnd() * 6000 - 3000, zoom];
+        const pane = { width: rnd() * 2000, height: rnd() * 1200, transform };
         const args = { sourceNode: source, targetNode: target, ...pane };
         expect(isEdgeVisible(args), `case ${i}`).toBe(reference(args));
       }
@@ -49,7 +49,8 @@ describe('isEdgeVisible agrees with @xyflow/system', () => {
     const a = internalNode(0, 0, { measured: [180, 72] });
     const b = internalNode(400, 0, { measured: [180, 72] });
     for (const top of [71, 71.5, 71.999, 72, 72.001, 73]) {
-      const args = { sourceNode: a, targetNode: b, width: 1600, height: 900, transform: [0, -top, 1] as [number, number, number] };
+      const transform: Transform = [0, -top, 1];
+      const args = { sourceNode: a, targetNode: b, width: 1600, height: 900, transform };
       expect(isEdgeVisible(args), `top ${top}`).toBe(reference(args));
       expect(isEdgeVisible(args), `top ${top}`).toBe(top < 72);
     }
@@ -57,10 +58,12 @@ describe('isEdgeVisible agrees with @xyflow/system', () => {
 
   it('gives a zero-size box one unit, as the reference does', () => {
     const a = internalNode(100, 100, {});
-    const args = { sourceNode: a, targetNode: a, width: 50, height: 50, transform: [-100, -100, 1] as [number, number, number] };
+    const transform: Transform = [-100, -100, 1];
+    const args = { sourceNode: a, targetNode: a, width: 50, height: 50, transform };
     expect(isEdgeVisible(args)).toBe(true);
     expect(reference(args)).toBe(true);
-    const off = { ...args, transform: [-101, -101, 1] as [number, number, number] };
+    const shifted: Transform = [-101, -101, 1];
+    const off = { ...args, transform: shifted };
     expect(isEdgeVisible(off)).toBe(false);
     expect(reference(off)).toBe(false);
   });

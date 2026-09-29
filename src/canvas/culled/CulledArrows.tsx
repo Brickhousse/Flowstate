@@ -15,7 +15,7 @@ interface Props {
   onEdgeDoubleClick: EdgeMouseHandler<FlowEdgeType>;
 }
 
-// why: this layer follows the nodes in the DOM, so an arrow under the steps needs a lower z than their 0 (ADR-0018).
+// why: ADR-0018
 function layerZ(edgeZ: number | undefined): number {
   return edgeZ ? edgeZ : -1;
 }
@@ -37,7 +37,6 @@ export function CulledArrows({ edges, routes, editable, onEdgeClick, onEdgeDoubl
         if (!route || !edge.data) return null;
         return (
           <svg key={edge.id} className="fs-culled" width={1} height={1} style={{ zIndex: layerZ(edge.zIndex) }}>
-            {/* why: React Flow's pan filter and the arrow picker both know an arrow line by its class (ADR-0018). */}
             <g className={`react-flow__edge fs-culled-arrow nopan${editable ? ' selectable' : ''}`} data-id={edge.id} onClick={(e) => onClick(e, edge)} onDoubleClick={(e) => onEdgeDoubleClick(e, edge)}>
               <Arrow id={edge.id} data={edge.data} route={route} selected={!!edge.selected} markerEnd={markerUrl(edge.markerEnd, rfId)} />
             </g>

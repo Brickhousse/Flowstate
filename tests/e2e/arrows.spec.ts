@@ -3,7 +3,7 @@ import { createBoard } from '../../src/model/factory';
 import type { Board, XY } from '../../src/model/types';
 import { connect } from '../../src/ops/edges';
 import { addStep } from '../../src/ops/steps';
-import { board, node, open, seed } from './fixtures';
+import { board, node, open, seed, zoomSettled } from './fixtures';
 
 test.use({ viewport: { width: 1600, height: 900 } });
 
@@ -541,11 +541,6 @@ async function menusAfterSettling(page: Page): Promise<number> {
   return page.getByRole('menu').count();
 }
 const pickList = (page: Page) => page.getByRole('menu', { name: 'Arrows here' });
-// A click during the reset zoom animation would close the list as a zoom.
-async function zoomSettled(page: Page): Promise<void> {
-  await expect.poll(() => page.locator('.react-flow__viewport').evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a)).toBe(1);
-}
-
 async function clickBoard(page: Page, edgeId: string, p: XY, shift = false): Promise<void> {
   const at = await toScreen(page, edgeId, p);
   if (shift) await page.keyboard.down('Shift');
@@ -1200,19 +1195,26 @@ test('the reference view opens no arrow menu', async ({ page, request }) => {
   expect(await edgeSelection(page)).toEqual([]);
 });
 
-const viewportShiftY = (page: Page) => page.locator('.react-flow__viewport').evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).f);
+const viewportShift = (page: Page, axis: 'x' | 'y') =>
+  page.locator('.react-flow__viewport').evaluate((el, a) => {
+    const m = new DOMMatrix(getComputedStyle(el).transform);
+    return a === 'x' ? m.e : m.f;
+  }, axis);
 
-// Middle-drags the empty pane in 600px pieces until its top edge sits in [boardY, boardY + 1) at zoom 1.
-async function panTopTo(page: Page, boardY: number): Promise<void> {
+// Middle-drags the empty pane in 600px pieces until its top (or left) edge sits in [boardValue, boardValue + 1) at zoom 1.
+async function panPaneTo(page: Page, axis: 'x' | 'y', boardValue: number): Promise<void> {
   const pane = await boxOf(page.locator('.react-flow__pane'));
-  let remaining = Math.floor(-(await viewportShiftY(page)) - boardY);
+  let remaining = Math.floor(-(await viewportShift(page, axis)) - boardValue);
   while (remaining !== 0) {
     const step = Math.sign(remaining) * Math.min(Math.abs(remaining), 600);
-    // why: the minimap sits in the bottom right corner and the board tabs at the top centre.
-    const grab = { x: pane.x + pane.width * 0.75, y: step > 0 ? pane.y + 100 : pane.y + pane.height - 100 };
+    // why: the minimap sits in the bottom right corner, the palette at the left middle and the board tabs at the top centre.
+    const grab =
+      axis === 'y'
+        ? { x: pane.x + pane.width * 0.75, y: step > 0 ? pane.y + 100 : pane.y + pane.height - 100 }
+        : { x: step > 0 ? pane.x + 100 : pane.x + pane.width - 100, y: pane.y + pane.height * 0.7 };
     await page.mouse.move(grab.x, grab.y);
     await page.mouse.down({ button: 'middle' });
-    await page.mouse.move(grab.x, grab.y + step, { steps: 6 });
+    await page.mouse.move(axis === 'y' ? grab.x : grab.x + step, axis === 'y' ? grab.y + step : grab.y, { steps: 6 });
     await page.mouse.up({ button: 'middle' });
     remaining -= step;
   }
@@ -1231,7 +1233,7 @@ async function openOnDetour(page: Page, request: Parameters<typeof seed>[0]): Pr
   await resetZoom(page);
   await zoomSettled(page);
   const pane = await boxOf(page.locator('.react-flow__pane'));
-  await panTopTo(page, 2000 - pane.height / 2);
+  await panPaneTo(page, 'y', 2000 - pane.height / 2);
   return pane;
 }
 
@@ -1266,17 +1268,51 @@ test('clicking the detour of a culled arrow selects it with its handles, and a d
 
 test('a culled arrow is drawn exactly once as its box pans onto the screen', async ({ page, request }) => {
   await openOnDetour(page, request);
-  await panTopTo(page, 74);
+  await panPaneTo(page, 'y', 74);
   await expect(culledPath(page, 'e3')).toHaveCount(1);
   await expect(mountedPath(page, 'e3')).toHaveCount(0);
   const head = await culledPath(page, 'e3').getAttribute('marker-end');
   expect(head).toContain('url(');
   // why: the two boxes end at y 72, so React Flow takes over between the pane top passing 72 and 71.
   for (const top of [73, 72, 71, 70]) {
-    await panTopTo(page, top);
+    await panPaneTo(page, 'y', top);
     await expect(pathOf(page, 'e3')).toHaveCount(1);
   }
   await expect(mountedPath(page, 'e3')).toHaveCount(1);
   await expect(culledPath(page, 'e3')).toHaveCount(0);
   expect(await mountedPath(page, 'e3').getAttribute('marker-end')).toBe(head);
+});
+
+// A at 0,0 and B at 400,1600: React Flow culls the arrow by the box (0,0)-(580,1672); its detour runs at x 700.
+function tallDetourPair(b: Board): void {
+  const a = addStep(b, { title: 'A', x: 0, y: 0 });
+  const c = addStep(b, { title: 'B', x: 400, y: 1600 });
+  connect(b, { source: a, target: c });
+  b.edges[0].bends = [{ x: 700, y: 36 }, { x: 700, y: 1636 }];
+}
+
+test('a fresh canvas opened at a saved view off both boxes still hands the arrow to React Flow', async ({ page, request }) => {
+  const p = await seed(request, (b, project) => {
+    tallDetourPair(b);
+    project.boards.push(createBoard('Other'));
+  });
+  await open(page, p);
+  await resetZoom(page);
+  await zoomSettled(page);
+  await panPaneTo(page, 'x', 600);
+  await expect(culledPath(page, 'e3')).toHaveCount(1);
+  const saved = await viewportShift(page, 'x');
+
+  await page.getByRole('button', { name: 'Other', exact: true }).click();
+  await expect(page.locator('.react-flow__node')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Board 1', exact: true }).click();
+  await expect(culledPath(page, 'e3')).toHaveCount(1);
+  expect(await viewportShift(page, 'x')).toBe(saved);
+  await expect(mountedPath(page, 'e3')).toHaveCount(0);
+  await expect(page.locator('.react-flow__node')).toHaveCount(0);
+
+  await panPaneTo(page, 'x', 500);
+  await expect(mountedPath(page, 'e3')).toHaveCount(1);
+  await expect(culledPath(page, 'e3')).toHaveCount(0);
+  await expect(page.locator('.react-flow__node')).toHaveCount(0);
 });

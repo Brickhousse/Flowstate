@@ -35,3 +35,8 @@ export async function links(page: Page): Promise<string[]> {
 export function node(page: Page, id: string) {
   return page.getByTestId(`node-${id}`);
 }
+
+// Resolves once the "Reset zoom to 100%" animation has landed, so no click or pan races it.
+export async function zoomSettled(page: Page): Promise<void> {
+  await expect.poll(() => page.locator('.react-flow__viewport').evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a)).toBe(1);
+}

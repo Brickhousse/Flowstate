@@ -11,6 +11,7 @@ export interface ArrowLink {
 export type NodeBoxes = ReadonlyMap<string, NodeBoxSource>;
 
 const boxes = new WeakMap<Route, Box>();
+const NONE: never[] = [];
 
 export function routeBox(route: Route): Box {
   const hit = boxes.get(route);
@@ -43,13 +44,14 @@ export function overlayCandidates<T extends ArrowLink>(arrows: readonly T[], rou
 }
 
 export function culledOnScreen<T extends ArrowLink>(candidates: readonly T[], routes: ReadonlyMap<string, Route>, nodes: NodeBoxes, pane: Pane): T[] {
-  if (!pane.width || !pane.height) return [];
+  if (!pane.width || !pane.height) return NONE;
   const view = paneRect(pane);
-  return candidates.filter((a) => {
+  const out = candidates.filter((a) => {
     const route = routes.get(a.id);
     const sourceNode = nodes.get(a.source);
     const targetNode = nodes.get(a.target);
     if (!route || !sourceNode || !targetNode || overlapArea(view, boxToRect(routeBox(route))) <= 0) return false;
     return !isEdgeVisible({ sourceNode, targetNode, width: pane.width, height: pane.height, transform: pane.transform });
   });
+  return out.length ? out : NONE;
 }

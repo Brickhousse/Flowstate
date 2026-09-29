@@ -1,18 +1,25 @@
-import { MarkerType } from '@xyflow/react';
+import { MarkerType, type EdgeMarkerType } from '@xyflow/react';
+import { getMarkerId } from '@xyflow/system';
 import { describe, expect, it } from 'vitest';
 import { markerUrl } from './markerUrl';
 
-describe('markerUrl', () => {
-  it('names the marker by its sorted fields under the flow id, as React Flow does', () => {
-    expect(markerUrl({ type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#123456' }, '1')).toBe("url('#1__color=#123456&height=16&type=arrowclosed&width=16')");
-  });
+const markers: EdgeMarkerType[] = [
+  { type: MarkerType.ArrowClosed, width: 16, height: 16, color: '#123456' },
+  { type: MarkerType.Arrow, color: undefined },
+  { type: MarkerType.Arrow, strokeWidth: 2, orient: 'auto', markerUnits: 'userSpaceOnUse' },
+  'head',
+];
 
-  it('keeps an undefined field, and drops the prefix for an empty flow id', () => {
-    expect(markerUrl({ type: MarkerType.Arrow, color: undefined }, '')).toBe("url('#color=undefined&type=arrow')");
-  });
+describe('markerUrl agrees with @xyflow/system', () => {
+  for (const marker of markers) {
+    for (const rfId of ['1', 'flow-2', '']) {
+      it(`for ${JSON.stringify(marker)} in flow "${rfId}"`, () => {
+        expect(markerUrl(marker, rfId)).toBe(`url('#${getMarkerId(marker, rfId)}')`);
+      });
+    }
+  }
 
-  it('passes a string marker through and gives nothing for none', () => {
-    expect(markerUrl('head', '1')).toBe("url('#head')");
+  it('gives nothing for no marker', () => {
     expect(markerUrl(undefined, '1')).toBeUndefined();
   });
 });

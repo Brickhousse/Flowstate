@@ -1,3 +1,4 @@
+import type { Transform } from '@xyflow/react';
 import { describe, expect, it } from 'vitest';
 import type { Route } from '../arrowRoutes';
 import { culledOnScreen, overlayCandidates, routeBox } from './culling';
@@ -28,7 +29,9 @@ const routes = new Map([
   ['orphan', detour],
 ]);
 
-const pane = (top: number, left = 0, zoom = 1) => ({ width: 1600, height: 900, transform: [-left * zoom, -top * zoom, zoom] as [number, number, number] });
+function pane(top: number, left = 0, zoom = 1): { width: number; height: number; transform: Transform } {
+  return { width: 1600, height: 900, transform: [-left * zoom, -top * zoom, zoom] };
+}
 
 describe('routeBox', () => {
   it('bounds the points, and is cached on the route object', () => {
