@@ -98,6 +98,8 @@ test('drags on a 1000-step board with guides on without long frames', async ({ p
 const BASELINE = { dragP95Ms: 33.4, openMs: 484 };
 // Pan p95 median measured with React Flow culling on (onlyRenderVisibleElements), at commit 189df81.
 const CULLED_PAN_BASELINE = { panP95Ms: 16.8 };
+// Open median of the noted 200-arrow board measured at 80029fd, before the step notes feature.
+const NOTED_BASELINE = { openMs: 507 };
 const ENFORCE_BUDGET = !!process.env.PERF_BUDGET;
 
 function median(values: number[]): number {
@@ -184,10 +186,10 @@ function withinDragBudget(name: string, runs: number[]): void {
   if (ENFORCE_BUDGET) expect(worst).toBeLessThanOrEqual(BASELINE.dragP95Ms + 2);
 }
 
-function withinOpenBudget(name: string, runs: number[]): void {
+function withinOpenBudget(name: string, runs: number[], limitMs = BASELINE.openMs * 1.1): void {
   const typical = median(runs);
   console.log(`${name} open per run ${runs.map((r) => r.toFixed(0)).join(', ')}ms, median ${typical.toFixed(0)}ms`);
-  if (ENFORCE_BUDGET) expect(typical).toBeLessThanOrEqual(BASELINE.openMs * 1.1);
+  if (ENFORCE_BUDGET) expect(typical).toBeLessThanOrEqual(limitMs);
 }
 
 function withinPanBudget(name: string, runs: number[]): void {
@@ -254,11 +256,11 @@ test('opens a 200-arrow board with shifted arrows within the routing budget', as
   withinOpenBudget('shifted', await openRuns(page, await seed(request, crossingsSeparate, 'Perf shifted open')));
 });
 
-test('opens a 200-arrow board with notes on every step within the routing budget', async ({ page, request }) => {
+test('opens a 200-arrow board with notes on every step within 5% of its time before notes', async ({ page, request }) => {
   test.setTimeout(120_000);
   const runs = await openRuns(page, await seed(request, skipsSeparateWithNotes, 'Perf notes open'));
   await expectNoteMarkers(page);
-  withinOpenBudget('notes', runs);
+  withinOpenBudget('notes', runs, NOTED_BASELINE.openMs * 1.05);
 });
 
 test('drags a noted step on a 200-arrow board with notes within the routing budget', async ({ page, request }) => {
