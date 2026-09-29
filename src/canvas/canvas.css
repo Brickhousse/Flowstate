@@ -121,13 +121,38 @@
   -webkit-line-clamp: 3;
 }
 .fs-note {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
   font-size: 11px;
   color: var(--text-2);
   font-style: italic;
+}
+.fs-note-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 100%;
+}
+.fs-note-marker {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  /* React Flow turns pointer events off on nodes in the read-only reference view. */
+  pointer-events: all;
+}
+.fs-note-marker:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 .fs-no-duration {
   color: var(--critical);

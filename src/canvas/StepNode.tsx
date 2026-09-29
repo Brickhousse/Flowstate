@@ -1,8 +1,9 @@
 import { Handle, NodeResizer, Position, type NodeProps } from '@xyflow/react';
 import { Clock } from 'lucide-react';
-import { memo, useLayoutEffect, useRef } from 'react';
+import { memo, useLayoutEffect, useRef, useState } from 'react';
 import { fillOf } from '../model/color';
 import { formatDuration } from '../model/duration';
+import { firstLine, hasMoreLines } from '../model/note';
 import type { Side } from '../model/types';
 import { flowStore, useFlow } from '../store/store';
 import { AddHandles } from './AddHandles';
@@ -11,6 +12,7 @@ import { RESIZE_MIN } from './assist/snap';
 import { FlagBadges } from './FlagBadges';
 import { FloatingToolbar } from './FloatingToolbar';
 import { ACTOR_LABEL, ActorIcon } from './labels';
+import { NoteMarker } from './note/NoteMarker';
 import { ShapeSvg } from './ShapeSvg';
 import { StepTitle } from './StepTitle';
 import type { StepFlowNode } from './toFlow';
@@ -23,6 +25,11 @@ const HANDLES: Array<[Side, Position]> = [
 ];
 
 const begin = () => flowStore.getState().begin();
+
+function noteOverflows(body: HTMLElement): boolean {
+  const text = body.querySelector(':scope > .fs-note > .fs-note-text');
+  return !!text && text.scrollWidth > text.clientWidth;
+}
 
 function fitTitle(body: HTMLElement): void {
   const title = body.querySelector(':scope > div.fs-title');
@@ -39,8 +46,12 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
   const editing = useFlow((s) => s.editingId === id);
   const { node, critical, dimmed, glowing, editable } = data;
   const body = useRef<HTMLDivElement>(null);
+  const [noteCut, setNoteCut] = useState(false);
   useLayoutEffect(() => {
-    if (body.current) fitTitle(body.current);
+    if (!body.current) return;
+    // Read before fitTitle writes, so both measurements share one layout.
+    setNoteCut(noteOverflows(body.current));
+    fitTitle(body.current);
   }, [node.w, node.h, node.shape, node.title, node.note, node.owner, node.durationMin, critical, editing]);
   const fill = fillOf(node.color);
   const className = [
@@ -68,7 +79,12 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
       )}
       <div ref={body} className="fs-step-body">
         <StepTitle node={node} editable={editable} />
-        {node.note && <div className="fs-note">{node.note}</div>}
+        {node.note && (
+          <div className="fs-note">
+            <span className="fs-note-text">{firstLine(node.note)}</span>
+            {(noteCut || hasMoreLines(node.note)) && <NoteMarker nodeId={id} />}
+          </div>
+        )}
         {(node.owner || node.durationMin !== null || critical) && (
           <div className="fs-step-meta">
             {node.owner && <span className="fs-owner">{node.owner}</span>}

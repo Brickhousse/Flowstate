@@ -6,7 +6,7 @@ import { download, slug } from './download';
 
 const PADDING = 48;
 const MAX_SIDE = 8000;
-const HIDDEN = ['fs-toolbar', 'fs-add', 'fs-handle', 'react-flow__resize-control'];
+const HIDDEN = ['fs-toolbar', 'fs-add', 'fs-handle', 'react-flow__resize-control', 'fs-note-marker'];
 
 function nextFrames(count: number): Promise<void> {
   return new Promise((resolve) => {
