@@ -174,6 +174,7 @@ export function searchAround(input: AroundInput, opts: AroundOptions = {}): XY[]
   const started = now();
   const s = stubEnd(input.source, input.sourceSide);
   const t = stubEnd(input.target, input.targetSide);
+  if (s.x === t.x && s.y === t.y) return null;
   const grid = buildGrid(s, t, input.boxes);
   const inside = (p: XY) => grid.walls.some((r) => r.x < p.x && p.x < r.x + r.w && r.y < p.y && p.y < r.y + r.h);
   if (inside(s) || inside(t)) return null;

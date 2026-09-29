@@ -68,6 +68,10 @@ describe('searchAround', () => {
     expect(reads).toBeGreaterThan(2);
   });
 
+  it('reports no route when the source and target stub ends coincide', () => {
+    expect(searchAround({ source: from, sourceSide: 'right', target: from, targetSide: 'right', boxes: [A] })).toBeNull();
+  });
+
   it('reports no route without searching when a stub end sits inside a padded box', () => {
     let reads = 0;
     const now = () => (reads++, 0);
