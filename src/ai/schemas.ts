@@ -3,6 +3,10 @@ import { ACTORS, EDGE_TYPES, FLAG_KINDS, SHAPES, SIDES, STATUSES } from '../mode
 
 const board = z.string().optional().describe('Board name or id. Defaults to the board the user is looking at.');
 const id = z.string().describe('Id from the board summary, like s12.');
+const note = z
+  .string()
+  .optional()
+  .describe('Longer explanation of the step, such as what a presenter would say about it. Separate paragraphs with a blank line. update_steps replaces the whole note.');
 
 export const ARRANGE_ACTIONS = [
   'align_left',
@@ -29,7 +33,7 @@ export const StepInput = z.object({
   actor: z.enum(ACTORS).optional().describe('person, system, or agent (an AI agent).'),
   owner: z.string().optional().describe('Person, team, system or agent name.'),
   duration: z.string().optional().describe('Working time like 30m, 2h, 1.5d or 1w. 1d = 8h.'),
-  note: z.string().optional(),
+  note,
   status: z.enum(STATUSES).optional(),
   lane: z.string().optional().describe('Lane id or name.'),
   replaces: z.string().optional().describe('Old-process steps this replaces, as free text.'),
@@ -62,7 +66,7 @@ export const TOOL_SCHEMAS = {
           actor: z.enum(ACTORS).nullable().optional(),
           owner: z.string().optional(),
           duration: z.string().nullable().optional(),
-          note: z.string().optional(),
+          note,
           status: z.enum(STATUSES).nullable().optional(),
           lane: z.string().nullable().optional(),
           replaces: z.string().optional(),
@@ -108,6 +112,7 @@ export const TOOL_SCHEMAS = {
   set_lanes: z.object({ board, lanes: z.array(z.string()) }),
   add_text: z.object({ board, text: z.string().min(1), near: z.string().optional() }),
   read_board: z.object({ board: z.string().describe('Board name or id.') }),
+  read_notes: z.object({ board, ids: z.array(id).min(1) }),
   create_board: z.object({ name: z.string().min(1), switch_to: z.boolean().optional() }),
   tidy: z.object({ board }),
   arrange: z.object({

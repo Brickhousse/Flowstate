@@ -153,6 +153,22 @@ describe('executeTool', () => {
     expect(out.content).toContain('"Legacy step"');
   });
 
+  it('reads the full notes of steps and refuses unknown ids', async () => {
+    const long = 'x'.repeat(400);
+    const { run } = setup((b) => {
+      addStep(b, { title: 'A', note: long });
+      addStep(b, { title: 'B' });
+    });
+    const out = await run('read_notes', { ids: ['s1', 's2'] });
+    expect(out.ok).toBe(true);
+    expect(JSON.parse(out.content)).toEqual({ notes: [{ id: 's1', note: long }, { id: 's2', note: '' }] });
+    expect(out.touched).toEqual([]);
+    expect(out.stats).toEqual({});
+    const bad = await run('read_notes', { ids: ['s9'] });
+    expect(bad.ok).toBe(false);
+    expect(bad.content).toContain('Unknown step "s9"');
+  });
+
   it('updates and clears nullable fields', async () => {
     const { run, active } = setup((b) => {
       addStep(b, { title: 'A', durationMin: 60, actor: 'person' });

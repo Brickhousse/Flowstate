@@ -9,7 +9,7 @@ import { OpError } from '../ops/errors';
 import { addFlag, setFlagResolved } from '../ops/flags';
 import { groupSteps } from '../ops/groups';
 import { setLanes } from '../ops/lanes';
-import { findEdge, getEdge } from '../ops/query';
+import { findEdge, getEdge, getNode } from '../ops/query';
 import { addStep, deleteSteps, updateSteps, type StepFields, type StepUpdate } from '../ops/steps';
 import { branchParallel, insertBetween, moveSteps, type BranchItem } from '../ops/structure';
 import { addText } from '../ops/text';
@@ -258,6 +258,10 @@ const handlers: { [N in ToolName]: Handler<N> } = {
     }),
 
   read_board: (ctx, _input, boardId) => ({ result: summarizeBoard(ctx.getProject(), boardId) }),
+  read_notes: (ctx, input, boardId) => {
+    const b = resolveBoard(ctx.getProject(), boardId, boardId);
+    return { result: { notes: input.ids.map((id) => ({ id, note: getNode(b, id).note })) } };
+  },
 
   create_board: (ctx, input) => {
     const id = ctx.createBoard(input.name, input.switch_to ?? true);

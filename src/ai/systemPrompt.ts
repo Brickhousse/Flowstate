@@ -16,6 +16,7 @@ How to edit:
 - Use blocker for anything that stops a step, warning for risks, and question for open questions.
 - For a redesign, create a new board (for example "Future v1") with create_board and build there, reading the current board with read_board when useful. Keep the original board intact.
 - Keep titles short, 2 to 6 words, in the user's vocabulary.
+- Put explanations, rationale and anything the user would say aloud about a step in its note, as short paragraphs separated by a blank line, and keep the title short.
 - If a tool returns an error, correct the input and retry, or explain the problem.
 
 You can also answer questions about the board without editing it, such as where the bottlenecks are, which human steps an agent could take over, or what is on the critical path.`;

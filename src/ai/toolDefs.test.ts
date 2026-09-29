@@ -21,4 +21,15 @@ describe('tool definitions', () => {
     const text = SYSTEM_PROMPT + TOOL_DEFS.map((t) => t.description).join('');
     expect(text).not.toContain('\u2014');
   });
+
+  it('describes notes, read_notes and where explanations go', () => {
+    const def = (name: string) => JSON.stringify(TOOL_DEFS.find((t) => t.name === name));
+    const noteText = 'Longer explanation of the step, such as what a presenter would say about it. Separate paragraphs with a blank line. update_steps replaces the whole note.';
+    expect(def('add_steps')).toContain(noteText);
+    expect(def('update_steps')).toContain(noteText);
+    expect(def('update_steps')).toContain('note-truncated');
+    expect(def('update_steps')).toContain('read_notes');
+    expect(def('read_notes')).toContain('note-truncated');
+    expect(SYSTEM_PROMPT).toContain('about a step in its note');
+  });
 });

@@ -5,7 +5,7 @@ import { TOOL_SCHEMAS, type ToolName } from './schemas';
 const DESCRIPTIONS: Record<ToolName, string> = {
   add_steps:
     'Add one or more steps. Use "after" to connect each new step from an existing step id, or from a ref defined earlier in the same call, which is how to add a whole sequence in one call. Steps without "after" are placed at the end of the board, unconnected.',
-  update_steps: 'Change properties of existing steps. Set duration, actor, status or lane to null to clear it.',
+  update_steps: 'Change properties of existing steps. Set duration, actor, status or lane to null to clear it. A note marked note-truncated in the board summary is cut short there: call read_notes first and send the whole note, or the hidden part is lost.',
   delete_steps: "Delete steps and their arrows. With reconnect true, each deleted step's predecessors are connected to its successors so the flow stays intact.",
   connect:
     'Add arrows. type flow (default) is the next step, dependency means the target cannot start until the source is done, handoff is data or information passed. Connecting an existing pair again only updates its label.',
@@ -22,6 +22,7 @@ const DESCRIPTIONS: Record<ToolName, string> = {
   set_lanes: 'Set the complete, ordered list of swimlanes for a board. Existing lanes are kept by name. An empty list removes all lanes.',
   add_text: 'Add a free text note on the board, optionally near a step.',
   read_board: 'Read the full summary of another board in this project.',
+  read_notes: 'Read the full notes of steps. The board summary shows only the first 300 characters of a note and marks a cut note note-truncated.',
   create_board: 'Create a new board, for example a future-state redesign, and switch to it unless switch_to is false.',
   tidy: 'Auto-layout a whole board. Use after building or restructuring many steps at once.',
   arrange:
