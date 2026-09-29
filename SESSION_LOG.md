@@ -2,6 +2,33 @@
 
 One entry per working session, most recent first. Long-term status lives in `PROJECT_STATUS.md`.
 
+### ⚠️ Session 2026-09-27/28: arrow routing through Task 15, two playtest rounds, SRP refactor
+
+**Arrow routing (`feat/arrow-routing`, 54 commits, nothing pushed).**
+- Tasks 3 to 15 of 20 built, each reviewed, with a fix round where a review found issues.
+- Budget checkpoints (Tasks 6 and 13) passed with no scale-back: drag p95 33.4ms (limit 35.4), open 465 to 530ms (limit 532.4). A second budget board now measures real "Don't merge" shifting.
+- Playtest (Task 11, two rounds) led to fixes 10a to 10d: every arrow can be reshaped, overlapping arrows get a pick panel merged with the arrow's options (ADR-0016), a click on an arrow end over a side dot selects the arrow, and arrows have a colour (ADR-0017).
+- The user asked for the single responsibility principle: an audit led to refactors 15a to 15c (polyline module, `carryBends`, `Popup`/`MenuList`/`usePopupDismiss`, `usePickPanel`/`useSideDotClicks`, `reshape.ts` with reshape and reattach sessions, `sideDots.ts`).
+- Route around boxes: fixed a plan bug that left 10.5px stubs, and made the search table-based (0 of 100 searches over 50ms on 200 boxes).
+
+**Other.**
+- SVG export is broken at its root (HTML in `foreignObject`: black step shapes, partial background, about 4MB). Decided: SVG, and PNG drawn from it, move onto the export work's vector renderer.
+- Multi-paragraph step notes are the next feature after arrow routing.
+
+**Operational mutations (all authorized):**
+- Stopped four leftover dev-server process trees from 2026-09-25/26, including a half-dead app (web up, API down).
+- Created the worktree `D:\Projects\Flowstate-live` (ran `sfw npm ci`; `feat/layout-assists` checked out there) and started the live app from it in a minimized window "Flowstate (live)" on 5173/8797 against the real `workspace/`.
+- A playtest copy of this branch runs in a window "Flowstate playtest (arrow routing)" on 5175/8789 against a scratch copy of the workspace (schema 2). Still running at close.
+- The real project stays schema 1. Schema 2 (unreleased) now also adds arrow `color`. Nothing pushed or merged.
+
+**Lessons:**
+- Open-time budget medians vary about 463 to 542ms on this machine; judge "fails twice" per test on consecutive runs.
+- The original perf board never shifts separate arrows (every arrow stays in one row); the cross-row board does.
+- Later plan tasks reference helpers the SRP refactor moved; each dispatch carries the substitutions recorded in the SDD ledger.
+- Left and right clicks on arrows must share one hit function (Task 16 ruling in the ledger).
+
+**State at close / next session:** see `PROJECT_STATUS.md`. Resume the arrow-routing SDD run from its ledger: Task 15's scoped re-review, then Tasks 16 to 19 and the final review.
+
 ### ⚠️ Session 2026-09-26/27: layout assists finished, arrow routing and export specced, arrow routing slice 1 started
 
 **Layout assists.**

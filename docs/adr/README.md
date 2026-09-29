@@ -16,3 +16,4 @@
 | [0012](0012-right-click-menu-on-pointerup.md) | Right-click menu opens on pointerup and yields to right-drag panning | Accepted |
 | [0013](0013-honest-layer-order.md) | Layer order is the board's node order and selection does not raise nodes | Accepted |
 | [0016](0016-pick-arrows-by-geometry.md) | Arrow clicks are resolved from the routes, and side dots do not connect on click | Accepted |
+| [0017](0017-colour-is-lenient-in-files-strict-in-operations.md) | Colour fields accept any string in the file and only colours in operations | Accepted |
