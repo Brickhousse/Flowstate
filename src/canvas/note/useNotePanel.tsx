@@ -2,6 +2,7 @@ import { useReactFlow } from '@xyflow/react';
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { useStore } from 'zustand';
 import type { Board } from '../../model/types';
+import { holdDraft } from '../../store/drafts';
 import { flowStore } from '../../store/store';
 import { boardOf } from '../commands';
 import { NotePanel } from './NotePanel';
@@ -17,7 +18,13 @@ export function useNotePanel(boardId: string, editable: boolean, board: Board | 
   const nodeId = useStore(session.state, (s) => s.nodeId);
   const node = nodeId ? board?.nodes.find((n) => n.id === nodeId) : undefined;
 
-  useEffect(() => () => session.close(), [session]);
+  useEffect(() => {
+    const release = holdDraft(session.close);
+    return () => {
+      release();
+      session.close();
+    };
+  }, [session]);
   useEffect(() => {
     if (nodeId && !node) session.close();
   }, [session, nodeId, node]);

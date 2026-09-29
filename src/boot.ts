@@ -3,6 +3,7 @@ import { fetchProject, listProjects, saveProject } from './api/projects';
 import { createProject } from './model/factory';
 import type { Project } from './model/types';
 import { startAutosave, type AutosaveHandle } from './store/autosave';
+import { commitDrafts } from './store/drafts';
 import { flowStore, type FlowStore } from './store/store';
 import { notify } from './ui/toast';
 
@@ -52,6 +53,7 @@ export async function boot(): Promise<void> {
   remember(project);
   autosave = startAutosave(flowStore, saveProject);
   window.addEventListener('beforeunload', (e) => {
+    commitDrafts();
     const status = flowStore.getState().saveStatus;
     if (status !== 'saving' && status !== 'error') return;
     autosave?.flush().catch(() => {});

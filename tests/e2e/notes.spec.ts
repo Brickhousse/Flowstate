@@ -166,3 +166,19 @@ test('a click on the panel around the text box keeps the typing in the note', as
   await expect(noteInput(page)).toHaveValue('ab');
   expect((await board(page)).nodes).toHaveLength(1);
 });
+
+test('leaving the page with a note open saves it and asks before unloading', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'Unload', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  await noteButton(page).click();
+  await page.keyboard.type('Not lost');
+  const asked = page.waitForEvent('dialog', { timeout: 5000 });
+  await page.close({ runBeforeUnload: true });
+  const dialog = await asked;
+  expect(dialog.type()).toBe('beforeunload');
+  await dialog.dismiss();
+  expect((await board(page)).nodes[0].note).toBe('Not lost');
+});
