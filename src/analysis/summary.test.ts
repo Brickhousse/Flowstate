@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createBoard, createProject } from '../model/factory';
+import { connect } from '../ops/edges';
 import { addFlag } from '../ops/flags';
 import { groupSteps } from '../ops/groups';
 import { setLanes } from '../ops/lanes';
@@ -41,5 +42,20 @@ describe('summarizeBoard', () => {
   it('marks an empty board', () => {
     const project = createProject();
     expect(summarizeBoard(project, project.boards[0].id)).toContain('Steps: none');
+  });
+
+  it('marks separate and hand-shaped arrows', () => {
+    const project = createProject('P');
+    const b = project.boards[0];
+    const s1 = addStep(b, { title: 'A', x: 0, y: 0 });
+    const s2 = addStep(b, { title: 'B', x: 400, y: 0 });
+    const s3 = addStep(b, { title: 'C', x: 400, y: 200 });
+    connect(b, { source: s1, target: s2 });
+    connect(b, { source: s1, target: s3 });
+    b.edges[0].separate = true;
+    b.edges[1].bends = [{ x: 300, y: 36 }];
+    const text = summarizeBoard(project, b.id);
+    expect(text).toContain('e4: s1 -> s2 flow separate');
+    expect(text).toContain('e5: s1 -> s3 flow hand-shaped');
   });
 });

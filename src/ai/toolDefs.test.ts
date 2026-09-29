@@ -4,6 +4,10 @@ import { SYSTEM_PROMPT } from './systemPrompt';
 import { TOOL_DEFS } from './toolDefs';
 
 describe('tool definitions', () => {
+  it('tells the assistant that Tidy resets hand-shaped arrows', () => {
+    expect(SYSTEM_PROMPT).toContain('Tidy resets hand-shaped arrows');
+  });
+
   it('defines one object schema per tool with a description', () => {
     expect(TOOL_DEFS.map((t) => t.name).sort()).toEqual(Object.keys(TOOL_SCHEMAS).sort());
     for (const tool of TOOL_DEFS) {

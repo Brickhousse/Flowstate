@@ -48,7 +48,8 @@ export function summarizeBoard(project: Project, boardId: string): string {
   if (b.edges.length) {
     lines.push('Arrows:');
     for (const e of b.edges) {
-      lines.push(`${e.id}: ${e.source} -> ${e.target} ${e.type}${e.label ? ` ${q(e.label)}` : ''}${describeFlags(e.flags)}`);
+      const drawn = `${e.separate ? ' separate' : ''}${e.bends.length ? ' hand-shaped' : ''}`;
+      lines.push(`${e.id}: ${e.source} -> ${e.target} ${e.type}${e.label ? ` ${q(e.label)}` : ''}${drawn}${describeFlags(e.flags)}`);
     }
   }
   return lines.join('\n');
