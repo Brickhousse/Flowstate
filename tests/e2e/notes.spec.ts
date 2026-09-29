@@ -360,3 +360,19 @@ test('image export leaves out the note marker', async ({ page, request }) => {
   expect(text).toContain('fs-note-text');
   expect(text).not.toContain('fs-note-marker');
 });
+
+test('the marker opens the note from the keyboard, even on a selected step', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'Keys', note: 'Heard\n\nand read', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  await marker(node(page, 's1')).focus();
+  await page.keyboard.press('Enter');
+  await expect(noteInput(page)).toBeFocused();
+  await expect(noteInput(page)).toHaveValue('Heard\n\nand read');
+  await page.keyboard.press('Escape');
+  await expect(panel(page)).toHaveCount(0);
+  expect(await history(page)).toBe(0);
+  expect((await board(page)).nodes).toHaveLength(1);
+});
