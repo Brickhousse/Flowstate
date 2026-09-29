@@ -98,8 +98,8 @@ test('drags on a 1000-step board with guides on without long frames', async ({ p
 const BASELINE = { dragP95Ms: 33.4, openMs: 484 };
 // Pan p95 median measured with React Flow culling on (onlyRenderVisibleElements), at commit 189df81.
 const CULLED_PAN_BASELINE = { panP95Ms: 16.8 };
-// Noted over plain open median ratio: median of five full perf-suite runs at 80029fd, before step notes.
-const NOTED_RATIO_BASELINE = { openRatio: 1.052 };
+// Noted over plain open median ratio, pairs alternating order: median of five full perf-suite runs at 80029fd, before step notes.
+const NOTED_RATIO_BASELINE = { openRatio: 1.066 };
 const ENFORCE_BUDGET = !!process.env.PERF_BUDGET;
 
 function median(values: number[]): number {
@@ -172,17 +172,18 @@ async function freshOpenTime(page: Page, project: Project): Promise<number> {
   }
 }
 
-// why: repeated opens in one tab drift slower, so each open gets a fresh tab;
-// alternating the boards lets both medians see the same machine load, so their ratio does not drift with it.
+// why: repeated opens in one tab drift slower, so each open gets a fresh tab. Pairs swap which board opens first,
+// so neither gains from going second, and both medians see the same machine load, so their ratio does not drift with it.
 async function pairedOpenRuns(page: Page, plain: Project, noted: Project): Promise<{ plain: number[]; noted: number[] }> {
   const plainRuns: number[] = [];
   const notedRuns: number[] = [];
   for (let run = 0; run <= OPEN_PAIRS; run++) {
-    const p = await freshOpenTime(page, plain);
-    const n = await freshOpenTime(page, noted);
+    const plainFirst = run % 2 === 0;
+    const first = await freshOpenTime(page, plainFirst ? plain : noted);
+    const second = await freshOpenTime(page, plainFirst ? noted : plain);
     if (run === 0) continue;
-    plainRuns.push(p);
-    notedRuns.push(n);
+    plainRuns.push(plainFirst ? first : second);
+    notedRuns.push(plainFirst ? second : first);
   }
   return { plain: plainRuns, noted: notedRuns };
 }
