@@ -25,4 +25,5 @@ Rejected:
 - A React Flow upgrade can change `getSmoothStepPath`. `src/layout/route/elbow.test.ts` compares `elbow.ts` with the installed version for all 16 side pairs and fails if they drift.
 - `PORT_OUTSET` depends on the `.fs-handle` size and border. At device pixel ratio 2, React Flow's own anchor would sit 0.5px further out, which is not visible. `tests/e2e/arrows.spec.ts` checks the anchor against the real dot.
 - Arrows to a free text box still do not render, because text boxes have no side dots.
+- React Flow decides whether to draw an edge from the bounding box of its two boxes only (`onlyRenderVisibleElements` in `src/canvas/Canvas.tsx`, `isEdgeVisible` in `@xyflow/system`), not from our route. A hand-shaped or routed-around arrow whose detour runs outside that box vanishes while only the detour is on screen. A follow-up would cull arrows by their route bounds.
 - Tidy clears every bend (one undo restores them). The assistant is told so and can move ends, separate arrows and route around boxes with `update_arrows`, but cannot place bends.

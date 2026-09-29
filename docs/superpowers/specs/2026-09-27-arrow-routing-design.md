@@ -1,7 +1,7 @@
 # Arrow routing design
 
 **Date:** 2026-09-27
-**Status:** Draft for review
+**Status:** Built on feat/arrow-routing (ADRs 0014 to 0017), awaiting the final playtest
 
 ## 1. Goal
 

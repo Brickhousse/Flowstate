@@ -30,6 +30,10 @@
   - Tidy and its failure toast are repeated in three places.
   - `endResize` belongs beside the resize wiring, not in `overlay.ts`.
   - Right-clicking the node toolbar or the arrow toolbar opens the pane menu.
+- Arrow routing follow-ups from the whole-branch review:
+  - Cull arrows by their route bounds, so bent arrows do not vanish while panning (needs a budget rerun).
+  - Keep an arrow's colour and "Don't merge" when the assistant replaces it (`insert_between`, `delete_steps` with reconnect, `branch_parallel` in `src/ops/structure.ts`).
+  - Open the arrow menu from the keyboard: Shift+F10 does nothing when only arrows are selected.
 
 ## Scrapped
 - None.
