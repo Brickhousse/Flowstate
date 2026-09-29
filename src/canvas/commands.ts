@@ -4,6 +4,7 @@ import { copySubgraph, pasteSubgraph, type Clip } from '../ops/clipboard';
 import { deleteEdges } from '../ops/edges';
 import { deleteSteps, setPositions, withGroupMembers } from '../ops/steps';
 import { flowStore } from '../store/store';
+import { requestFocus } from './focusKey';
 import { runSafely } from './safe';
 
 let pasteCount = 0;
@@ -12,7 +13,7 @@ export function run<R>(boardId: string, fn: (b: Board) => R): R | undefined {
   return runSafely(() => flowStore.getState().changeBoard(fn, boardId));
 }
 
-function boardOf(boardId: string): Board | undefined {
+export function boardOf(boardId: string): Board | undefined {
   return flowStore.getState().project.boards.find((b) => b.id === boardId);
 }
 
@@ -90,6 +91,11 @@ export function nudgeSelection(boardId: string, dx: number, dy: number): void {
     }
     setPositions(b, withGroupMembers(b, positions));
   });
+}
+
+export function editArrowLabel(edgeId: string): void {
+  requestFocus(`label:${edgeId}`);
+  flowStore.getState().select([], [edgeId]);
 }
 
 export function arrangeSelection(boardId: string, fn: (b: Board, ids: string[]) => unknown): void {

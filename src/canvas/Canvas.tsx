@@ -24,9 +24,9 @@ import { flowStore, useFlow } from '../store/store';
 import { arrowRoutes, type RouteCache } from './arrowRoutes';
 import { GuidesOverlay } from './assist/GuidesOverlay';
 import { useDragAssist } from './assist/useDragAssist';
+import { editArrowLabel } from './commands';
 import { cursor } from './cursor';
 import { FlowEdge } from './FlowEdge';
-import { requestFocus } from './focusKey';
 import { GroupNode } from './GroupNode';
 import { LaneNode } from './LaneNode';
 import { useCanvasMenu } from './menu/useCanvasMenu';
@@ -330,11 +330,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
         }}
         onNodeDoubleClick={(_, node) => editable && node.type !== 'lane' && startEditing(node.id)}
         onEdgeClick={picker.onEdgeClick}
-        onEdgeDoubleClick={(_, edge) => {
-          if (!editable) return;
-          requestFocus(`label:${edge.id}`);
-          flowStore.getState().select([], [edge.id]);
-        }}
+        onEdgeDoubleClick={(_, edge) => editable && editArrowLabel(edge.id)}
         onPaneClick={onPaneClick}
         onPaneMouseMove={(e) => {
           cursor.flow = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });

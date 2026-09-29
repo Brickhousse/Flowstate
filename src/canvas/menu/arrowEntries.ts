@@ -4,14 +4,9 @@ import { deleteEdges, updateEdge } from '../../ops/edges';
 import { flowStore } from '../../store/store';
 import { notify } from '../../ui/toast';
 import { routeFor } from '../arrowRoutes';
-import { run } from '../commands';
-import { requestFocus } from '../focusKey';
+import { boardOf, editArrowLabel, run } from '../commands';
 import { colourEntries } from './colourEntries';
 import type { MenuEntry } from './MenuList';
-
-function boardOf(boardId: string) {
-  return flowStore.getState().project.boards.find((b) => b.id === boardId);
-}
 
 function addBendAt(boardId: string, edgeId: string, at: XY): void {
   const board = boardOf(boardId);
@@ -22,11 +17,6 @@ function addBendAt(boardId: string, edgeId: string, at: XY): void {
 function routeAroundArrows(boardId: string, ids: string[]): void {
   const missed = run(boardId, (b) => ids.filter((id) => !routeAround(b, id)));
   if (missed?.length) notify(ids.length === 1 ? 'No route found around the boxes.' : `No route found around the boxes for ${missed.length} of ${ids.length} arrows.`);
-}
-
-function editLabel(edgeId: string): void {
-  requestFocus(`label:${edgeId}`);
-  flowStore.getState().select([], [edgeId]);
 }
 
 export function arrowEntries(boardId: string, edgeId: string, at: XY, bend: number | null): MenuEntry[] {
@@ -42,7 +32,7 @@ export function arrowEntries(boardId: string, edgeId: string, at: XY, bend: numb
     });
   const removeBendEntry: MenuEntry[] = bend === null ? [] : [{ kind: 'item', label: 'Remove bend', run: () => run(boardId, (b) => removeBend(b, edgeId, bend)) }];
   return [
-    { kind: 'item', label: 'Edit label', run: () => editLabel(edgeId) },
+    { kind: 'item', label: 'Edit label', run: () => editArrowLabel(edgeId) },
     { kind: 'item', label: "Don't merge", checked: edge.separate, run: () => run(boardId, (b) => setSeparate(b, ids, !edge.separate)) },
     { kind: 'item', label: 'Add bend here', run: () => addBendAt(boardId, edgeId, at) },
     ...removeBendEntry,
