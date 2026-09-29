@@ -27,6 +27,27 @@ function p95(times: number[]): number {
   return sorted[Math.floor(sorted.length * 0.95)];
 }
 
+async function zoomSettled(page: Page): Promise<void> {
+  await expect.poll(() => viewportMatrix(page).then((m) => m.a)).toBe(1);
+}
+
+function viewportMatrix(page: Page): Promise<{ a: number; f: number }> {
+  return page.locator('.react-flow__viewport').evaluate((el) => {
+    const m = new DOMMatrix(getComputedStyle(el).transform);
+    return { a: m.a, f: m.f };
+  });
+}
+
+function stepOnScreen(page: Page, margin = 100): Promise<string> {
+  return page.evaluate((m) => {
+    const pane = document.querySelector('.react-flow__pane')!.getBoundingClientRect();
+    const inside = (r: DOMRect) => r.left >= pane.left + m && r.top >= pane.top + m && r.right <= pane.right - m && r.bottom <= pane.bottom - m;
+    const step = [...document.querySelectorAll('.react-flow__node-step')].find((el) => inside(el.getBoundingClientRect()));
+    if (!step) throw new Error('no step on screen');
+    return step.getAttribute('data-id')!;
+  }, margin);
+}
+
 test('pans and zooms a 1000-step board without long frames', async ({ page, request }) => {
   test.setTimeout(120_000);
   const p = await seed(request, (b) => {
@@ -62,10 +83,10 @@ test('drags on a 1000-step board with guides on without long frames', async ({ p
   }, 'Perf drag');
   await open(page, p);
   await page.getByRole('button', { name: 'Reset zoom to 100%' }).click();
-  const first = page.locator('.react-flow__node-step').first();
-  const id = (await first.getAttribute('data-id'))!;
+  await zoomSettled(page);
+  const id = await stepOnScreen(page);
   const before = (await board(page)).nodes.find((n) => n.id === id)!;
-  const target = (await first.boundingBox())!;
+  const target = (await page.getByTestId(`node-${id}`).boundingBox())!;
   const frames = sampleFrames(page);
   await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2);
   await page.mouse.down();
