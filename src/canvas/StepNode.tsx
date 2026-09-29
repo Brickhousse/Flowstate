@@ -55,10 +55,10 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
   useLayoutEffect(() => {
     if (!body.current) return;
     // Overflow is read before fitTitle writes and marked after, so every read shares one layout.
-    const overflows = !hasMoreLines(node.note) && noteOverflows(body.current);
+    const overflows = !noteLine.more && noteOverflows(body.current);
     fitTitle(body.current);
     markNoteOverflow(body.current, overflows);
-  }, [node.w, node.h, node.shape, node.title, node.note, node.owner, node.durationMin, critical, editing]);
+  }, [node.w, node.h, node.shape, node.title, noteLine, node.owner, node.durationMin, critical, editing]);
   const fill = fillOf(node.color);
   const className = [
     'fs-step',
