@@ -19,3 +19,4 @@
 | [0015](0015-arrow-routing-performance-budget.md) | Arrow routing is held to a measured drag and load budget | Accepted |
 | [0016](0016-pick-arrows-by-geometry.md) | Arrow clicks are resolved from the routes, and side dots do not connect on click | Accepted |
 | [0017](0017-colour-is-lenient-in-files-strict-in-operations.md) | Colour fields accept any string in the file and only colours in operations | Accepted |
+| [0018](0018-draw-culled-arrows-in-an-overlay.md) | Arrows React Flow culls are drawn by an overlay while their route is on screen | Accepted |

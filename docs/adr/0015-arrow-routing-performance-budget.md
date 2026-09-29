@@ -26,3 +26,4 @@ Rejected:
 - A change to routing reruns the budget before merging: `PERF_BUDGET=1 npx playwright test tests/e2e/perf.spec.ts -g "routing budget" --workers=1`.
 - The original perf board never shifts a separate arrow (every arrow stays in one row), so a second board where they do shift (`crossRowBoard`) covers that path. `src/canvas/crossRowBoard.test.ts` imports the shared builder from `tests/e2e/routingBoards.ts` on purpose, because `tsconfig` includes both.
 - On a new machine, re-measure as in the arrow routing plan's Task 0 and update `BASELINE`.
+- Panning at 100% has its own baseline and margin, measured with React Flow's culling on, on the routing board and on a board with long detours (`CULLED_PAN_BASELINE` in `tests/e2e/perf.spec.ts`, ADR-0018).

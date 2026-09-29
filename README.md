@@ -26,7 +26,6 @@ The local API only answers pages served from localhost (ADR 0004), so other webs
 - Two tabs open on the same project overwrite each other's edits.
 - Steps resize from their corners only; the middle of each edge holds the + button.
 - Tidy (L) resets hand-shaped arrows to automatic routes; one Ctrl+Z brings them back.
-- An arrow bent far outside its two steps can disappear while you pan, if only the bent part is on screen. Pan until one of its steps is in view and it comes back.
 
 ## Keys
 
