@@ -50,7 +50,7 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
   useLayoutEffect(() => {
     if (!body.current) return;
     // Read before fitTitle writes, so both measurements share one layout.
-    setNoteCut(noteOverflows(body.current));
+    setNoteCut(!hasMoreLines(node.note) && noteOverflows(body.current));
     fitTitle(body.current);
   }, [node.w, node.h, node.shape, node.title, node.note, node.owner, node.durationMin, critical, editing]);
   const fill = fillOf(node.color);
