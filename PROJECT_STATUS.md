@@ -6,6 +6,7 @@
 - v1 as specified in `docs/superpowers/specs/2026-09-25-flowstate-design.md`: infinite canvas with 9 shapes, free text, groups and swimlanes; actors, durations, owners, status and flags; flow, dependency and handoff arrows; parallel branches; live critical path; keyboard-first editing and floating toolbars; boards, reference view and projects; autosave with undo/redo; PNG, SVG and JSON export and import; Claude chat that edits the board through the same operations as the UI. Merged to `master`.
 - Layout assists: all 14 tasks built on `feat/layout-assists`, drag and resize snapping with smart guides and spacing guides, Ctrl+drag copy, align and distribute, custom colour, Ctrl+X, nudge and layer shortcuts, the right-click menu, and AI arrange. Step titles now fit the box height. Awaiting a final playtest and merge.
 - Arrow routing: attach an arrow to any side dot, "Don't merge" for its own line, hand-shaped arrows with segment bars and bend squares, route around boxes, arrow colour, an arrow right-click menu, and the assistant's `update_arrows`, within the measured drag and load budget (ADR 0014, ADR 0015). Built on `feat/arrow-routing`; awaiting the final playtest and merge.
+- Step notes: a multi-paragraph note in a panel under the step (toolbar Note button, Shift+F2, or the marker on the box), readable in the reference view, saved on every close as one undo step (ADR 0019). The assistant puts explanations in the note, sees notes cut at 300 characters marked `note-truncated`, and reads the rest with `read_notes`. Built on `feat/step-notes`; awaiting the final playtest and merge after `feat/arrow-routing`.
 
 ## In flight
 - Playtest layout assists Tasks 7 to 13 (Ctrl+drag copy, right-click menu including Shift+F10, align and distribute, layer order, custom colour, Ctrl+arrow nudge, Ctrl+X), then merge `feat/layout-assists`. Also check: menu Custom colour in Firefox (the picker blurs the window), no native menu beside ours on Shift+F10, Alt held before a drag then Delete, and dragging steps taller and shorter. The live app now runs this branch from the `D:\Projects\Flowstate-live` worktree (5173/8797, real workspace), so everyday use doubles as the playtest.
@@ -21,6 +22,17 @@
   9. Overlapping arrows: pick list position and hover glow OK?
   10. With API credit approved: "attach the arrow from A to B to the bottom of A".
   11. Anything wrong on existing boards?
+- Final playtest of step notes, then merge `feat/step-notes` (after `feat/arrow-routing`). The user was away when it was built; checklist:
+  1. Write a two-paragraph note from the toolbar Note button; close with Escape; the box shows the first line and the marker; one Ctrl+Z removes the note.
+  2. Select a step, Shift+F2, write, Ctrl+Enter.
+  3. Click the marker on an unselected step: the note opens, the step is not selected; press-and-drag on the marker does not move the step; a second click closes it.
+  4. A long note: the textarea grows to about 12 lines, then scrolls; the wheel inside scrolls it; the wheel outside closes it.
+  5. A single-line note too long for the box shows the marker; widening the box until it fits removes it.
+  6. Alt-tab away mid-note and back: the panel is still open with the text.
+  7. Reference view (Shift+click a board tab): the marker opens the note as read-only paragraphs.
+  8. Export PNG: no marker in the image.
+  9. Light and dark theme, low zoom, a sticky note and a decision shape: does the marker look right? After a marquee selection, can you still click a marker?
+  10. With API credit approved: ask the assistant to explain a step (the explanation goes in the note, the title stays short), and to edit a note longer than 300 characters (nothing is lost).
 - Human playtest of the full app (keyboard-only and chat-only builds against the 2-minute target in the spec).
 - Live API check: `$env:LIVE_API=1; npx playwright test tests/e2e/live.spec.ts` plus one real "draft an agentic version" request. Needs the user's go-ahead because it spends API credit.
 
@@ -49,7 +61,7 @@
 - None.
 
 ## Heading
-Finish layout assists, then arrow routing, then multi-paragraph step notes (a multi-line note that keeps paragraphs, a marker on the box, and the assistant told to put spoken explanations there), then interactive HTML and PDF export (specced in `docs/superpowers/specs/2026-09-27-interactive-html-and-pdf-export-design.md`, now also moving SVG and PNG export onto its renderer), then the co-building assistant, then team sharing: hosted storage behind authentication and real-time co-editing (Yjs), which ADR 0002 and ADR 0004 anticipate.
+Finish layout assists, arrow routing and step notes, then interactive HTML and PDF export (specced in `docs/superpowers/specs/2026-09-27-interactive-html-and-pdf-export-design.md`, now also moving SVG and PNG export onto its renderer), then the co-building assistant, then team sharing: hosted storage behind authentication and real-time co-editing (Yjs), which ADR 0002 and ADR 0004 anticipate.
 
 ## Timeline
 | Date | Milestone |
@@ -61,3 +73,4 @@ Finish layout assists, then arrow routing, then multi-paragraph step notes (a mu
 | 2026-09-27 | Title fit; arrow routing and HTML/PDF export specced; arrow routing plan written, Tasks 0 to 2 built |
 | 2026-09-27/28 | Arrow routing Tasks 3 to 15 with two playtest rounds and an SRP refactor; live app moved to a worktree |
 | 2026-09-28 | Arrow routing Tasks 16 to 19: arrow menu, assistant update_arrows, docs; awaiting playtest and merge |
+| 2026-09-28/29 | Step notes specced, planned and built; awaiting playtest and merge |

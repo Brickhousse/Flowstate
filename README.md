@@ -34,6 +34,7 @@ The local API only answers pages served from localhost (ADR 0004), so other webs
 | Tab | Add the next connected step (while typing: save and add the next) |
 | Enter | Add a parallel sibling (while typing: save) |
 | Typing, F2, double-click | Edit the title |
+| Shift+F2, the Note button, or the note marker on a box | Toggle the step's note. Enter adds a line; Escape, Ctrl+Enter, a click outside or moving focus away saves it (ADR 0019) |
 | 1 to 9 | Shape: process, decision, start/end, data, document, database, preparation, connector, sticky |
 | A | Cycle actor: person, system, AI agent, none |
 | B / W / Q | Add a blocker, warning or question |
@@ -58,6 +59,8 @@ The local API only answers pages served from localhost (ADR 0004), so other webs
 | Ctrl+K, Ctrl+/ | Focus the assistant, show or hide it |
 
 Shift+click a board tab to view it read-only beside the active board.
+
+A small notebook marker at the end of a step's note line means the note has more than the line shown. Click it to read the whole note, in the reference view too.
 
 ## Tests
 
