@@ -1,6 +1,6 @@
 import { Handle, NodeResizer, Position, type NodeProps } from '@xyflow/react';
 import { Clock } from 'lucide-react';
-import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useLayoutEffect, useMemo, useRef } from 'react';
 import { fillOf } from '../model/color';
 import { formatDuration } from '../model/duration';
 import { firstLine, hasMoreLines } from '../model/note';
@@ -31,6 +31,10 @@ function noteOverflows(body: HTMLElement): boolean {
   return !!text && text.scrollWidth > text.clientWidth;
 }
 
+function markNoteOverflow(body: HTMLElement, overflows: boolean): void {
+  body.querySelector(':scope > .fs-note')?.toggleAttribute('data-overflow', overflows);
+}
+
 function fitTitle(body: HTMLElement): void {
   const title = body.querySelector(':scope > div.fs-title');
   if (!title) return;
@@ -46,13 +50,13 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
   const editing = useFlow((s) => s.editingId === id);
   const { node, critical, dimmed, glowing, editable } = data;
   const body = useRef<HTMLDivElement>(null);
-  const [noteCut, setNoteCut] = useState(false);
   const noteLine = useMemo(() => ({ first: firstLine(node.note), more: hasMoreLines(node.note) }), [node.note]);
   useLayoutEffect(() => {
     if (!body.current) return;
-    // Read before fitTitle writes, so both measurements share one layout.
-    setNoteCut(!hasMoreLines(node.note) && noteOverflows(body.current));
+    // Overflow is read before fitTitle writes and marked after, so every read shares one layout.
+    const overflows = !hasMoreLines(node.note) && noteOverflows(body.current);
     fitTitle(body.current);
+    markNoteOverflow(body.current, overflows);
   }, [node.w, node.h, node.shape, node.title, node.note, node.owner, node.durationMin, critical, editing]);
   const fill = fillOf(node.color);
   const className = [
@@ -81,9 +85,9 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
       <div ref={body} className="fs-step-body">
         <StepTitle node={node} editable={editable} />
         {node.note && (
-          <div className="fs-note">
+          <div className={noteLine.more ? 'fs-note has-more' : 'fs-note'}>
             <span className="fs-note-text">{noteLine.first}</span>
-            {(noteCut || noteLine.more) && <NoteMarker nodeId={id} />}
+            <NoteMarker nodeId={id} />
           </div>
         )}
         {(node.owner || node.durationMin !== null || critical) && (

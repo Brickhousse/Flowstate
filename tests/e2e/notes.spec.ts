@@ -376,3 +376,17 @@ test('the marker opens the note from the keyboard, even on a selected step', asy
   expect(await history(page)).toBe(0);
   expect((await board(page)).nodes).toHaveLength(1);
 });
+
+test('widening a box until its note fits takes the marker away', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'Wide', note: 'A first line a little too long for the box', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await expect(marker(node(page, 's1'))).toBeVisible();
+  await page.evaluate(() =>
+    window.__flowstate!.getState().changeBoard((b) => {
+      b.nodes[0].w = 600;
+    }),
+  );
+  await expect(marker(node(page, 's1'))).toHaveCount(0);
+});

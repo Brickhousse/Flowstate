@@ -137,7 +137,7 @@
 }
 .fs-note-marker {
   flex: none;
-  display: grid;
+  display: none;
   place-items: center;
   width: 14px;
   height: 12px;
@@ -149,6 +149,10 @@
   cursor: pointer;
   /* React Flow turns pointer events off on nodes in the read-only reference view. */
   pointer-events: all;
+}
+.fs-note.has-more > .fs-note-marker,
+.fs-note[data-overflow] > .fs-note-marker {
+  display: grid;
 }
 .fs-note-marker:hover {
   color: var(--accent);
