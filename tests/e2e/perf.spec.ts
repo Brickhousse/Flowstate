@@ -219,10 +219,9 @@ function skipsSeparateWithNotes(b: Board): void {
 }
 
 async function expectNoteMarkers(page: Page): Promise<void> {
-  const markers = page.locator('.fs-note-marker');
-  const overflowing = page.locator('.fs-note', { has: markers }).filter({ hasText: 'Overflows' });
-  expect(await markers.count()).toBeGreaterThan(0);
-  expect(await overflowing.count()).toBeGreaterThan(0);
+  const shownIn = (note: string) => page.locator(note).getByRole('button', { name: 'Open note' }).first();
+  await expect(shownIn('.fs-note.has-more')).toBeVisible();
+  await expect(shownIn('.fs-note[data-overflow]:has-text("Overflows")')).toBeVisible();
 }
 
 test('drags a step on a 200-arrow board within the routing budget', async ({ page, request }) => {
