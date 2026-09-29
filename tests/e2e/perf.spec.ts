@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import type { Board, Project } from '../../src/model/types';
 import { addStep } from '../../src/ops/steps';
 import { board, open, seed, zoomSettled } from './fixtures';
-import { crossRowBoard, detourArrows, routingBoard, separateCrossings, separateSkips } from './routingBoards';
+import { crossRowBoard, detourArrows, noteSteps, routingBoard, separateCrossings, separateSkips } from './routingBoards';
 
 function sampleFrames(page: Page, count = 240): Promise<number[]> {
   return page.evaluate(
@@ -211,6 +211,18 @@ function skipsSeparateWithDetours(b: Board): void {
   detourArrows(b);
 }
 
+function skipsSeparateWithNotes(b: Board): void {
+  skipsSeparate(b);
+  noteSteps(b);
+}
+
+async function expectNoteMarkers(page: Page): Promise<void> {
+  const markers = page.locator('.fs-note-marker');
+  const overflowing = page.locator('.fs-note', { has: markers }).filter({ hasText: 'Overflows' });
+  expect(await markers.count()).toBeGreaterThan(0);
+  expect(await overflowing.count()).toBeGreaterThan(0);
+}
+
 test('drags a step on a 200-arrow board within the routing budget', async ({ page, request }) => {
   test.setTimeout(120_000);
   withinDragBudget('routing', await dragRuns(page, await seed(request, skipsSeparate, 'Perf routing'), 'R0 C5'));
@@ -240,4 +252,23 @@ test('drags a step on a 200-arrow board with shifted arrows within the routing b
 test('opens a 200-arrow board with shifted arrows within the routing budget', async ({ page, request }) => {
   test.setTimeout(120_000);
   withinOpenBudget('shifted', await openRuns(page, await seed(request, crossingsSeparate, 'Perf shifted open')));
+});
+
+test('opens a 200-arrow board with notes on every step within the routing budget', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  const runs = await openRuns(page, await seed(request, skipsSeparateWithNotes, 'Perf notes open'));
+  await expectNoteMarkers(page);
+  withinOpenBudget('notes', runs);
+});
+
+test('drags a noted step on a 200-arrow board with notes within the routing budget', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  const runs = await dragRuns(page, await seed(request, skipsSeparateWithNotes, 'Perf notes drag'), 'R0 C5');
+  await expectNoteMarkers(page);
+  withinDragBudget('notes', runs);
+});
+
+test('pans a 200-arrow board with notes at 100% within the routing budget', async ({ page, request }) => {
+  test.setTimeout(120_000);
+  withinPanBudget('notes', await panRuns(page, await seed(request, skipsSeparateWithNotes, 'Perf notes pan'), expectNoteMarkers));
 });

@@ -78,3 +78,17 @@ export function detourArrows(b: Board): void {
     e.bends = [{ x: left, y }, { x: left, y: far }, { x: right, y: far }, { x: right, y }];
   }
 }
+
+const NOTES = [
+  'Why this step exists\n\nWho it hands on to, and what they need from it.',
+  'Overflows: a single first line far too long for the box to show without cutting it short',
+  'Short',
+];
+
+export function noteSteps(b: Board): void {
+  const at = cells(b);
+  for (const n of b.nodes) {
+    const cell = at.get(n.id);
+    if (cell) n.note = NOTES[(cell.col + 1) % NOTES.length];
+  }
+}
