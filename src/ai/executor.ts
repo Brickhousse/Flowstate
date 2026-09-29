@@ -259,7 +259,7 @@ const handlers: { [N in ToolName]: Handler<N> } = {
 
   read_board: (ctx, _input, boardId) => ({ result: summarizeBoard(ctx.getProject(), boardId) }),
   read_notes: (ctx, input, boardId) => {
-    const b = resolveBoard(ctx.getProject(), boardId, boardId);
+    const b = resolveBoard(ctx.getProject(), undefined, boardId);
     return { result: { notes: input.ids.map((id) => ({ id, note: getNode(b, id).note })) } };
   },
 
