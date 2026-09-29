@@ -138,12 +138,26 @@ describe('menu edits', () => {
     expect(b.edges[0].bends).toEqual([{ x: 290, y: 36 }, { x: 290, y: 120 }, { x: 290, y: 236 }]);
   });
 
+  it('does not duplicate a corner when the click lands exactly on it', () => {
+    const { b, e } = shaped();
+    b.edges[0].bends = [];
+    addBend(b, e, { x: 290, y: 36 }, drawn);
+    expect(b.edges[0].bends).toEqual([{ x: 290, y: 36 }, { x: 290, y: 236 }]);
+  });
+
   it('removes a bend and tidies what is left', () => {
     const { b, e } = shaped();
     b.edges[0].bends = [{ x: 300, y: 36 }, { x: 300, y: 120 }, { x: 300, y: 236 }];
     removeBend(b, e, 0);
     expect(b.edges[0].bends).toEqual([{ x: 300, y: 120 }, { x: 300, y: 236 }]);
     expect(() => removeBend(b, e, 5)).toThrow(OpError);
+  });
+
+  it('collapses bends that become collinear once one is removed', () => {
+    const { b, e } = shaped();
+    b.edges[0].bends = [{ x: 200, y: 36 }, { x: 300, y: 36 }, { x: 300, y: 120 }, { x: 300, y: 236 }];
+    removeBend(b, e, 0);
+    expect(b.edges[0].bends).toEqual([{ x: 300, y: 36 }, { x: 300, y: 236 }]);
   });
 
   it('marks several arrows separate at once', () => {

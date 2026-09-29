@@ -74,8 +74,7 @@ export function routeAround(b: Board, id: string, opts?: AroundOptions): boolean
   const sides = edgeSides(b.direction, e);
   const boxes = b.nodes.filter((n) => n.kind !== 'group');
   const route = searchAround({ source: portAt(source, sides.source), sourceSide: sides.source, target: portAt(target, sides.target), targetSide: sides.target, boxes }, opts);
-  const loop = route && route.length === 2 && route[0].x === route[1].x && route[0].y === route[1].y;
-  if (!route || loop) return false;
+  if (!route) return false;
   e.bends = route.slice(1, -1);
   return true;
 }
