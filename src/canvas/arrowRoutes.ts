@@ -26,12 +26,14 @@ function draw({ e, s, t }: Link, direction: Direction, at: { source: number; tar
   return { points, label: halfway(points) };
 }
 
+// why: arrows to text boxes are never drawn (ADR-0014).
 function linksOf(board: Board): Link[] {
-  const nodes = new Map(board.nodes.map((n) => [n.id, n]));
+  const steps = new Map<string, BoardNode>();
+  for (const n of board.nodes) if (n.kind === 'step') steps.set(n.id, n);
   const links: Link[] = [];
   for (const e of board.edges) {
-    const s = nodes.get(e.source);
-    const t = nodes.get(e.target);
+    const s = steps.get(e.source);
+    const t = steps.get(e.target);
     if (s && t) links.push({ e, s, t });
   }
   return links;

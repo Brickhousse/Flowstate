@@ -3,6 +3,7 @@ import { createBoard } from '../model/factory';
 import { connect } from '../ops/edges';
 import { runOp } from '../ops/run';
 import { addStep, setPositions } from '../ops/steps';
+import { addText } from '../ops/text';
 import { arrowRoutes, type RouteCache } from './arrowRoutes';
 
 function row() {
@@ -61,6 +62,19 @@ describe('arrowRoutes', () => {
     const { b, ac } = row();
     b.nodes = b.nodes.filter((n) => n.title !== 'A');
     expect(arrowRoutes(b, new Map()).has(ac)).toBe(false);
+  });
+
+  it('skips an arrow to a text box, which is never drawn, and spreads nothing around it', () => {
+    const b = createBoard('B');
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'C', x: 400, y: 0 });
+    const note = addText(b, { text: 'Note', x: 400, y: 200 });
+    const drawn = connect(b, { source: a, target: c });
+    const hidden = connect(b, { source: a, target: note });
+    for (const e of b.edges) e.separate = true;
+    const routes = arrowRoutes(b, new Map());
+    expect(routes.has(hidden)).toBe(false);
+    expect(routes.get(drawn)!.points[0]).toEqual({ x: 185.5, y: 36 });
   });
 
   it('spreads separate arrows along a side and keeps shared ones on the midpoint', () => {
