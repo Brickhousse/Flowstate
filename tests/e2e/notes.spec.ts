@@ -390,3 +390,24 @@ test('widening a box until its note fits takes the marker away', async ({ page, 
   );
   await expect(marker(node(page, 's1'))).toHaveCount(0);
 });
+
+test('a marker in the reference view opens only the reference note, never the active board one', async ({ page, request }) => {
+  const p = await seed(request, (b, project) => {
+    addStep(b, { title: 'Same id on the active board', x: 0, y: 0 });
+    const other = createBoard('Reference');
+    addStep(other, { title: 'Explained', note: 'One\n\nTwo', x: 0, y: 0 });
+    project.boards.push(other);
+  });
+  await open(page, p);
+  await page.getByRole('button', { name: 'Reference', exact: true }).click({ modifiers: ['Shift'] });
+  await page.evaluate(() => {
+    document.body.dataset.panelsOpened = '0';
+    new MutationObserver((records) => {
+      const opened = records.flatMap((r) => [...r.addedNodes]).filter((n) => n instanceof Element && n.classList.contains('fs-note-panel'));
+      document.body.dataset.panelsOpened = String(Number(document.body.dataset.panelsOpened) + opened.length);
+    }).observe(document.body, { childList: true });
+  });
+  await marker(page.locator('.canvas-pane.is-reference').getByTestId('node-s1')).click();
+  await expect(panel(page).locator('p')).toHaveText(['One', 'Two']);
+  expect(await page.evaluate(() => document.body.dataset.panelsOpened)).toBe('1');
+});

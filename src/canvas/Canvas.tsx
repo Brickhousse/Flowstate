@@ -37,6 +37,7 @@ import { GroupNode } from './GroupNode';
 import { LaneNode } from './LaneNode';
 import { useCanvasMenu } from './menu/useCanvasMenu';
 import { NoteControlsContext } from './note/noteControls';
+import { useNoteMarkerClicks } from './note/useNoteMarkerClicks';
 import { useNotePanel } from './note/useNotePanel';
 import { PickPanelOpen } from './pick/pickPanelOpen';
 import { useArrowPicker } from './pick/useArrowPicker';
@@ -111,6 +112,7 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const colors = useThemeColors();
   const rf = useReactFlow<FlowNode, FlowEdgeType>();
   const notes = useNotePanel(boardId, editable, board);
+  useNoteMarkerClicks(notes.controls.toggle);
   useKeyboard(boardId, editable, notes.controls.open);
   const nodeCache = useRef<RenderCache<FlowNode>>(new Map());
   const edgeCache = useRef<RenderCache<FlowEdgeType>>(new Map());

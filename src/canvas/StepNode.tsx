@@ -12,7 +12,7 @@ import { RESIZE_MIN } from './assist/snap';
 import { FlagBadges } from './FlagBadges';
 import { FloatingToolbar } from './FloatingToolbar';
 import { ACTOR_LABEL, ActorIcon } from './labels';
-import { NoteMarker } from './note/NoteMarker';
+import { NOTE_MARKER_CLASS, NOTE_TOGGLE_CLASS } from './note/noteControls';
 import { ShapeSvg } from './ShapeSvg';
 import { StepTitle } from './StepTitle';
 import type { StepFlowNode } from './toFlow';
@@ -25,6 +25,7 @@ const HANDLES: Array<[Side, Position]> = [
 ];
 
 const begin = () => flowStore.getState().begin();
+const MARKER_CLASS = `${NOTE_MARKER_CLASS} nodrag nopan ${NOTE_TOGGLE_CLASS}`;
 
 function noteOverflows(body: HTMLElement): boolean {
   const text = body.querySelector(':scope > .fs-note > .fs-note-text');
@@ -87,7 +88,7 @@ export const StepNode = memo(function StepNode({ id, data, selected }: NodeProps
         {node.note && (
           <div className={noteLine.more ? 'fs-note has-more' : 'fs-note'}>
             <span className="fs-note-text">{noteLine.first}</span>
-            <NoteMarker nodeId={id} />
+            <button type="button" className={MARKER_CLASS} title="Open note" aria-label="Open note" />
           </div>
         )}
         {(node.owner || node.durationMin !== null || critical) && (

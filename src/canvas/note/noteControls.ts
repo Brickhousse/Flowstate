@@ -3,6 +3,7 @@ import { createStore } from 'zustand/vanilla';
 import type { NoteSession } from './noteSession';
 
 export const NOTE_TOGGLE_CLASS = 'fs-note-toggle';
+export const NOTE_MARKER_CLASS = 'fs-note-marker';
 
 export type NoteControls = Pick<NoteSession, 'open' | 'toggle' | 'state'>;
 
