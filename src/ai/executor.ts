@@ -3,12 +3,13 @@ import { summarizeBoard } from '../analysis/summary';
 import { DurationError, parseDuration } from '../model/duration';
 import type { Board, Project } from '../model/types';
 import { alignNodes, distributeNodes, matchSize, reorder, type AlignEdge, type DistributeAxis, type MatchDims, type OrderMove } from '../ops/arrange';
-import { connect, disconnect } from '../ops/edges';
+import { reattach, resetPath, routeAround, setSeparate } from '../ops/arrowPath';
+import { connect, disconnect, updateEdge } from '../ops/edges';
 import { OpError } from '../ops/errors';
 import { addFlag, setFlagResolved } from '../ops/flags';
 import { groupSteps } from '../ops/groups';
 import { setLanes } from '../ops/lanes';
-import { findEdge } from '../ops/query';
+import { findEdge, getEdge } from '../ops/query';
 import { addStep, deleteSteps, updateSteps, type StepFields, type StepUpdate } from '../ops/steps';
 import { branchParallel, insertBetween, moveSteps, type BranchItem } from '../ops/structure';
 import { addText } from '../ops/text';
@@ -157,6 +158,29 @@ const handlers: { [N in ToolName]: Handler<N> } = {
     ctx.changeBoard(boardId, (b) => {
       const removed = input.links.reduce((sum, l) => sum + disconnect(b, { source: l.from, target: l.to }), 0);
       return { result: { removed }, stats: { arrowsRemoved: removed } };
+    }),
+
+  update_arrows: (ctx, input, boardId) =>
+    ctx.changeBoard(boardId, (b) => {
+      const { from_side, to_side, separate, reset_path, route_around, color } = input;
+      if (!from_side && !to_side && separate === undefined && !reset_path && !route_around && color === undefined) {
+        throw new OpError('Say what to change: from_side, to_side, separate, reset_path, route_around or color.');
+      }
+      const ids = input.links.flatMap((l) => {
+        const found = b.edges.filter((e) => e.source === l.from && e.target === l.to && (!l.type || e.type === l.type));
+        if (!found.length) throw new OpError(`${l.from} is not connected to ${l.to}.`);
+        return found.map((e) => e.id);
+      });
+      for (const id of ids) {
+        const e = getEdge(b, id);
+        if (from_side) reattach(b, id, 'source', e.source, from_side);
+        if (to_side) reattach(b, id, 'target', e.target, to_side);
+        if (reset_path) resetPath(b, [id]);
+        if (route_around && !routeAround(b, id)) throw new OpError(`No route found around the steps for ${e.source} -> ${e.target}.`);
+        if (color !== undefined) updateEdge(b, id, { color });
+      }
+      if (separate !== undefined) setSeparate(b, ids, separate);
+      return { result: { updated: ids }, touched: input.links.flatMap((l) => [l.from, l.to]), stats: { arrowsUpdated: ids.length } };
     }),
 
   insert_between: (ctx, input, boardId) =>

@@ -88,7 +88,7 @@ describe('POST /api/chat', () => {
       ['done', { content: [{ type: 'text', text: 'Adding.' }, tool], stop_reason: 'tool_use' }],
     ]);
     expect(calls[0]).toMatchObject({ model: 'claude-sonnet-5', max_tokens: 32000, cache_control: { type: 'ephemeral' } });
-    expect((calls[0] as { tools: unknown[] }).tools).toHaveLength(17);
+    expect((calls[0] as { tools: unknown[] }).tools).toHaveLength(18);
   });
 
   it('holds back a tool call cut off by max_tokens', async () => {

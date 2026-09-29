@@ -4,6 +4,7 @@ import { criticalPath } from '../analysis/criticalPath';
 import { overlaps } from '../layout/place';
 import { computeTidy } from '../layout/tidy';
 import { applyTidy } from '../ops/board';
+import { connect } from '../ops/edges';
 import { addStep } from '../ops/steps';
 import { createFlowStore } from '../store/store';
 import type { Board } from '../model/types';
@@ -270,6 +271,72 @@ describe('executeTool', () => {
   });
 });
 
+
+describe('update_arrows', () => {
+  const BENDS = [{ x: 300, y: 36 }, { x: 300, y: 236 }];
+  const shaped = (b: Board) => {
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    const c = addStep(b, { title: 'B', x: 400, y: 200 });
+    connect(b, { source: a, target: c });
+    connect(b, { source: a, target: c, type: 'dependency' });
+    b.edges[0].bends = BENDS;
+  };
+
+  it('moves ends to other sides, keeps the bends and marks arrows separate in one undo step', async () => {
+    const { run, active, store } = setup(shaped);
+    const before = store.getState().past.length;
+    const out = await run('update_arrows', { links: [{ from: 's1', to: 's2', type: 'flow' }], from_side: 'bottom', to_side: 'top', separate: true });
+    expect(out).toMatchObject({ ok: true, stats: { arrowsUpdated: 1 }, touched: ['s1', 's2'] });
+    expect(active().edges[0]).toMatchObject({ sourceSide: 'bottom', targetSide: 'top', separate: true, bends: BENDS });
+    expect(active().edges[1]).toMatchObject({ sourceSide: null, separate: false });
+    expect(store.getState().past.length).toBe(before + 1);
+  });
+
+  it('matches every arrow between the pair when no type is given', async () => {
+    const { run, active } = setup(shaped);
+    await run('update_arrows', { links: [{ from: 's1', to: 's2' }], separate: true });
+    expect(active().edges.map((e) => e.separate)).toEqual([true, true]);
+  });
+
+  it('resets a hand-shaped arrow and routes another around a step in the way', async () => {
+    const { run, active } = setup((b) => {
+      shaped(b);
+      addStep(b, { title: 'In the way', x: 800, y: 0 });
+      const e = addStep(b, { title: 'E', x: 1100, y: 0 });
+      connect(b, { source: 's1', target: e });
+    });
+    await run('update_arrows', { links: [{ from: 's1', to: 's2', type: 'flow' }], reset_path: true });
+    expect(active().edges[0].bends).toEqual([]);
+    const out = await run('update_arrows', { links: [{ from: 's1', to: 's6' }], route_around: true });
+    expect(out.ok).toBe(true);
+    expect(active().edges[2].bends.length).toBeGreaterThan(0);
+  });
+
+  it('refuses an unknown pair or an empty change and leaves the board untouched', async () => {
+    const { run, store } = setup(shaped);
+    const before = store.getState().project;
+    expect((await run('update_arrows', { links: [{ from: 's2', to: 's1' }], separate: true })).content).toContain('s2 is not connected to s1.');
+    expect((await run('update_arrows', { links: [{ from: 's1', to: 's2' }] })).content).toMatch(/Say what to change/);
+    expect(store.getState().project).toBe(before);
+  });
+
+  it('cannot place bends', async () => {
+    const { run, active } = setup(shaped);
+    const out = await run('update_arrows', { links: [{ from: 's1', to: 's2', type: 'dependency' }], bends: [{ x: 0, y: 0 }], separate: true });
+    expect(out.ok).toBe(true);
+    expect(active().edges[1]).toMatchObject({ separate: true, bends: [] });
+  });
+
+  it('tints the matched arrows in one call and refuses a non-colour', async () => {
+    const { run, active, store } = setup(shaped);
+    const out = await run('update_arrows', { links: [{ from: 's1', to: 's2' }], color: 'rose' });
+    expect(out.ok).toBe(true);
+    expect(active().edges.map((e) => e.color)).toEqual(['rose', 'rose']);
+    const before = store.getState().project;
+    expect((await run('update_arrows', { links: [{ from: 's1', to: 's2' }], color: 'not-a-colour' })).ok).toBe(false);
+    expect(store.getState().project).toBe(before);
+  });
+});
 
 describe('board pinning', () => {
   function twoBoards() {

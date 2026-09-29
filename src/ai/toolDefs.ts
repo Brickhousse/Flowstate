@@ -10,6 +10,8 @@ const DESCRIPTIONS: Record<ToolName, string> = {
   connect:
     'Add arrows. type flow (default) is the next step, dependency means the target cannot start until the source is done, handoff is data or information passed. Connecting an existing pair again only updates its label.',
   disconnect: 'Remove the arrows between pairs of steps.',
+  update_arrows:
+    'Change how existing arrows are drawn without adding or removing any. from_side and to_side move where each arrow leaves and enters its steps. separate true gives each arrow its own line instead of sharing one with other arrows. reset_path drops hand-drawn bends, and route_around finds a path around the steps in the way. color tints the arrows. You cannot place bends.',
   insert_between: 'Insert a new step on an existing arrow, so from -> to becomes from -> new -> to. Use this for "put X between A and B".',
   branch_parallel:
     'Create parallel paths from a step. Each branch is a sequence of new steps, or {"existing": id} for steps to split off from where they are now (they are spliced out and their neighbours reconnected). With join_at, every branch ends in an arrow to that step and any direct from -> join_at arrow is removed.',

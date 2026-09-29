@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ACTORS, EDGE_TYPES, FLAG_KINDS, SHAPES, STATUSES } from '../model/types';
+import { ACTORS, EDGE_TYPES, FLAG_KINDS, SHAPES, SIDES, STATUSES } from '../model/types';
 
 const board = z.string().optional().describe('Board name or id. Defaults to the board the user is looking at.');
 const id = z.string().describe('Id from the board summary, like s12.');
@@ -77,6 +77,16 @@ export const TOOL_SCHEMAS = {
     links: z.array(z.object({ from: id, to: id, type: z.enum(EDGE_TYPES).optional(), label: z.string().optional() })).min(1),
   }),
   disconnect: z.object({ board, links: z.array(z.object({ from: id, to: id })).min(1) }),
+  update_arrows: z.object({
+    board,
+    links: z.array(z.object({ from: id, to: id, type: z.enum(EDGE_TYPES).optional() })).min(1),
+    from_side: z.enum(SIDES).optional().describe('Side of the "from" step the arrow leaves.'),
+    to_side: z.enum(SIDES).optional().describe('Side of the "to" step the arrow enters.'),
+    separate: z.boolean().optional().describe('true: the arrow gets its own line instead of sharing one. false: it may share again.'),
+    reset_path: z.boolean().optional().describe('true: drop hand-drawn bends and route the arrow automatically.'),
+    route_around: z.boolean().optional().describe('true: find a path around the steps in the way and keep it.'),
+    color: z.string().nullable().optional().describe('blue, green, amber, rose, violet, slate, a #rrggbb value, or null for the default.'),
+  }),
   insert_between: z.object({ board, from: id, to: id, step: StepInput }),
   branch_parallel: z.object({
     board,

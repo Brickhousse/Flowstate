@@ -14,4 +14,9 @@ describe('stats', () => {
     expect(describeStats({ flagsResolved: 1, flagsReopened: 2 })).toBe('1 resolved, 2 reopened');
     expect(describeStats({ flagsReopened: 1 })).toBe('1 reopened');
   });
+
+  it('describes redrawn arrows', () => {
+    expect(describeStats({ arrowsUpdated: 1 })).toBe('1 arrow redrawn');
+    expect(describeStats({ arrowsAdded: 1, arrowsUpdated: 2 })).toBe('1 arrow added, 2 arrows redrawn');
+  });
 });
