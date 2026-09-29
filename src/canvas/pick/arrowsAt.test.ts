@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { XY } from '../../model/types';
 import type { Route } from '../arrowRoutes';
-import { arrowsAt, pickTolerance, stackOrder } from './arrowsAt';
+import { arrowsAt, pickTolerance, reportedFirst, stackOrder } from './arrowsAt';
 
 const route = (...points: XY[]): Route => ({ points, label: points[0] });
 
@@ -60,5 +60,16 @@ describe('pickTolerance', () => {
 describe('stackOrder', () => {
   it('keeps list order within a layer and draws higher layers later', () => {
     expect(stackOrder([{ id: 'a', zIndex: 1 }, { id: 'b' }, { id: 'c', zIndex: 0 }, { id: 'd', zIndex: 1 }])).toEqual(['b', 'c', 'a', 'd']);
+  });
+});
+
+describe('reportedFirst', () => {
+  it('puts the arrow React Flow reports ahead of the geometric hits, once', () => {
+    expect(reportedFirst('e1', ['e2', 'e1', 'e3'])).toEqual(['e1', 'e2', 'e3']);
+  });
+
+  it('keeps the reported arrow when the reach misses it', () => {
+    expect(reportedFirst('e1', ['e2'])).toEqual(['e1', 'e2']);
+    expect(reportedFirst('e1', [])).toEqual(['e1']);
   });
 });

@@ -32,6 +32,7 @@ import { LaneNode } from './LaneNode';
 import { useCanvasMenu } from './menu/useCanvasMenu';
 import { PickPanelOpen } from './pick/pickPanelOpen';
 import { useArrowPicker } from './pick/useArrowPicker';
+import { useArrowsAt } from './pick/useArrowsAt';
 import { useReattaching } from './reattachSession';
 import type { RenderCache } from './renderCache';
 import { setRevealer } from './reveal';
@@ -133,7 +134,8 @@ export function Canvas({ boardId, editable }: { boardId: string; editable: boole
   const nodes = useMemo(() => (board ? toFlowNodes(board, view, nodeCache.current, measured.current) : []), [board, view, measureTick]);
   const routes = useMemo(() => (board ? arrowRoutes(board, routeCache.current) : null), [board]);
   const edges = useMemo(() => (board && routes ? toFlowEdges(board, view, edgeCache.current, routes) : []), [board, view, routes]);
-  const picker = useArrowPicker(boardId, editable, board, routes, edges);
+  const arrowsAt = useArrowsAt(routes, edges);
+  const picker = useArrowPicker(boardId, editable, board, routes, arrowsAt);
 
   useEffect(() => (editable ? setRevealer((ids) => revealIds(rf, ids)) : undefined), [rf, editable]);
   useEffect(

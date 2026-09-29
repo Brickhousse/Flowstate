@@ -32,3 +32,8 @@ export function pickTolerance(zoom: number): number {
 export function stackOrder(edges: readonly { id: string; zIndex?: number }[]): string[] {
   return [...edges].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0)).map((e) => e.id);
 }
+
+// why: ADR-0016
+export function reportedFirst(reported: string, hits: readonly string[]): string[] {
+  return [reported, ...hits.filter((id) => id !== reported)];
+}
