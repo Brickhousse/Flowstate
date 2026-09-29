@@ -475,3 +475,19 @@ test('Shift+F2 in the note saves and closes it', async ({ page, request }) => {
   expect((await board(page)).nodes[0].note).toBe('Keyed');
   expect(await history(page)).toBe(before + 1);
 });
+
+test('a right-click in the note text keeps the browser menu', async ({ page, request }) => {
+  const p = await seed(request, (b) => {
+    addStep(b, { title: 'Spelling', x: 0, y: 0 });
+  });
+  await open(page, p);
+  await node(page, 's1').click();
+  await noteButton(page).click();
+  await page.keyboard.type('Mispeled');
+  await page.evaluate(() => {
+    window.addEventListener('contextmenu', (e) => setTimeout(() => (document.body.dataset.menuBlocked = String(e.defaultPrevented))), true);
+  });
+  await noteInput(page).click({ button: 'right' });
+  await expect.poll(() => page.evaluate(() => document.body.dataset.menuBlocked)).toBe('false');
+  await expect(panel(page)).toHaveCount(1);
+});

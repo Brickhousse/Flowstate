@@ -11,7 +11,10 @@ const DISMISS = { closeOnBlur: false, toggler: `.${NOTE_TOGGLE_CLASS}` };
 export function NotePanel({ at, note, editable, onEdit, onClose }: Props) {
   return (
     <Popup at={at} onClose={onClose} wheelInside="scroll" dismiss={DISMISS} className="fs-note-panel">
-      {editable ? <NoteEditor note={note} onEdit={onEdit} onClose={onClose} /> : <NoteReader note={note} onClose={onClose} />}
+      {/* Popup blocks the browser menu for its menus; note text needs it for spelling and paste. */}
+      <div onContextMenu={(e) => e.stopPropagation()}>
+        {editable ? <NoteEditor note={note} onEdit={onEdit} onClose={onClose} /> : <NoteReader note={note} onClose={onClose} />}
+      </div>
     </Popup>
   );
 }
