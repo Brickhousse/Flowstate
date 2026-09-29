@@ -145,6 +145,13 @@ describe('menu edits', () => {
     expect(b.edges[0].bends).toEqual([{ x: 290, y: 36 }, { x: 290, y: 236 }]);
   });
 
+  it('leaves the arrow untouched when a new bend lands on an existing corner', () => {
+    const { b, e } = shaped();
+    b.edges[0].bends = [];
+    const once = runOp(b, (d) => addBend(d, e, { x: 290, y: 36 }, drawn)).board;
+    expect(runOp(once, (d) => addBend(d, e, { x: 290, y: 36 }, drawn)).board).toBe(once);
+  });
+
   it('removes a bend and tidies what is left', () => {
     const { b, e } = shaped();
     b.edges[0].bends = [{ x: 300, y: 36 }, { x: 300, y: 120 }, { x: 300, y: 236 }];
@@ -178,6 +185,17 @@ describe('menu edits', () => {
     const bends = b.edges[0].bends;
     expect(bends.length).toBeGreaterThan(1);
     expect(bends.every((p) => p.x <= 300 - 16 || p.x >= 480 + 16 || p.y <= -16 || p.y >= 72 + 16)).toBe(true);
+  });
+
+  it('leaves the arrow untouched when routing around finds the route it already has', () => {
+    const b = createBoard('B');
+    const a = addStep(b, { title: 'A', x: 0, y: 0 });
+    addStep(b, { title: 'In the way', x: 300, y: 0 });
+    const c = addStep(b, { title: 'C', x: 600, y: 0 });
+    const e = connect(b, { source: a, target: c });
+    const once = runOp(b, (d) => routeAround(d, e)).board;
+    expect(once).not.toBe(b);
+    expect(runOp(once, (d) => routeAround(d, e)).board).toBe(once);
   });
 
   it('leaves the arrow unchanged when the search runs out of time', () => {

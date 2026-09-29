@@ -2,7 +2,7 @@ import { searchAround, type AroundOptions } from '../layout/route/around';
 import { nearestOnSegment } from '../layout/route/path';
 import { simplify, samePoints } from '../layout/route/polyline';
 import { edgeSides, portAt } from '../layout/route/ports';
-import type { Board, Side, XY } from '../model/types';
+import type { Board, BoardEdge, Side, XY } from '../model/types';
 import { assertLinkable } from './edges';
 import { OpError } from './errors';
 import { findEdge, getEdge, getNode } from './query';
@@ -29,10 +29,12 @@ export function reattach(b: Board, id: string, end: ArrowEnd, nodeId: string, si
   else e.targetSide = side;
 }
 
+function storeBends(e: BoardEdge, bends: XY[]): void {
+  if (!samePoints(bends, e.bends)) e.bends = bends;
+}
+
 export function setBends(b: Board, id: string, bends: XY[]): void {
-  const e = getEdge(b, id);
-  const next = simplify(bends);
-  if (!samePoints(next, e.bends)) e.bends = next;
+  storeBends(getEdge(b, id), simplify(bends));
 }
 
 export function resetPath(b: Board, ids: string[]): void {
@@ -58,7 +60,7 @@ export function addBend(b: Board, id: string, at: XY, route: XY[]): void {
   }
   const inner = corners.slice(1, -1);
   const bends = [...inner.slice(0, best.index), best.point, ...inner.slice(best.index)];
-  e.bends = bends.filter((p, i) => i === 0 || p.x !== bends[i - 1].x || p.y !== bends[i - 1].y);
+  storeBends(e, bends.filter((p, i) => i === 0 || p.x !== bends[i - 1].x || p.y !== bends[i - 1].y));
 }
 
 export function removeBend(b: Board, id: string, index: number): void {
@@ -75,6 +77,6 @@ export function routeAround(b: Board, id: string, opts?: AroundOptions): boolean
   const boxes = b.nodes.filter((n) => n.kind !== 'group');
   const route = searchAround({ source: portAt(source, sides.source), sourceSide: sides.source, target: portAt(target, sides.target), targetSide: sides.target, boxes }, opts);
   if (!route) return false;
-  e.bends = route.slice(1, -1);
+  storeBends(e, route.slice(1, -1));
   return true;
 }
