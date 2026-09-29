@@ -4,14 +4,23 @@ A keyboard-first flowchart canvas for redesigning processes into agentic workflo
 
 ## Run it
 
-1. Node 24 or newer.
-2. `npm install`
-3. Copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY` (from console.anthropic.com). The chat stays disabled without it; everything else works.
-4. `npm run dev`, then open http://localhost:5173
+1. Install Git and Node 24 or newer.
+2. `git clone https://github.com/Brickhousse/Flowstate.git`, then `cd Flowstate`. The repository is private: ask its owner to add you as a collaborator first.
+3. `npm install`
+4. Optional: copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY` (from console.anthropic.com). The chat stays disabled without it; everything else works.
+5. `npm run dev`, then open http://localhost:5173
 
 The dev API listens on port 8797 by default; set `FLOWSTATE_API_PORT` to override it.
 
-Projects are saved as JSON files in `workspace/`.
+Projects are saved as JSON files in `workspace/`, which git ignores, so your maps never go into the repository.
+
+## Share a map
+
+1. The sender opens the map, then Export (the download icon) > **Project JSON**. This saves `<name>.flowstate.json`.
+2. Send that file by email, chat or a shared folder.
+3. The receiver opens the project menu (the project name at the top left) > **Import JSON** and picks the file. It opens as a separate project named "<name> (imported)", so neither person's edits change the other's copy. Send changes back the same way.
+
+Maps saved by this version use file format 2. Older copies of Flowstate cannot open them, so both people should run this version or newer. Maps from older versions open here and are upgraded. PNG and SVG exports are pictures and cannot be imported.
 
 ## Privacy and cost
 

@@ -4,13 +4,13 @@
 
 ## Complete
 - v1 as specified in `docs/superpowers/specs/2026-09-25-flowstate-design.md`: infinite canvas with 9 shapes, free text, groups and swimlanes; actors, durations, owners, status and flags; flow, dependency and handoff arrows; parallel branches; live critical path; keyboard-first editing and floating toolbars; boards, reference view and projects; autosave with undo/redo; PNG, SVG and JSON export and import; Claude chat that edits the board through the same operations as the UI. Merged to `master`.
-- Layout assists: all 14 tasks built on `feat/layout-assists`, drag and resize snapping with smart guides and spacing guides, Ctrl+drag copy, align and distribute, custom colour, Ctrl+X, nudge and layer shortcuts, the right-click menu, and AI arrange. Step titles now fit the box height. Awaiting a final playtest and merge.
-- Arrow routing: attach an arrow to any side dot, "Don't merge" for its own line, hand-shaped arrows with segment bars and bend squares, route around boxes, arrow colour, an arrow right-click menu, and the assistant's `update_arrows`, within the measured drag and load budget (ADR 0014, ADR 0015). Built on `feat/arrow-routing`; awaiting the final playtest and merge.
-- Step notes: a multi-paragraph note in a panel under the step (toolbar Note button, Shift+F2, or the marker on the box), readable in the reference view, saved on every close as one undo step (ADR 0019). The assistant puts explanations in the note, sees notes cut at 300 characters marked `note-truncated`, and reads the rest with `read_notes`. Built on `feat/step-notes`; awaiting the final playtest and merge after `feat/arrow-routing`.
+- Layout assists: all 14 tasks built on `feat/layout-assists`, drag and resize snapping with smart guides and spacing guides, Ctrl+drag copy, align and distribute, custom colour, Ctrl+X, nudge and layer shortcuts, the right-click menu, and AI arrange. Step titles now fit the box height. Merged to `master` on 2026-09-29; its final playtest is still open (In flight).
+- Arrow routing: attach an arrow to any side dot, "Don't merge" for its own line, hand-shaped arrows with segment bars and bend squares, route around boxes, arrow colour, an arrow right-click menu, and the assistant's `update_arrows`, within the measured drag and load budget (ADR 0014, ADR 0015). Merged to `master` on 2026-09-29; its final playtest is still open (In flight).
+- Step notes: a multi-paragraph note in a panel under the step (toolbar Note button, Shift+F2, or the marker on the box), readable in the reference view, saved on every close as one undo step (ADR 0019). The assistant puts explanations in the note, sees notes cut at 300 characters marked `note-truncated`, and reads the rest with `read_notes`. Merged to `master` on 2026-09-29; its final playtest is still open (In flight).
 
 ## In flight
-- Playtest layout assists Tasks 7 to 13 (Ctrl+drag copy, right-click menu including Shift+F10, align and distribute, layer order, custom colour, Ctrl+arrow nudge, Ctrl+X), then merge `feat/layout-assists`. Also check: menu Custom colour in Firefox (the picker blurs the window), no native menu beside ours on Shift+F10, Alt held before a drag then Delete, and dragging steps taller and shorter. The live app now runs this branch from the `D:\Projects\Flowstate-live` worktree (5173/8797, real workspace), so everyday use doubles as the playtest.
-- Final playtest of arrow routing, then merge `feat/arrow-routing`. Schema 2 (arrow `separate`, `bends`, `color`) does not open on older branches, so never run this branch against the real `workspace/`; a playtest copy runs on 5175 against a scratch copy. The user deferred it on 2026-09-28; checklist:
+- Playtest layout assists Tasks 7 to 13 (Ctrl+drag copy, right-click menu including Shift+F10, align and distribute, layer order, custom colour, Ctrl+arrow nudge, Ctrl+X). Merged to `master` on 2026-09-29 before this playtest, so the user could share the app. Also check: menu Custom colour in Firefox (the picker blurs the window), no native menu beside ours on Shift+F10, Alt held before a drag then Delete, and dragging steps taller and shorter. The live app now runs this branch from the `D:\Projects\Flowstate-live` worktree (5173/8797, real workspace), so everyday use doubles as the playtest.
+- Final playtest of arrow routing (merged to `master` on 2026-09-29 before this playtest). Schema 2 (arrow `separate`, `bends`, `color`) does not open on older versions: back up the real `workspace/` before moving the live app to `master`. A playtest copy runs on 5175 against a scratch copy. The user deferred it on 2026-09-28; checklist:
   1. Two arrows leaving the same side, both "Don't merge": do they spread without crossing at the box?
   2. An arrow sharing a line, "Don't merge": does it move off while the other stays put?
   3. Route around boxes under a step: sensible route? Any false "no route", especially with a step close to an arrow end?
@@ -22,7 +22,7 @@
   9. Overlapping arrows: pick list position and hover glow OK?
   10. With API credit approved: "attach the arrow from A to B to the bottom of A".
   11. Anything wrong on existing boards?
-- Final playtest of step notes, then merge `feat/step-notes` (after `feat/arrow-routing`). The user was away when it was built; checklist:
+- Final playtest of step notes (merged to `master` on 2026-09-29 before this playtest). The user was away when it was built; checklist:
   1. Write a two-paragraph note from the toolbar Note button; close with Escape; the box shows the first line and the marker; one Ctrl+Z removes the note.
   2. Select a step, Shift+F2, write, Ctrl+Enter.
   3. Click the marker on an unselected step: the note opens, the step is not selected; press-and-drag on the marker does not move the step; a second click closes it.
@@ -79,3 +79,4 @@ Finish layout assists, arrow routing and step notes, then interactive HTML and P
 | 2026-09-27/28 | Arrow routing Tasks 3 to 15 with two playtest rounds and an SRP refactor; live app moved to a worktree |
 | 2026-09-28 | Arrow routing Tasks 16 to 19: arrow menu, assistant update_arrows, docs; awaiting playtest and merge |
 | 2026-09-28/29 | Step notes specced, planned and built; awaiting playtest and merge |
+| 2026-09-29 | Layout assists, arrow routing and step notes merged to `master` so the repo can be cloned and maps shared; their playtests are still open |
