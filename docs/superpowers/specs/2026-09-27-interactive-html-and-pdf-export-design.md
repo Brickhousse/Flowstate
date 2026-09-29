@@ -18,7 +18,7 @@ Share a project so others can explore it at high fidelity, and print or zoom it 
 
 ## 2. Export menu and content
 
-**The menu:** the top bar export menu keeps PNG, SVG and JSON, and adds "Interactive HTML" and "PDF".
+**The menu:** the top bar export menu keeps PNG, SVG and JSON, and adds "Interactive HTML" and "PDF". SVG, and PNG drawn from that SVG, come from the same vector renderer, so they no longer wrap HTML in `foreignObject`.
 
 **What each file contains:**
 - **Scope:**
@@ -163,4 +163,3 @@ Starts after arrow routing slice 1.
 - Editing in the HTML file.
 - Tiled multi-page PDFs.
 - Choosing the paper size by hand.
-- Changes to PNG and SVG export.
