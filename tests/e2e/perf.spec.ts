@@ -98,7 +98,7 @@ test('drags on a 1000-step board with guides on without long frames', async ({ p
 const BASELINE = { dragP95Ms: 33.4, openMs: 484 };
 // Pan p95 median measured with React Flow culling on (onlyRenderVisibleElements), at commit 189df81.
 const CULLED_PAN_BASELINE = { panP95Ms: 16.8 };
-// Noted 200-arrow board open median over five opens, measured at 80029fd before the step notes feature.
+// Noted board open: median of five full perf-suite runs (five opens each) at 80029fd, before step notes. Alone it reads differently.
 const NOTED_BASELINE = { openMs: 512 };
 const ENFORCE_BUDGET = !!process.env.PERF_BUDGET;
 
