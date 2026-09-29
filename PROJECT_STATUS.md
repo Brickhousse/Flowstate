@@ -1,6 +1,6 @@
 # Project status
 
-**As of:** 2026-09-28
+**As of:** 2026-09-29
 
 ## Complete
 - v1 as specified in `docs/superpowers/specs/2026-09-25-flowstate-design.md`: infinite canvas with 9 shapes, free text, groups and swimlanes; actors, durations, owners, status and flags; flow, dependency and handoff arrows; parallel branches; live critical path; keyboard-first editing and floating toolbars; boards, reference view and projects; autosave with undo/redo; PNG, SVG and JSON export and import; Claude chat that edits the board through the same operations as the UI. Merged to `master`.
@@ -9,7 +9,18 @@
 
 ## In flight
 - Playtest layout assists Tasks 7 to 13 (Ctrl+drag copy, right-click menu including Shift+F10, align and distribute, layer order, custom colour, Ctrl+arrow nudge, Ctrl+X), then merge `feat/layout-assists`. Also check: menu Custom colour in Firefox (the picker blurs the window), no native menu beside ours on Shift+F10, Alt held before a drag then Delete, and dragging steps taller and shorter. The live app now runs this branch from the `D:\Projects\Flowstate-live` worktree (5173/8797, real workspace), so everyday use doubles as the playtest.
-- Final playtest of arrow routing ("Don't merge", route around boxes, arrow colour, the right-click menu, the assistant's `update_arrows`), then merge `feat/arrow-routing`. Schema 2 (arrow `separate`, `bends`, `color`) does not open on older branches, so never run this branch against the real `workspace/`; a playtest copy runs on 5175 against a scratch copy.
+- Final playtest of arrow routing, then merge `feat/arrow-routing`. Schema 2 (arrow `separate`, `bends`, `color`) does not open on older branches, so never run this branch against the real `workspace/`; a playtest copy runs on 5175 against a scratch copy. The user deferred it on 2026-09-28; checklist:
+  1. Two arrows leaving the same side, both "Don't merge": do they spread without crossing at the box?
+  2. An arrow sharing a line, "Don't merge": does it move off while the other stays put?
+  3. Route around boxes under a step: sensible route? Any false "no route", especially with a step close to an arrow end?
+  4. Several arrows, Reset path or Don't merge from the menu: one Ctrl+Z?
+  5. Right-click an arrow's label, a bend square and a side dot: always the arrow menu? Colour placement and swatches beside the step menu's?
+  6. Bend an arrow far out, then pan so only the bend is on screen: does it stay drawn, clickable and right-clickable (ADR-0018)?
+  7. End drag: only the circle moves and the aimed dot has no highlight; after a drop the circles partly cover the arrowhead. Acceptable?
+  8. Labelled straight arrow: is the drag bar hidden under the label?
+  9. Overlapping arrows: pick list position and hover glow OK?
+  10. With API credit approved: "attach the arrow from A to B to the bottom of A".
+  11. Anything wrong on existing boards?
 - Human playtest of the full app (keyboard-only and chat-only builds against the 2-minute target in the spec).
 - Live API check: `$env:LIVE_API=1; npx playwright test tests/e2e/live.spec.ts` plus one real "draft an agentic version" request. Needs the user's go-ahead because it spends API credit.
 
